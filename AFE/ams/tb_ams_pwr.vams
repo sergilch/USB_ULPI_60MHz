@@ -59,7 +59,9 @@ module tb_ams_pwr;
     always #(T_XO / 2.0) xo = ~xo;
     wire refsel1 = 1'b0, refsel0 = 1'b1;
     wire clk_bit, ref_clk;
-    wire pll_lock, lol, refsel_err, ce60, clk60, clk_on;
+    wire pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire bias_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
     wire [3:0] state;
@@ -73,7 +75,8 @@ module tb_ams_pwr;
                            .refsel(2'b01), .lol_clr(1'b0), .pll_lock(pll_lock), .lol(lol),
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
-                      .ce60(ce60), .clk60(clk60), .clk_on(clk_on));
+                      .clk60(clk60), .phase_j(phase_j), .ld(ld),
+                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq u_seq (
         .ref_clk(ref_clk), .clk_bit(clk_bit), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),

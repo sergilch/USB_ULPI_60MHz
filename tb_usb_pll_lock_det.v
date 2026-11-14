@@ -13,11 +13,11 @@
 // (clk_en = pll_lock & !clk_susp).
 //
 // Checked all the time
-//   * clk60 (CLKOUT): every high phase exactly 4 clk_bit cycles, every low phase
+//   * clkout (CLKOUT): every high phase exactly 4 clk_bit cycles, every low phase
 //     4 + 8k cycles (complete periods only, stops low), each rising edge half a
 //     cycle before a clk_bit edge with ce60 = 1; ce60 exactly every 8 cycles;
 //     no rising edge unless clk_en was 1 at the decision point; clk_on = 0 only
-//     while clk60 is low (safe point to stop the PLL).
+//     while clkout is low (safe point to stop the PLL).
 //   * pll_lock never rises while the PLL ratio was grossly off (> 0.3 %) in the
 //     last 3 windows (the window in which an error ends can still average
 //     inside the tolerance), and never while it is off by more than 0.12 % now.
@@ -59,7 +59,9 @@ module tb_usb_pll_lock_det;
     // ---------------- DUTs + PLL ----------------
     reg        rst_n = 1'b0, pll_en = 1'b0, clk_susp = 1'b0, lol_clr = 1'b0;
     reg  [1:0] refsel = 2'b01;
-    wire       clk_bit, pll_lock, lol, refsel_err, ce60, clk60, clk_on;
+    wire       clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire       clk_en = pll_lock & !clk_susp;
 
@@ -71,7 +73,8 @@ module tb_usb_pll_lock_det;
         .refsel(refsel), .lol_clr(lol_clr),
         .pll_lock(pll_lock), .lol(lol), .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
-                      .ce60(ce60), .clk60(clk60), .clk_on(clk_on));
+                      .clk60(clk60), .phase_j(phase_j), .ld(ld),
+                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
 
     // window length in ns at the nominal reference
     function real W; input dummy; W = 256.0 * 1000.0 / f_ref; endfunction
@@ -99,24 +102,24 @@ module tb_usb_pll_lock_det;
                 if (cg_started && (ce_gap != 7)) ckerr("ce60 not every 8 cycles");
                 ce_gap = 0; cg_started = 1'b1;
             end else ce_gap = ce_gap + 1;
-            // clk60 changes at negedges, so at a posedge it is stable: classify the
-            // cycle that ends here; a transition shows as clk60 != c60_q
-            if (clk60 && !c60_q) begin                 // rose half a cycle ago
-                if (!ce60) ckerr("clk60 rise not in a ce60 cycle");
-                if (!en_h1) ckerr("clk60 rise without clk_en");
+            // clkout changes at negedges, so at a posedge it is stable: classify the
+            // cycle that ends here; a transition shows as clkout != c60_q
+            if (clkout && !c60_q) begin                 // rose half a cycle ago
+                if (!ce60) ckerr("clkout rise not in a ce60 cycle");
+                if (!en_h1) ckerr("clkout rise without clk_en");
                 if ((n_pulse > 0) && (lo_cnt % 8 != 4)) ckerr("low phase not 4 + 8k cycles");
                 hi_cnt = 1; lo_cnt = 0; n_pulse = n_pulse + 1;
-            end else if (!clk60 && c60_q) begin        // fell half a cycle ago
+            end else if (!clkout && c60_q) begin        // fell half a cycle ago
                 if (hi_cnt != 4) ckerr("high phase not 4 cycles");
                 hi_cnt = 0; lo_cnt = 1;
-            end else if (clk60) begin
+            end else if (clkout) begin
                 hi_cnt = hi_cnt + 1;
                 if (hi_cnt > 4) ckerr("high phase too long");
             end else
                 lo_cnt = lo_cnt + 1;
-            c60_q = clk60;
+            c60_q = clkout;
             // clk_on = 0 must mean CLKOUT is low and stays low (safe to stop the PLL)
-            if (!clk_on && clk60) ckerr("clk60 high while clk_on = 0");
+            if (!clk_on && clkout) ckerr("clkout high while clk_on = 0");
             en_h2 = en_h1; en_h1 = clk_en;
         end
     end
@@ -222,7 +225,7 @@ module tb_usb_pll_lock_det;
         // ---------------- [1] reset, refsel decode ----------------
         $display("[1] reset values, refsel decode");
         #1000;
-        if (pll_lock || lol || clk60 || clk_on) begin errors = errors + 1; $display("ERROR: reset values"); end
+        if (pll_lock || lol || clkout || clk_on) begin errors = errors + 1; $display("ERROR: reset values"); end
         refsel = 2'b00; #1; if ((fb_div != 25) || refsel_err)  begin errors = errors + 1; $display("ERROR: refsel 00"); end
         refsel = 2'b01; #1; if ((fb_div != 20) || refsel_err)  begin errors = errors + 1; $display("ERROR: refsel 01"); end
         refsel = 2'b10; #1; if ((fb_div != 0)  || !refsel_err) begin errors = errors + 1; $display("ERROR: refsel 10"); end
@@ -307,7 +310,7 @@ module tb_usb_pll_lock_det;
         if (pll_lock !== 1'b0) begin errors = errors + 1; $display("ERROR: lock not cleared by pll_en = 0"); end
         #5000;
         check_lol(1'b0, "ordered switch-off");
-        if (clk60) begin errors = errors + 1; $display("ERROR: clk60 high with the PLL off"); end
+        if (clkout) begin errors = errors + 1; $display("ERROR: clkout high with the PLL off"); end
         clk_susp = 1'b0;
         start_pll("restart");
         #100;

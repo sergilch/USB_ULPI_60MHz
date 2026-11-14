@@ -1,71 +1,147 @@
 //-----------------------------------------------------------------------------
-// usb_clk_gen.v - ce60 and the ULPI CLKOUT (60 MHz) from the 480 MHz PLL clock
+// usb_clk_gen.v - core clock clk60, island phase / ld, ce60 and the ULPI CLKOUT
+//                 from the 480 MHz PLL clock
 //
-// WORK_PLAN 5.2, AFE_INTEGRATION_PLAN.md 3.4 / phase A4, DOC/afe_interface_spec.md 2.
+// WORK_PLAN 5.2, AFE_INTEGRATION_PLAN.md 3.4 / phase A4, DOC/afe_interface_spec.md 2,
+// Plan_60MHz.md 3.1 / 3.4 / P1.
 //
-//   PLL clk_bit (480 MHz) -> [THIS BLOCK] -> ce60  (clock enable of the ULPI domain)
-//                                         -> clk60 (CLKOUT, to the CLK pad)
+//   PLL clk_bit (480 MHz) -> [THIS BLOCK] -> clk60  (60 MHz core clock, free-running)
+//                                         -> phase_j, ld (480 MHz island timing)
+//                                         -> ce60  (legacy clock enable, see below)
+//                                         -> clkout (CLKOUT, to the CLK pad, gated)
 //
-// Timing (as assumed by usb_ulpi_phy_pads and its testbench)
-//   * A free-running 3-bit counter on clk_bit.  ce60 is high in one cycle of
-//     eight (registered, cnt = 7).
-//   * clk60 is a flop on the falling clk_bit edge: it rises in the middle of
-//     the ce60 cycle, half a clk_bit period before the edge on which the core
-//     samples and launches (ce60 = 1), and falls 4 clk_bit cycles later.  So
-//     high and low are 4 clk_bit cycles each (50 % duty), and the core's ULPI
-//     outputs change about 1 ns after the CLKOUT edge (clock-to-out / hold for
-//     the Link).
-//   * The half-cycle paths into the falling-edge flop come from flops (rise /
-//     fall flags), one mux deep.
+// Divider: a 4-bit Johnson (twisted-ring) counter j on clk_bit, 8 states.  The
+// clk_bit rising edge on which phase becomes k is called Ek below; E0 is the
+// "tick edge".
 //
-// Glitch-free start / stop
+//     phase    0     1     2     3     4     5     6     7
+//     j[3:0]  1111  1110  1100  1000  0000  0001  0011  0111
+//
+//   * Every next-state input is a flop output or one gate of flop outputs, and
+//     each phase is decoded from two adjacent bits (one gate), so the 480 MHz
+//     paths stay as short as they can be (a binary counter misses 480 MHz at
+//     the slow corner by about 1 ns, build/sta, 2026-11-14).
+//   * Self-correcting: j[3] <= j[2] & (j[1] | j[3]) equals j[2] in the eight
+//     legal states and brings every illegal state (e.g. after an upset) back
+//     into the cycle within a few clk_bit cycles.
+//   * Reset state 0000 = phase 4: all outputs low, and the first E0 comes 4
+//     clk_bit edges after the release.  (The binary counter of the single-clock
+//     design started at phase 0 and gave the first E0 after 8 edges.  Only the
+//     position of the first tick after an asynchronous reset release moves.)
+//
+// clk60 (core clock, Plan_60MHz.md 3.1)
+//   * A dedicated flop, clk60 <= j[2], i.e. a copy of j[3]: rises at E0, falls
+//     at E4, so high and low are 4 clk_bit cycles each (50 %, 16.67 ns).  Its
+//     output feeds nothing inside this block (no clock-as-data path).  Not
+//     gated: it runs whenever clk_bit runs, also while clkout is stopped.
+//   * E0 is the edge on which the ce60 logic updates (ce60 is high while
+//     phase = 7), so flops moved from clk_bit + ce60 to clk60 change at the
+//     same time as before: the move is cycle-exact.
+//
+// phase / ld (480 MHz islands, Plan_60MHz.md 3.2 / 3.4)
+//   * phase_j[3:0] = j, the Johnson code of the phase (table above), straight
+//     from the counter flops.  For island logic that captures it (the lock
+//     detector LSBs, P7) and decodes it after the capture.  The binary decode
+//     is not done here: in front of the counter flops it would add load to the
+//     480 MHz paths (about 0.2 ns at the slow corner).  Not for enables in
+//     480 MHz paths (use ld).
+//   * ld is a registered strobe, high while phase = 3, so island flops written
+//     "if (ld)" update at E4, half a clk60 period away from both clk60 edges
+//     on which the core launches (E0) and samples (E8 = next E0).
+//   * Boundary rule: a clk_bit island register that is read by the clk60 domain
+//     changes only on ld (E4); a clk_bit register that samples clk60-domain
+//     data samples only on ld.  Both directions then have 4 clk_bit cycles
+//     (8.3 ns) of setup and of hold, independent of the skew between the two
+//     clock trees up to about +-3 clk_bit cycles (risk K3).  SDC:
+//     set_multicycle_path 4 (setup) / 3 (hold) both ways (constraints/usb_phy.sdc).
+//   * This also keeps RTL simulation free of races: clk60 is a flop output and
+//     rises one delta after clk_bit, so a clk_bit register that changed on E0
+//     would already be seen at that clk60 edge in simulation (zero cycles)
+//     although the hardware sees the old value (8 cycles).  Registers that
+//     change on E4 are stable at every clk60 edge.
+//   * Deviation from Plan_60MHz.md 3.4 (load on phase 7 = E0, multicycle 8 / 7):
+//     recorded as part of decision D10 in WORK_PLAN.md.
+//
+// ce60 (legacy enable, removed in Plan_60MHz.md P9)
+//   * Registered, high in one cycle of eight (phase = 7), so ce60 logic on
+//     clk_bit updates at E0.  It serves the modules that are not on clk60 yet.
+//
+// clkout (ULPI CLKOUT)
+//   * A flop on the falling clk_bit edge: it rises in the middle of the ce60
+//     cycle, half a clk_bit period before E0 (on which the core samples and
+//     launches), and falls 4 clk_bit cycles later.  So high and low are 4
+//     clk_bit cycles each (50 % duty), and the core's ULPI outputs change about
+//     1 ns after the CLKOUT edge (clock-to-out / hold for the Link).
+//   * clkout <= hi is a plain copy of a posedge flop (no logic and no feedback
+//     in the half-cycle path).  hi is high in phases 7, 0, 1, 2 of an enabled
+//     period.  The half-cycle flop-to-flop path itself does not meet 480 MHz
+//     at the slow corner (clock-to-Q + setup > 1.04 ns): the CLKOUT launch
+//     point is revisited with the ULPI I/O timing (Plan_60MHz.md 3.4, K2).
+//
+// Glitch-free start / stop of clkout
 //   clk_en (pll_lock & ~clock suspend, clk_bit domain) is sampled once per
-//   period, in the cycle before clk60 would rise.  If it is 0, that rising edge
-//   and the whole period are skipped; a pulse that has started always runs to
-//   its end.  So clk60 only ever shows complete 4 + 4 periods, and stops low.
-//   clk_on = 1 while clk60 is running (updated at the same decision point), so
-//   a power sequencer can wait for clk_on = 0 before it stops the PLL: clk_bit
-//   must not stop while clk60 is high (the stop itself would cut the pulse).
-//   ce60 keeps running whenever clk_bit runs.
+//   period, in the cycle before clkout would rise (phase 6).  If it is 0, that
+//   rising edge and the whole period are skipped; a pulse that has started
+//   always runs to its end.  So clkout only ever shows complete 4 + 4 periods,
+//   and stops low.  clk_on = 1 while clkout is running (updated at the same
+//   decision point), so a power sequencer can wait for clk_on = 0 before it
+//   stops the PLL: clk_bit must not stop while clkout or clk60 is high (the
+//   stop itself would cut the pulse).  ce60, clk60, phase and ld keep running
+//   whenever clk_bit runs.
 //
 // Reset: rst_n is the clock domain's reset (power-on), not the ULPI RESETB:
 //   CLKOUT must keep running while the Link holds RESETB low.  Asynchronous
-//   assert; clk60 = 0, ce60 = 0, clk_on = 0 during reset.
+//   assert; clk60 = 0, clkout = 0, ce60 = 0, ld = 0, clk_on = 0 and
+//   phase_j = 0000 (phase 4) during reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_clk_gen (
-    input  wire clk_bit,
-    input  wire rst_n,
-    input  wire clk_en,         // CLKOUT allowed
-    output reg  ce60,
-    output reg  clk60,          // CLKOUT
-    output reg  clk_on          // CLKOUT is running
+    input  wire       clk_bit,
+    input  wire       rst_n,
+    input  wire       clk_en,       // CLKOUT allowed
+    output reg        clk60,        // core clock (free-running)
+    output wire [3:0] phase_j,      // clk_bit position inside the clk60 period (Johnson)
+    output reg        ld,           // island strobe, high while phase = 3
+    output reg        ce60,         // legacy enable, high while phase = 7
+    output reg        clkout,       // CLKOUT
+    output reg        clk_on        // CLKOUT is running
 );
 
-    reg [2:0] cnt;
-    reg       rise, fall;       // clk60 edge requests for the falling-edge flop
+    reg [3:0] j;                    // Johnson counter
+    reg       hi;                   // clkout value for the next falling edge
+
+    assign phase_j = j;
+
+    // one-gate phase decodes (adjacent bit pairs)
+    wire ph2 =  j[2] & ~j[1];       // 1100
+    wire ph6 = ~j[2] &  j[1];       // 0011
 
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) begin
-            cnt    <= 3'd0;
+            j      <= 4'b0000;
+            clk60  <= 1'b0;
+            ld     <= 1'b0;
             ce60   <= 1'b0;
-            rise   <= 1'b0;
-            fall   <= 1'b0;
+            hi     <= 1'b0;
             clk_on <= 1'b0;
         end else begin
-            cnt  <= cnt + 3'd1;
-            ce60 <= (cnt == 3'd6);
-            rise <= (cnt == 3'd6) & clk_en;      // high in the ce60 cycle
-            fall <= (cnt == 3'd2);               // high in the cycle cnt = 3
-            if (cnt == 3'd6) clk_on <= clk_en;
+            j     <= {j[2] & (j[1] | j[3]), j[1], j[0], ~j[3]};
+            clk60 <= j[2];                       // = next j[3]
+            ld    <= ph2;                        // phase 3 next
+            ce60  <= ph6;                        // phase 7 next
+            if (ph6) begin                       // decision point
+                clk_on <= clk_en;
+                hi     <= clk_en;                // phases 7, 0, 1, 2
+            end else if (ph2) begin
+                hi     <= 1'b0;                  // phase 3: fall at its middle
+            end
         end
     end
 
     always @(negedge clk_bit or negedge rst_n) begin
-        if (!rst_n)    clk60 <= 1'b0;
-        else if (rise) clk60 <= 1'b1;
-        else if (fall) clk60 <= 1'b0;
+        if (!rst_n) clkout <= 1'b0;
+        else        clkout <= hi;
     end
 
 endmodule

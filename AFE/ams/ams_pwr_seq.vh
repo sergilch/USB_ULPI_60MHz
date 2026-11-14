@@ -6,7 +6,7 @@
 // tb_ams_pwr_shadow.v (Icarus: afe_pll_bm, LDOs as delays).  The including
 // module provides
 //   reg  vin_on, pwr_good, susp_req, clk_susp, wake     stimulus
-//   wire por_n, pg18a, clk_bit, ref_clk, clk60, ce60, clk_on, pll_lock, lol,
+//   wire por_n, pg18a, clk_bit, ref_clk, clkout, ce60, clk_on, pll_lock, lol,
 //        bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b,
 //        dir_hold_b, clk_en_b, pll_err, state[3:0]     from the DUT chain
 //   `AMS_V18A                                          VDD18A in volts
@@ -40,15 +40,15 @@
         end
     always @(negedge iso_en)
         if (pll_lock !== 1'b1) begin errors = errors + 1; $display("ERROR @%0t: iso_en released without lock", $time); end
-    always @(posedge clk60) begin
+    always @(posedge clkout) begin
         t_ck = $realtime;
         if (pll_en !== 1'b1) begin errors = errors + 1; $display("ERROR @%0t: CLKOUT edge with pll_en = 0", $time); end
     end
     always @(posedge pll_err) begin errors = errors + 1; $display("ERROR @%0t: pll_err (lock timeout)", $time); end
 
     integer hi_n = 0;
-    always @(posedge clk_bit) if (clk60) hi_n = hi_n + 1;
-    always @(negedge clk60) begin
+    always @(posedge clk_bit) if (clkout) hi_n = hi_n + 1;
+    always @(negedge clkout) begin
         if (t_ck > 0.0 && hi_n != 4) begin errors = errors + 1; $display("ERROR @%0t: CLKOUT high for %0d clk_bit cycles", $time, hi_n); end
         hi_n = 0;
     end
@@ -81,8 +81,8 @@
         if (iso_en !== 1'b0 || core_rst_n_b !== 1'b1 || dir_hold_b !== 1'b0) begin
             errors = errors + 1; $display("ERROR: RUN without iso_en 0 / reset release / DIR release");
         end
-        @(posedge clk60); t_a = $realtime;
-        for (k = 0; k < 64; k = k + 1) @(posedge clk60);
+        @(posedge clkout); t_a = $realtime;
+        for (k = 0; k < 64; k = k + 1) @(posedge clkout);
         t_b = $realtime;
         f = 64.0e3 / (t_b - t_a);
         $display("   CLKOUT %.4f MHz", f);
@@ -91,13 +91,13 @@
         $display("3. low power with CLKOUT stopped, wake");
         clk_susp = 1'b1; susp_req = 1'b1;
         wait (pll_en === 1'b0);
-        if (clk60 !== 1'b0) begin errors = errors + 1; $display("ERROR: pll_en fell with CLKOUT high"); end
+        if (clkout !== 1'b0) begin errors = errors + 1; $display("ERROR: pll_en fell with CLKOUT high"); end
         #(5000);
         if ($realtime - t_ck < 5000.0) begin errors = errors + 1; $display("ERROR: CLKOUT edges in low power"); end
         t_a = $realtime;
         wake = 1'b1; susp_req = 1'b0; #(200); wake = 1'b0;
         wait (state === 4'd5);
-        @(posedge clk60);
+        @(posedge clkout);
         $display("   wake -> CLKOUT %.1f us", ($realtime - t_a) / 1000.0);
         if ($realtime - t_a > 100000.0) begin errors = errors + 1; $display("ERROR: CLKOUT later than 100 us after wake"); end
         clk_susp = 1'b0;

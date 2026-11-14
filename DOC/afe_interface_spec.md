@@ -209,7 +209,7 @@ Findings:
 
 Requirement that follows (for Q6 / the PLL design): with the 100 µs budget above, the PLL must be inside ±0.08 % within **45 µs** of `PLL_EN` at 24 MHz (30 µs at 19.2 MHz), worst corner. The detector checks the ratio `clk_bit` / `ref_dig`, i.e. that the PLL follows its reference; a reference that is off but still inside the PLL's range is not detected (the crystal's ±500 ppm are the crystal's job).
 
-**CLKOUT** (`usb_clk_gen`): `ce60` and the 60 MHz `CLKOUT` come from a ÷8 counter on `clk_bit`; `CLKOUT` rises half a `clk_bit` cycle before the edge with `ce60` = 1 and is high / low for 4 cycles each. Its enable (`pll_lock` and not clock suspend) is taken once per period, before the rising edge, so `CLKOUT` only shows complete periods and stops low. `clk_on` = 0 means it has stopped; the power sequencer must wait for `clk_on` = 0 before it turns the PLL off, because stopping `clk_bit` in a high phase would cut the pulse.
+**CLKOUT** (`usb_clk_gen`): `ce60` and the 60 MHz `CLKOUT` come from a ÷8 counter on `clk_bit` (since 2026-11-14 a Johnson counter that also generates the free-running core clock `clk60`, `Plan_60MHz.md` P1); `CLKOUT` rises half a `clk_bit` cycle before the edge with `ce60` = 1 and is high / low for 4 cycles each. Its enable (`pll_lock` and not clock suspend) is taken once per period, before the rising edge, so `CLKOUT` only shows complete periods and stops low. `clk_on` = 0 means it has stopped; the power sequencer must wait for `clk_on` = 0 before it turns the PLL off, because stopping `clk_bit` in a high phase would cut the pulse.
 
 ### 4.4 FS / LS
 
@@ -305,7 +305,7 @@ Answers are needed in this form: value, corner, and the simulation it comes from
 
 | Q | Question (plan ref.) | Needed for |
 |---|---|---|
-| Q1 | Can the CDR bring out the Alexander PD's retimed data bit (`hs_rxd`), and with which setup / hold to which `clk_rx` edge? Can it deliver it 1:4 demultiplexed (section 7.2)? (I1, I12) | A3, RX rework |
+| Q1 | Can the CDR bring out the Alexander PD's retimed data bit (`hs_rxd`), and with which setup / hold to which `clk_rx` edge? Can it deliver it 1:8 demultiplexed with a 60 MHz word clock, or should it stay serial (the digital then deserializes on `clk_rx`, `Plan_60MHz.md` 3.3)? (Reworded 2026-11-14: 1:4 at 120 MHz is no longer asked; see 7.2, I1, I12) | A3, RX rework |
 | Q2 | Squelch response time, and CDR time from first transition to correct bits, worst corner, ±1000 ppm, worst initial phase. Is ≤ 6 bit times (12.5 ns) reachable? (I2) | `HS_ZMIN`, `LOCK_DLY` |
 | Q3 | Polarity: `TX_IN_P` = 1 → DP high? `RX_OUT_P` = 1 → DP > DM? (I3) | Pin mapping |
 | Q4 | `TX_EN` → stable output current; `TX_IN` → `TX_OUT` delay and its spread; output state while `TX_EN` = 0. (I4) | `TX_LEAD` / `TX_LAG` defaults |

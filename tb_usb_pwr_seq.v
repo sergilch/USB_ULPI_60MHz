@@ -70,7 +70,9 @@ module tb_usb_pwr_seq;
     end
 
     // ---------------- DUT chain ----------------
-    wire clk_bit, pll_lock, lol, refsel_err, ce60, clk60, clk_on;
+    wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
     wire [3:0] state;
@@ -81,7 +83,8 @@ module tb_usb_pwr_seq;
                            .refsel(2'b01), .lol_clr(1'b0), .pll_lock(pll_lock), .lol(lol),
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
-                      .ce60(ce60), .clk60(clk60), .clk_on(clk_on));
+                      .clk60(clk60), .phase_j(phase_j), .ld(ld),
+                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq #(.BIAS_CYC(BIAS_CYC), .LOCK_TO(LOCK_TO), .OFF_CYC(OFF_CYC)) dut (
         .ref_clk(ref_clk), .clk_bit(clk_bit), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),
@@ -183,20 +186,20 @@ module tb_usb_pwr_seq;
     real t_pg18_fall = -1.0e9;
     always @(negedge pg18a) t_pg18_fall = $realtime;
     always @(negedge pll_en) if (chk_on && $realtime - t_pg18_fall > 200.0) begin
-        if (clk60 !== 1'b0 || clk_on !== 1'b0) err("pll_en fell with CLKOUT running");
+        if (clkout !== 1'b0 || clk_on !== 1'b0) err("pll_en fell with CLKOUT running");
     end
     always @(negedge iso_en) if (chk_on && pll_lock !== 1'b1) err("iso_en released without PLL lock");
     always @(posedge core_rst_n_b) if (chk_on && pll_lock !== 1'b1) err("core reset released without PLL lock");
-    always @(posedge clk60) begin
+    always @(posedge clkout) begin
         clk60_edges = clk60_edges + 1; t_clk60 = $realtime; t_clk60_r = $realtime;
         if (chk_on && pll_en !== 1'b1) err("CLKOUT edge with pll_en = 0");
         if (chk_on && pll_lock !== 1'b1 && $realtime - t_lock_fall > 300.0) err("CLKOUT running without lock");
     end
     integer hi_cyc = 0;
     always @(posedge clk_bit) begin
-        if (clk60) hi_cyc = hi_cyc + 1;
+        if (clkout) hi_cyc = hi_cyc + 1;
     end
-    always @(negedge clk60) begin
+    always @(negedge clkout) begin
         if (chk_on && hi_cyc != 4 && $realtime - t_pg_fall > 300.0) err("CLKOUT high phase not 4 clk_bit cycles");
         hi_cyc = 0;
     end
@@ -227,7 +230,7 @@ module tb_usb_pwr_seq;
     task expect_off(input [8*40-1:0] what);
         begin
             if (pwr_pin !== {1'b0, por_n, 1'b0, 1'b1} || afe_pin !== ISO || core_rst_n_b !== 1'b0 || iso_en_b !== 1'b1 ||
-                dir_hold_b !== 1'b1 || afe_en_b !== 1'b0 || clk60 !== 1'b0) begin
+                dir_hold_b !== 1'b1 || afe_en_b !== 1'b0 || clkout !== 1'b0) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: %0s: not all off (pins %b, afe %b, rst %b iso %b dir %b afe_en %b)",
                          $time, what, pwr_pin, afe_pin, core_rst_n_b, iso_en_b, dir_hold_b, afe_en_b);
@@ -266,7 +269,7 @@ module tb_usb_pwr_seq;
         wait (pll_lock === 1'b1); t_lock = $realtime;
         wait (iso_en === 1'b0); t_iso = $realtime;
         wait (core_rst_n_b === 1'b1); t_rel = $realtime;
-        wait (clk60 === 1'b1); t_ck = $realtime;
+        wait (clkout === 1'b1); t_ck = $realtime;
         wait (dir_hold_b === 1'b0); t_dir = $realtime;
         wait (afe_en_b === 1'b1); t_afe = $realtime;
         $display("   pwr_good -> pll_en %.2f us, -> lock %.2f us, -> iso_en 0 %.2f us, -> core out of reset %.2f us,",
@@ -313,7 +316,7 @@ module tb_usb_pwr_seq;
         if (s_dp !== 1'b1 || s_rcv !== 1'b1) err("FS receiver status lost in SUSP");
         t0 = $realtime;
         wake = 1'b1; #200 susp_req = 1'b0; #100 wake = 1'b0;
-        wait (clk60 === 1'b1); t_ck = $realtime;
+        wait (clkout === 1'b1); t_ck = $realtime;
         wait_state(4'd5, 5000.0, "RUN after SUSP");
         $display("   wake -> CLKOUT %.2f us (relock)", (t_ck - t0) / 1000.0);
         if (t_ck - t0 > 100000.0) err("CLKOUT later than 100 us after wake");
@@ -350,7 +353,7 @@ module tb_usb_pwr_seq;
         wait (pll_en === 1'b0); t0 = $realtime;
         wait (pll_en === 1'b1);
         if ($realtime - t0 < OFF_CYC * T_REF - 1.0) err("PLL off time before the retry too short");
-        if (iso_en !== 1'b1 || core_rst_n_b !== 1'b0 || dir_hold_b !== 1'b1 || clk60 !== 1'b0 || afe_pin !== ISO)
+        if (iso_en !== 1'b1 || core_rst_n_b !== 1'b0 || dir_hold_b !== 1'b1 || clkout !== 1'b0 || afe_pin !== ISO)
             err("lock timeout: not isolated / in reset");
         u_pll.dead = 1'b0;
         wait_state(4'd5, 400000.0, "RUN after the retry");

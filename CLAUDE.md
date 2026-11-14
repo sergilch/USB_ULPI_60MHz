@@ -14,7 +14,8 @@ Synthesizable Verilog-2005 RTL for the digital, PHY-side half of a USB 2.0 ULPI 
 ./run_synth.sh                    # Yosys smoke synthesis of all top levels
 ./run_synth.sh usb_ulpi_phy_top   # one top level
 CORNER=slow ./run_synth.sh        # Liberty corner typ (default) / slow / fast
-make test | synth | all | clean   # same, with TB= TOPS= CORNER= JOBS=
+./run_sta.sh [top ...]            # OpenSTA with constraints/usb_phy.sdc, CORNER=slow (default) / typ / fast
+make test | synth | sta | all | clean   # same, with TB= TOPS= CORNER= STA_CORNER= JOBS=
 AFE/ams/run_ams_tests.sh [link|pwr]   # Spectre AMS (xrun -ams); no simulator here, only the static netlist check runs
 ```
 
@@ -22,13 +23,15 @@ AFE/ams/run_ams_tests.sh [link|pwr]   # Spectre AMS (xrun -ams); no simulator he
 - To run one testbench by hand, copy its header command (e.g. `iverilog -g2005 -o sim_bs usb_bit_stuffer.v tb_usb_bit_stuffer.v && vvp sim_bs`).
 - Pass/fail is the **last `TEST PASSED` / `TEST FAILED: ...` line** in the output, not the exit code. New testbenches must self-check and print this line.
 - `tb_usb_ulpi_phy_pads` needs `-DDISPLAY_PD_PU_EN` for the pull checks; testbenches/tops that reference `X-FAB/` are skipped when that directory is absent.
-- `run_synth.sh` reads every `usb_*.v` and fails on inferred latches or any `check -assert` problem (undriven, multiply driven, loops). With `X-FAB/xh018_lib` present it also maps to D_CELLS_JIHD and requires no generic cells left. New top levels must be added to the `TOPS` list in `run_synth.sh`. No STA is done.
+- `run_synth.sh` reads every `usb_*.v` and fails on inferred latches or any `check -assert` problem (undriven, multiply driven, loops). With `X-FAB/xh018_lib` present it also maps to D_CELLS_JIHD and requires no generic cells left. New top levels must be added to the `TOPS` list in `run_synth.sh` (and of `run_sta.sh`).
+- `run_sta.sh` maps each top for delay (corner Liberty without X0 cells; Yosys does no sizing/buffering), runs OpenSTA with `constraints/usb_phy.sdc` and prints WNS/TNS/#violations; reports in `build/sta/`. Numbers are unsized, ideal-clock estimates, not sign-off. Legacy `ce60` paths are timed single-cycle at 480 MHz on purpose. Timing violations do not fail the script.
 - Outputs go to `build/`.
 
 ## File naming (all in repo root)
 
 - `usb_*.v` — synthesizable RTL. Only these are read by synthesis.
 - `tb_usb_*.v` — RTL testbenches; `tb_afe_*.v` — tests of the AFE models; `tb_ams_*_shadow.v` — Icarus shadows of the Spectre AMS testbenches in `AFE/ams/` (same `ams_phy_end.v` and `.vh` sequences, `afe_*_bm.v` models instead of Verilog-A). A failure only in AMS points at the Verilog-A models / connect rules, not the RTL.
+- `constraints/usb_phy.sdc` — timing constraints (skeleton; every clock is created only if its port/net exists, so it works on any top).
 - `afe_*_bm.v` — testbench-only, real-valued AFE behavioural models (line, terminations, HS TX/RX, squelch, CDR, FS/LS, PLL). Not synthesizable; must never be named `usb_*`.
 - `AFE/veriloga/` Verilog-A models with the same pins/defaults as the `_bm` models; `AFE/spice/` transistor-level references; `AFE/ams/` AMS testbenches.
 - Each module's header comment is its detailed spec (pipeline position, timing, corner cases). Read it before changing a module and keep it in sync.
@@ -43,7 +46,8 @@ Hierarchy: `usb_ulpi_phy_pads` (BBSUD8F pads, protection pulls, RESETB sync, NAN
 
 ### Conventions
 
-- **Single clock `clk_bit` = 480 MHz.** The 60 MHz ULPI domain is the enable `ce60` (one cycle in eight); those paths are 8-cycle multicycle. Second clock only `clk_rx` (CDR) up to the elastic buffer. `Plan_60MHz.md` (2026-11-14, not implemented) proposes moving the core to a real 60 MHz clock because 480 MHz fails timing at the slow corner — check it before restructuring clocking.
+- **Single clock `clk_bit` = 480 MHz (migration in progress).** The 60 MHz ULPI domain is still the enable `ce60` (one cycle in eight); those paths are 8-cycle multicycle. Second clock only `clk_rx` (CDR) up to the elastic buffer. `Plan_60MHz.md` moves the core to a real 60 MHz clock because 480 MHz fails timing at the slow corner; follow its status table (section 8). Done so far (P1): `usb_clk_gen` generates `clk60` (rises at E0, the edge where `ce60` logic updates) and the island strobe `ld`; its CLKOUT port is `clkout`.
+- **60↔480 boundary rule:** a `clk_bit` register read by `clk60` logic changes only on `ld`, and one that samples `clk60` data samples only on `ld` (edge E4). Never cross on E0: in simulation `clk60` rises one delta after `clk_bit`, so an E0 crossing is silently zero-cycle (see `usb_clk_gen` header, `tb_usb_clk_gen`). The SDC multicycles (4/3) assume this rule.
 - Reset: active-low asynchronous `rst_n`.
 - Speed = ULPI XcvrSelect: `00` HS, `01` FS, `10` LS, `11` sent at FS rate.
 - Line encoding: J = 1 / K = 0, LSB first.

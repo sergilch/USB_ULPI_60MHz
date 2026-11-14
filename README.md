@@ -79,13 +79,16 @@ Each module's header comment holds its detailed spec: pipeline position, timing 
 ./run_tests.sh ulpi_core rx_   # only testbenches whose name contains one of the words
 ./run_synth.sh                 # Yosys synthesis smoke test of the top levels
 CORNER=slow ./run_synth.sh     # xh018 Liberty corner: typ (default), slow, fast
+./run_sta.sh                   # OpenSTA timing of the top levels (corner slow by default)
 ```
 
-With GNU make installed, `make test`, `make synth`, `make all` and `make clean` do the same (`TB=`, `TOPS=`, `CORNER=`, `JOBS=` as variables).
+With GNU make installed, `make test`, `make synth`, `make sta`, `make all` and `make clean` do the same (`TB=`, `TOPS=`, `CORNER=`, `JOBS=` as variables).
 
 `run_tests.sh` takes each testbench's build command from its header and puts simulations, logs and VCDs into `build/`. It prints one line per testbench and a summary, and exits non-zero if any testbench fails. Testbenches that need the X-FAB pad model are skipped when `X-FAB/` is missing.
 
-`run_synth.sh` synthesizes `usb_ulpi_phy_top`, `usb_ulpi_phy_pads`, `usb_rx_datapath` and `usb_ulpi_tx_top` with [Yosys](https://yosyshq.net/yosys/). It fails on inferred latches and on `check -assert` problems (undriven or multiply driven nets, loops). With the X-FAB xh018 standard cells in `X-FAB/xh018_lib`, it also maps the design onto D_CELLS_JIHD, requires a complete mapping and reports cells and area; without them it runs generic synthesis only. The pad cells are black boxes. Timing is not analysed yet.
+`run_synth.sh` synthesizes `usb_ulpi_phy_top`, `usb_ulpi_phy_pads`, `usb_rx_datapath` and `usb_ulpi_tx_top` with [Yosys](https://yosyshq.net/yosys/). It fails on inferred latches and on `check -assert` problems (undriven or multiply driven nets, loops). With the X-FAB xh018 standard cells in `X-FAB/xh018_lib`, it also maps the design onto D_CELLS_JIHD, requires a complete mapping and reports cells and area; without them it runs generic synthesis only. The pad cells are black boxes.
+
+`run_sta.sh` maps each top level for delay onto the xh018 cells and runs [OpenSTA](https://github.com/The-OpenROAD-Project/OpenSTA) with `constraints/usb_phy.sdc`. It prints setup / hold WNS, TNS and the number of violating endpoints per top level; reports go to `build/sta/`. The mapping is unsized and the clocks are ideal, so the numbers are estimates (`Plan_60MHz.md` 8.1). It needs `X-FAB/xh018_lib` and `sta`, and is skipped without them.
 
 The testbenches are written for [Icarus Verilog](https://steveicarus.github.io/iverilog/). Each testbench's header comment has the exact command and file list it needs. For example:
 
@@ -168,7 +171,7 @@ Copy the integration testbenches' file lists from their headers.
 - ✅ The TX path and the RX datapath are complete. All 38 testbenches (32 for the RTL, 2 Icarus shadows of the Spectre AMS testbenches, 4 for the AFE behavioural models) pass with Icarus Verilog.
 - ✅ TX data boundary to the AFE (`usb_afe_tx_if`: retiming, HS / FS / LS driver select, `TX_EN` lead / lag, idle clamp), verified through the AFE models; not wired into the top level yet.
 - ✅ HS receive boundary to the AFE (`usb_afe_rx_if`: RX / CDR enables, isolation, squelch-based CDR lock, squelch-latency compensation), with the lock-time margin measured through the AFE models; not wired into the top level yet.
-- ✅ Clocking: `ce60` / CLKOUT generator (`usb_clk_gen`, glitch-free start / stop) and the digital PLL lock detector (`usb_pll_lock_det`, REFSEL decode, loss-of-lock and dead-clock detection), verified with a PLL model; not wired into the top level yet.
+- ✅ Clocking: `ce60` / CLKOUT generator (`usb_clk_gen`, glitch-free start / stop; since `Plan_60MHz.md` P1 also the 60 MHz core clock `clk60` and the island strobe `ld`) and the digital PLL lock detector (`usb_pll_lock_det`, REFSEL decode, loss-of-lock and dead-clock detection), verified with a PLL model; not wired into the top level yet.
 - ✅ Receiver status sync and glitch filters (`usb_rx_status_sync`: FS/LS receivers, squelch, disconnect, VBUS / ID debounce) and LineState / HostDisconnect detection (`usb_line_state`: FS / LS skew filter, HS squelch, chirp), verified in an FS / LS loopback through the AFE models; not wired into the top level yet.
 - ✅ Mode / termination control (`usb_mode_term_ctrl`: pull-up, HS terminations and pull-downs per the USB3320 table with break-before-make switching; OpMode 10 chirp / resume framing; OpMode 01 driver disable), inside `usb_ulpi_phy_top`; attach, HS handshake, suspend / resume and disconnect verified with two PHY ends through the AFE models.
 - ✅ Pad wrapper `usb_ulpi_phy_pads` (BBSUD8F cells), verified for register access at the pins.
@@ -187,7 +190,8 @@ The RTL and testbenches are all in the repository root:
 
 - `usb_*.v`: RTL modules
 - `tb_usb_*.v`: self-checking testbenches
-- `run_tests.sh`, `run_synth.sh`, `Makefile`: test and synthesis runners (outputs in `build/`, git-ignored)
+- `run_tests.sh`, `run_synth.sh`, `run_sta.sh`, `Makefile`: test, synthesis and timing runners (outputs in `build/`, git-ignored)
+- `constraints/usb_phy.sdc`: timing constraints (skeleton, `Plan_60MHz.md` P1)
 - `X-FAB/` (local only, not committed): X-FAB xh018 PDK files, i.e. the pad cell `BBSUD8F.v` with its UDPs (needed for `tb_usb_ulpi_phy_pads`) and the D_CELLS_JIHD standard-cell library (Liberty, LEF, Verilog)
 - `DOC/`: reference documentation (ULPI 1.1 specification, USB3300 datasheet) and the block diagrams (`DOC/Diagramm/`)
 - `WORK_PLAN.md`: development plan for the complete digital section
