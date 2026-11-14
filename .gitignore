@@ -1,0 +1,7 @@
+# Confidential X-FAB PDK data - never commit
+X-FAB/
+
+# Build outputs and simulation artefacts
+build/
+*.vcd
+sim_*
