@@ -38,7 +38,7 @@ ABC_D=${ABC_D:-2083}
 SDC=constraints/usb_phy.sdc
 
 # usb_ulpi_phy_pads is left out: the BBSUD8F pads have no timing model here.
-TOPS=(usb_ulpi_phy_top usb_rx_datapath usb_ulpi_tx_top usb_afe_tx_if usb_afe_rx_if usb_clk_gen usb_pll_lock_det usb_rx_status_sync usb_line_state usb_mode_term_ctrl usb_pwr_seq usb_afe_trim_regs)
+TOPS=(usb_ulpi_phy_top usb_rx_datapath usb_rx_decoder8 usb_ulpi_tx_top usb_afe_tx_if usb_afe_rx_if usb_clk_gen usb_pll_lock_det usb_rx_status_sync usb_line_state usb_mode_term_ctrl usb_pwr_seq usb_afe_trim_regs)
 [ $# -gt 0 ] && TOPS=("$@")
 
 LIB=$(ls X-FAB/xh018_lib/D_CELLS_JIHD_LPMOS_${CORNER}_*.lib 2>/dev/null | head -1)

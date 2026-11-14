@@ -284,7 +284,7 @@ blocks), so that wiring is done once, on the new clock structure.
 
 | # | Risk | Mitigation |
 |---|---|---|
-| K1 | Parallel unstuffer / SYNC detector longer than expected at the slow corner. | P3 measures it first; fallback: pipeline the decoder by one tick (latency only). |
+| K1 | Parallel unstuffer / SYNC detector longer than expected at the slow corner. | P3 measures it first; fallback: pipeline the decoder by one tick (latency only). **P3: happened** (a direct unrolling: 33.6 ns); closed with closed-form per-bit logic in three stages, 13.7 ns (8.5). |
 | K2 | ULPI hold time once the core uses its own `clk60` tree instead of a `clk_bit` edge. | 3.4: CLKOUT launch selectable in `clk_bit` steps; check in STA with pad delays. |
 | K3 | PISO load phase and `clk60` edge misaligned after CTS. | Generate both from the same ÷8 counter; constrain with `create_generated_clock`; the multicycle covers up to 7 `clk_bit` cycles of skew in data, not the clock itself. |
 | K4 | TX start latency grows beyond the USB / ULPI budget. | Recompute in P6; the lead delay line already costs `tx_lead` bits, the PISO adds ≤ 8. |
@@ -301,7 +301,8 @@ blocks), so that wiring is done once, on the new clock structure.
 | P0 | Open. D10 proposed in `WORK_PLAN.md` (serial CDR data + digital 1:8 SIPO; ULPI I/O reference; boundary convention of 3.4). I12 / Q1 reworded in `AFE_INTEGRATION_PLAN.md`. Needs the analog team's answer. |
 | P1 | ✅ 2026-11-14. `usb_clk_gen`: Johnson ÷8 counter, `clk60`, `phase_j`, `ld`, CLKOUT port renamed `clkout`; `tb_usb_clk_gen` (reference model, reset mid-period, every illegal counter state, 60↔480 loopback). `constraints/usb_phy.sdc` skeleton; `run_sta.sh` (OpenSTA); baseline below. All 39 TBs pass, `run_synth.sh` passes. |
 | P2 | ✅ 2026-11-14, with the deviations of 8.3. `usb_ulpi_phy_top` / `usb_ulpi_phy_if` / `usb_ulpi_core` / `usb_tx_datapath` / `usb_ulpi_tx_top` / `usb_ulpi_phy_pads` take `clk60` + `ld` instead of `ce60`; all ULPI-domain leaves (core, RX path, reg file, trim regs, mode / termination control) on `clk60` with `ce` = 1; the TX serializer stays on `clk_bit` behind the new `usb_tx_ser_bridge` (`usb_tx_path` parameter `SPLIT`). New `tb_usb_tx_path_split`. All 40 TBs pass; the ULPI-level TBs give the same packet / retry counts as before. |
-| P3–P9 | Not started. |
+| P3 | ✅ 2026-11-14, see 8.5. New `usb_rx_decoder8` (3-stage parallel RX bit chain, one instance for HS and FS/LS) + `tb_usb_rx_decoder8` (event-for-event against `usb_rx_decoder`, exact backpressure). Slow corner: 13.7 ns worst path (+2.9 ns slack at 16.7 ns), typ +9.8 ns. Equivalent on the 1000-packet default run and in mutation tests; the exit criterion (≥ 10⁵ packets, 2 seeds × 5·10⁴) was still running at commit time. Not wired in yet (P4 / P5). |
+| P4–P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -389,4 +390,29 @@ Before P2: −16.06 / −4461 / 477 and −12.17 / −989 / 169. By path class i
 | # | Risk (new in P2) | Mitigation |
 |---|---|---|
 | K10 | Island → core paths have half a tick (8.3 ns, E4 → E0). The bridge's `acc_q` / `tx_underrun_t` feed the whole combinational ready chain of the stuffer / NRZI encoder: 12.9 ns unsized, of which 6.6 ns is one unbuffered net with fan-out 34 (≈ +0.5 ns slack with a buffer tree). | Interim only: the bridge goes away in P6 (the 60 MHz serializer and the PISO boundary carry data only). Rule for P3–P6: an island register read by the core feeds a clk60 flop or only shallow logic. |
+
+### 8.5 P3 notes (`usb_rx_decoder8`)
+
+- **First attempt failed timing, as K1 feared.** The serial per-bit code unrolled over the 8 slots
+  of a tick is equivalent but a ripple through all slots: 33.6 ns at the slow corner; split into two
+  halves still 24 ns. The decoder now computes every per-bit decision in closed form from the
+  carried state (header of `usb_rx_decoder8`): zero-run windows for SYNC, a prefix rule for
+  "hunting", "exactly six ones in front" windows for the stuff bits (at most two per tick, the second
+  only in slot 7), balanced popcounts compared against `~n` / `-n` instead of adders, and a fixed
+  order of at most four event candidates per tick (BYTE, END, START, END).
+- **Three pipeline stages, one per recurrence of the serial chain** (NRZI + SYNC detect / unstuff /
+  deserializer + EOP check). Worst path 13.7 ns (stage 3, data bits → event word); stages 1 and 2
+  ≈ 9 ns. Latency: events in tick t+3 for bits of tick t (≈ 50 ns; serial decoder ≈ 10 ns).
+- **Input format** as in 4.3 (one slot per bit instead of `d` + `n`): n = 0..8 bits per tick in slots 0..n−1 (thermometer `s_en`), with
+  per-bit level / SE0 / active. **FS / LS: at most one bit per tick** (checked in simulation): eight
+  FS bits could hold three events (SE0, SYNC, SE0).
+- **Event output: up to two events per tick** (`ev0`, `ev1`; pairs BYTE+END and END+START occur).
+  The event FIFO of P4 must take two writes per tick; `buf_afull` = fewer than 3 free entries,
+  from the FIFO's current count, used in the tick in which stage 3 assembles the bits.
+- **Facts the closed form relies on** (all from the serial rules, ZMIN_HS ≥ 6, ≤ 8 bits per tick):
+  at most one SYNC per tick; no SYNC while a packet is open (the rearm bit in front of it ends the
+  packet); at most 6 data bits behind a SYNC in its tick. Mutation tests confirm the testbench
+  catches errors in each stage; the three surviving mutants are equivalent under these facts.
+- **Area:** 19.8 k (924 cells, 145 flops) vs 11.6 k for the two serial decoders it replaces; the
+  FS/LS elastic buffer it makes unnecessary is removed in P4.
 

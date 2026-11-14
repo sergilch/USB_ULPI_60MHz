@@ -55,11 +55,13 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 
 `usb_ulpi_tx_top` is an older, smaller top level: input capture, TX datapath and bus owner only, with no register access.
 
+`usb_rx_decoder8` (`Plan_60MHz.md` P3) is the 60 MHz replacement for `usb_rx_decoder`: the same RX bit chain for up to 8 bits per `clk60` tick, in three pipeline stages, one instance for HS and FS/LS. It is verified standalone against `usb_rx_decoder` and is not wired into `usb_rx_datapath` yet.
+
 Each module's header comment holds its detailed spec: pipeline position, timing and corner cases.
 
 ### Clocking and conventions
 
-- **Single clock:** everything runs on `clk_bit` (480 MHz). The 60 MHz ULPI domain is the clock enable `ce60`, which is high for one `clk_bit` cycle in eight. Paths in that domain are 8-cycle multicycle paths.
+- **Clocks (migration in progress, `Plan_60MHz.md`):** the ULPI core (`usb_ulpi_phy_top` and below, `usb_ulpi_tx_top`, `usb_ulpi_phy_pads`) runs on the 60 MHz core clock `clk60` from `usb_clk_gen`; only the TX serializer stays on `clk_bit` (480 MHz) behind `usb_tx_ser_bridge`. The blocks not moved yet (RX datapath, line state, status sync, AFE interfaces, lock detector, power sequencer) run on `clk_bit` with the clock enable `ce60`, high for one `clk_bit` cycle in eight (8-cycle multicycle paths).
 - **Reset:** active-low asynchronous `rst_n`.
 - **Speed encoding** follows ULPI XcvrSelect: `00` HS, `01` FS, `10` LS, `11` sent at FS rate.
 - **Line encoding:** `txd` J = 1 / K = 0, LSB first. `tx_en` and `tx_se0` go to the transmitter.
@@ -120,6 +122,7 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | `tb_usb_rx_bit_unstuffer.v`   | `usb_rx_bit_unstuffer.v`                             |
 | `tb_usb_rx_deserializer.v`    | `usb_rx_deserializer.v`                              |
 | `tb_usb_rx_eop_check.v`       | `usb_rx_eop_check.v`                                 |
+| `tb_usb_rx_decoder8.v`        | the `usb_rx_decoder` chain plus `usb_rx_decoder8.v`: same events as the serial decoder, n bits per tick, exact backpressure |
 | `tb_usb_rx_elastic_buffer.v`  | `usb_rx_elastic_buffer.v`                            |
 | `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_frontend.v`                             |
 | `tb_usb_rx_hs_frontend.v`     | `usb_rx_hs_frontend.v`                               |
