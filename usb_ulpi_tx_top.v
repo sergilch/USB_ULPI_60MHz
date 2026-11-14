@@ -10,8 +10,16 @@
 //                                                 |
 //                                  ULPI pins DIR, NXT, DATA out + OE
 //
-// Everything runs on clk_bit with the tick enable ce60 (one cycle in eight, aligned
-// with clk60).  The pad cells are outside: ulpi_data_in / ulpi_stp come from the
+// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
+// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
+// serializer stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
+// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
+// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
+// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
+// than in the single-clock design; every ULPI-side event is in the same tick.
+// All other inputs and outputs are clk60-domain signals.
+//
+// The pad cells are outside: ulpi_data_in / ulpi_stp come from the
 // input pads, ulpi_dir / ulpi_nxt / ulpi_data_out / ulpi_data_oe drive the output
 // pads (DATA is bidirectional, the pad cell uses ulpi_data_oe).
 //
@@ -30,9 +38,10 @@ module usb_ulpi_tx_top #(
     parameter LS_DIV = 320,
     parameter DIV_W  = 9
 ) (
-    input  wire        clk_bit,
+    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        ce60,
+    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
+    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
 
     // ULPI pins
     input  wire [7:0]  ulpi_data_in,
@@ -84,9 +93,9 @@ module usb_ulpi_tx_top #(
     wire       tx_nxt_n, hold_busy;
 
     usb_ulpi_input_capture u_cap (
-        .clk       (clk_bit),
+        .clk       (clk60),
         .rst_n     (rst_n),
-        .ce        (ce60),
+        .ce        (1'b1),
         .data_in   (ulpi_data_in),
         .stp_in    (ulpi_stp),
         .dir_q     (dir_q),
@@ -112,7 +121,8 @@ module usb_ulpi_tx_top #(
     ) u_dp (
         .clk_bit     (clk_bit),
         .rst_n       (rst_n),
-        .ce60        (ce60),
+        .clk60        (clk60),
+        .ld           (ld),
         .speed       (speed),
         .bypass_en   (bypass_en),
         .eop_dis     (1'b0),
@@ -137,9 +147,9 @@ module usb_ulpi_tx_top #(
     );
 
     usb_ulpi_bus_owner u_bus (
-        .clk         (clk_bit),
+        .clk         (clk60),
         .rst_n       (rst_n),
-        .ce          (ce60),
+        .ce          (1'b1),
         .tx_nxt_n    (tx_nxt_n),
         .reg_nxt_n   (reg_nxt_n),
         .tx_busy     (hold_busy),

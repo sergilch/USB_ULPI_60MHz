@@ -10,8 +10,14 @@
 //                          -> usb_tx_path     (Bit Stuffer -> NRZI -> Serializer + EOP)
 //                          -> txd / tx_en / tx_se0 (to the AFE interface / transmitter)
 //
-// Clocking: everything runs on clk_bit (480 MHz); the 60 MHz ULPI domain is the
-// tick enable ce60 (one clk_bit cycle in eight, aligned with clk60).
+// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
+// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
+// serializer (in usb_tx_path, SPLIT = 1) stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
+// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
+// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
+// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
+// than in the single-clock design; every ULPI-side event is in the same tick.
+// All other inputs and outputs are clk60-domain signals.
 //
 // Link-side hookup (all from usb_ulpi_input_capture / usb_ulpi_bus_owner):
 //   cmd_tx, cmd_pid, lnk_valid, lnk_data, lnk_stp : captured and decoded Link signals
@@ -33,9 +39,10 @@ module usb_tx_datapath #(
     parameter LS_DIV = 320,
     parameter DIV_W  = 9
 ) (
-    input  wire        clk_bit,
+    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        ce60,
+    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
+    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
 
     input  wire [1:0]  speed,
     input  wire        bypass_en,
@@ -77,9 +84,9 @@ module usb_tx_datapath #(
     wire        mux_busy, path_busy;
 
     usb_tx_holding u_hold (
-        .clk       (clk_bit),
+        .clk       (clk60),
         .rst_n     (rst_n),
-        .ce        (ce60),
+        .ce        (1'b1),
         .cmd_tx    (cmd_tx),
         .cmd_pid   (cmd_pid),
         .lnk_valid (lnk_valid),
@@ -102,9 +109,9 @@ module usb_tx_datapath #(
     );
 
     usb_tx_sync_mux u_mux (
-        .clk       (clk_bit),
+        .clk       (clk60),
         .rst_n     (rst_n),
-        .ce        (ce60),
+        .ce        (1'b1),
         .speed     (speed),
         .sync_dis  (sync_dis),
         .hdr_valid (hdr_valid),
@@ -126,11 +133,14 @@ module usb_tx_datapath #(
     usb_tx_path #(
         .FS_DIV (FS_DIV),
         .LS_DIV (LS_DIV),
-        .DIV_W  (DIV_W)
+        .DIV_W  (DIV_W),
+        .SPLIT  (1)
     ) u_path (
         .clk_bit     (clk_bit),
         .rst_n       (rst_n),
-        .ce60        (ce60),
+        .ce60        (1'b0),
+        .clk60        (clk60),
+        .ld           (ld),
         .speed       (speed),
         .bypass_en   (bypass_en),
         .eop_dis     (eop_dis),

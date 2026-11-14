@@ -15,8 +15,8 @@
 //     11 (LS via FS preamble) is sent at the FS rate by the serializer.
 //   * Mode / termination control (usb_mode_term_ctrl, AFE plan A6): XcvrSelect,
 //     TermSelect, OpMode and the OTG Control pull-down bits -> the pull-up /
-//     termination / pull-down enables (USB3320 Table 5-1, break before make, on
-//     ce60), and the TX framing: OpMode 10 = no bit stuffing, no NRZI, no SYNC
+//     termination / pull-down enables (USB3320 Table 5-1, break before make, in
+//     clk60 ticks), and the TX framing: OpMode 10 = no bit stuffing, no NRZI, no SYNC
 //     (cfg_bypass, sync_dis) and no EOP except for a host at FS / LS (resume K);
 //     OpMode 01 = drv_dis (drivers off, for usb_afe_tx_if).  iso_en (from
 //     usb_pwr_seq, clk_bit side) turns all enables off.  OpMode 11 transmits like 00
@@ -27,7 +27,19 @@
 //     exported as they are: reacting to them (resetting the PHY core, entering low
 //     power and holding DIR) belongs to the blocks that are still to be written.
 //
-// Clocking: everything on clk_bit with the tick enable ce60.
+// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
+// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
+// serializer stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
+// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
+// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
+// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
+// than in the single-clock design; every ULPI-side event is in the same tick.
+// All other inputs and outputs are clk60-domain signals.
+//   In particular the status inputs (rx_*, linestate, host_disc, VBUS / ID,
+//   iso_en, pwr_state, pll_*, lol) must come from clk60 flops or from island
+//   registers that change on ld; the modules that produce them are still on
+//   clk_bit and get there in P4..P7.  usb_mode_term_ctrl now acts on iso_en
+//   at a clk60 edge (up to one tick, 16.7 ns, instead of one clk_bit cycle).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -37,9 +49,10 @@ module usb_ulpi_phy_top #(
     parameter DIV_W    = 9,
     parameter RX_DEPTH = 8
 ) (
-    input  wire        clk_bit,
+    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        ce60,
+    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
+    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
 
     // ULPI pins
     input  wire [7:0]  ulpi_data_in,
@@ -142,9 +155,9 @@ module usb_ulpi_phy_top #(
     assign cfg_speed  = xcvrselect;
 
     usb_mode_term_ctrl u_mode (
-        .clk_bit        (clk_bit),
+        .clk_bit        (clk60),
         .rst_n          (rst_n),
-        .ce60           (ce60),
+        .ce60           (1'b1),
         .xcvrselect     (xcvrselect),
         .termselect     (termselect),
         .opmode         (opmode),
@@ -172,7 +185,8 @@ module usb_ulpi_phy_top #(
     ) u_phy (
         .clk_bit       (clk_bit),
         .rst_n         (rst_n),
-        .ce60          (ce60),
+        .clk60          (clk60),
+        .ld             (ld),
         .ulpi_data_in  (ulpi_data_in),
         .ulpi_stp      (ulpi_stp),
         .ulpi_dir      (ulpi_dir),
@@ -216,9 +230,9 @@ module usb_ulpi_phy_top #(
     );
 
     usb_ulpi_reg_file u_rf (
-        .clk        (clk_bit),
+        .clk        (clk60),
         .rst_n      (rst_n),
-        .ce         (ce60),
+        .ce         (1'b1),
         .reg_wr     (reg_wr),
         .reg_rd     (reg_rd),
         .reg_ext    (reg_ext),
@@ -248,9 +262,9 @@ module usb_ulpi_phy_top #(
     );
 
     usb_afe_trim_regs u_trim (
-        .clk_bit   (clk_bit),
+        .clk_bit   (clk60),
         .rst_n     (rst_n),
-        .ce        (ce60),
+        .ce        (1'b1),
         .vnd_wr    (vnd_wr),
         .vnd_addr  (vnd_addr),
         .vnd_wdata (vnd_wdata),

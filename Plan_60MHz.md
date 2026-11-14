@@ -1,7 +1,8 @@
 # Plan: move the digital core to a 60 MHz clock
 
-Status: in progress. P1 (clock generator, SDC skeleton, STA baseline) done 2026-11-14; P0 open
-(D10 proposed, waiting for the analog team). Progress and results: section 8.
+Status: in progress. P1 (clock generator, SDC skeleton, STA baseline) and P2 (ULPI core on `clk60`)
+done 2026-11-14; P0 open (D10 proposed, waiting for the analog team). Progress and results:
+section 8.
 Related: `WORK_PLAN.md` (D1, D2, 5.2, 9.1, 9.3, risk R1), `AFE_INTEGRATION_PLAN.md` (I12),
 `DOC/afe_interface_spec.md` 7.2 (480 MHz timing estimate on xh018).
 
@@ -299,7 +300,8 @@ blocks), so that wiring is done once, on the new clock structure.
 |---|---|
 | P0 | Open. D10 proposed in `WORK_PLAN.md` (serial CDR data + digital 1:8 SIPO; ULPI I/O reference; boundary convention of 3.4). I12 / Q1 reworded in `AFE_INTEGRATION_PLAN.md`. Needs the analog team's answer. |
 | P1 | ✅ 2026-11-14. `usb_clk_gen`: Johnson ÷8 counter, `clk60`, `phase_j`, `ld`, CLKOUT port renamed `clkout`; `tb_usb_clk_gen` (reference model, reset mid-period, every illegal counter state, 60↔480 loopback). `constraints/usb_phy.sdc` skeleton; `run_sta.sh` (OpenSTA); baseline below. All 39 TBs pass, `run_synth.sh` passes. |
-| P2–P9 | Not started. |
+| P2 | ✅ 2026-11-14, with the deviations of 8.3. `usb_ulpi_phy_top` / `usb_ulpi_phy_if` / `usb_ulpi_core` / `usb_tx_datapath` / `usb_ulpi_tx_top` / `usb_ulpi_phy_pads` take `clk60` + `ld` instead of `ce60`; all ULPI-domain leaves (core, RX path, reg file, trim regs, mode / termination control) on `clk60` with `ce` = 1; the TX serializer stays on `clk_bit` behind the new `usb_tx_ser_bridge` (`usb_tx_path` parameter `SPLIT`). New `tb_usb_tx_path_split`. All 40 TBs pass; the ULPI-level TBs give the same packet / retry counts as before. |
+| P3–P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -340,4 +342,51 @@ The binary-counter row is the clock generator before P1 (the "worst hold" of −
 corner there was a clock-as-data artefact of the CLKOUT flop's feedback, gone with the new
 structure). The remaining `usb_clk_gen` violations at the slow corner are the half-cycle CLKOUT path
 (−0.46 ns, no logic) and the `hi` / `clk_on` muxes (K8).
+
+### 8.3 P2 notes and deviations
+
+- **Serializer bridge instead of "bytes via the 3.4 boundary".** The serializer's `in_ready` is
+  combinational from bit-rate flops and `tx_done` / `tx_underrun` are 1-cycle pulses, so the clk60
+  side cannot read them directly. `usb_tx_ser_bridge` runs the serializer with `ce60` = `ld` (it
+  takes words on E4), gives the clk60 side a registered "word taken" (`acc_q`) as ready, and
+  collects the pulses into one-tick `tx_done_t` / `tx_underrun_t`. Result: the serializer's whole
+  schedule is the old one shifted by −4 `clk_bit` cycles, every clk60-side handshake falls into the
+  same tick, and **packets leave 4 bits earlier on the line** (4.6 item 1 gets better, not worse, in
+  this step). Two corner cases needed care and are covered by `tb_usb_tx_path_split` (6 seeds, ~100
+  HS underruns each): an underrun with `eop_dis` must block the accept until it is published, and
+  the one-tick underrun can coincide with the discard of the last word (release of `drop` wins).
+- **`usb_tx_path` has a `SPLIT` parameter** (0 = single clock, used by the AFE-level TBs and
+  `ams_phy_end.v`; 1 = clk60 byte side + bridge, used by `usb_tx_datapath`). Both go away in P6.
+- **Testbench clocks:** the ULPI-level TBs generate `clk60` with a blocking assignment on the
+  `clk_bit` edge where their `ce60` was high (E0), i.e. in the same simulation region as that edge
+  (ideal zero-skew clocks), and `ld` = phase 3. The Link models stay unchanged (they still act on
+  `ce60` ticks of `clk_bit`). Do the same in new TBs; a `clk60` from a `usb_clk_gen` flop needs the
+  boundary rule instead.
+- **RESETB synchronizer moved to `clk60`** (from P7): `core_rst_n` is released on the second `clk60`
+  edge after the pin (was: second `clk_bit` edge). `tb_usb_ulpi_phy_pads` checks the new timing.
+- **`usb_line_state` not moved** (deferred to P4): it is not inside `usb_ulpi_phy_top`, and its inputs
+  come from `usb_rx_status_sync` on `clk_bit`; it moves together with the FS/LS sampler. Its
+  `DISC_TAIL` rescale moves with it.
+- **Leaves unchanged.** `usb_mode_term_ctrl` / `usb_afe_trim_regs` keep their `clk_bit` / `ce` port
+  names and run on `clk60` with `ce` = 1 inside `usb_ulpi_phy_top` (port renames: P9). Their
+  standalone TBs and the AFE-level TBs still use them on `clk_bit` + `ce60`.
+- **Inputs of `usb_ulpi_phy_top`** (RX events, LineState, status, `iso_en`, power state) are now
+  clk60-domain inputs; the modules that produce them are still on `clk_bit` and are not wired in
+  yet (P4–P7 move them, Phase 8.1 wires them).
+
+### 8.4 STA after P2 (slow corner, unsized, same flow as 8.2)
+
+| Top | WNS | TNS | #viol | Worst group |
+|---|---|---|---|---|
+| `usb_ulpi_phy_top` | −8.37 | −484 | 137 | `clk_bit` (serializer bit timer, P6) |
+| `usb_ulpi_tx_top` | −5.20 | −334 | 89 | `clk60` |
+
+Before P2: −16.06 / −4461 / 477 and −12.17 / −989 / 169. By path class in `usb_ulpi_phy_top`:
+`clk60` → `clk60` −1.21 ns (the register-read path, K9, now against a real 16.7 ns period);
+`clk60` → `clk_bit` +0.38 ns (met); `clk_bit` → `clk60` −5.28 ns (K10); `clk_bit` → `clk_bit` −8.37 ns
+(the bit-serial serializer, unchanged, replaced in P6). At typ: −2.99 ns, 54 endpoints.
+
+| # | Risk (new in P2) | Mitigation |
+|---|---|---|
+| K10 | Island → core paths have half a tick (8.3 ns, E4 → E0). The bridge's `acc_q` / `tx_underrun_t` feed the whole combinational ready chain of the stuffer / NRZI encoder: 12.9 ns unsized, of which 6.6 ns is one unbuffered net with fan-out 34 (≈ +0.5 ns slack with a buffer tree). | Interim only: the bridge goes away in P6 (the 60 MHz serializer and the PISO boundary carry data only). Rule for P3–P6: an island register read by the core feeds a clk60 flop or only shallow logic. |
 

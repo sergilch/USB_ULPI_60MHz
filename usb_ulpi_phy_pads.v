@@ -9,7 +9,7 @@
 // and passes straight through.
 //
 //   chip pins            BBSUD8F cells               core side
-//   PAD_ULPI_CLK   <---- out  A = clk60               clk60 from the PLL (CLKOUT)
+//   PAD_ULPI_CLK   <---- out  A = clkout              CLKOUT (usb_clk_gen)
 //   PAD_ULPI_DATA  <---> bidir A = data_out,          usb_ulpi_phy_top ulpi_data_*
 //                        EN = !data_oe, Y = data_in
 //   PAD_ULPI_DIR   <---- out                          ulpi_dir
@@ -43,8 +43,12 @@
 //
 // Reset
 //   PAD_RESETB is active low.  It resets the core asynchronously and is released
-//   synchronously to clk_bit through two flip-flops; core_rst_n is exported for the
-//   blocks that will sit next to usb_ulpi_phy_top (RX datapath, clock / power control).
+//   synchronously to the core clock clk60 through two flip-flops, i.e. on the second
+//   clk60 rising edge after the pin (Plan_60MHz.md P2; before: two clk_bit edges).
+//   The TX serializer island inside the core uses the same reset: its release on a
+//   clk60 edge (E0) is a 1-cycle recovery path on clk_bit.  core_rst_n is exported for
+//   the blocks that will sit next to usb_ulpi_phy_top (RX datapath, clock / power
+//   control); island clocks get their own synchronizers when they are wired in (P7).
 //   ifc_ctrl is reset with the core, so the protection pulls are on during reset.
 //
 // NAND tree (DFT): the PI / PO pins of all 13 cells form one chain, PI of the first
@@ -58,9 +62,11 @@
 // Register file: there is exactly one, usb_ulpi_reg_file inside usb_ulpi_phy_top
 //   (u_core.u_rf); this wrapper adds no register storage of its own.
 //
-// Clocking: as usb_ulpi_phy_top, everything on clk_bit with the tick enable ce60.
-//   clk60 (the 60 MHz PLL output that goes to CLKOUT) is only passed to the CLK pad;
-//   ce60 must be high in the clk_bit cycle that ends at a rising edge of clk60.
+// Clocking: as usb_ulpi_phy_top (Plan_60MHz.md P2): the core on clk60, the TX
+//   serializer on clk_bit with the island strobe ld, all three from usb_clk_gen.
+//   clkout (CLKOUT, also from usb_clk_gen) is only passed to the CLK pad; it rises
+//   half a clk_bit period before the clk60 edge on which the core samples and
+//   launches.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -79,9 +85,10 @@ module usb_ulpi_phy_pads #(
     inout  wire        PAD_RESETB,
 
     // ---------------- on-chip side ----------------
-    input  wire        clk_bit,
-    input  wire        ce60,
-    input  wire        clk60,
+    input  wire        clk_bit,      // 480 MHz: TX serializer island
+    input  wire        clk60,        // core clock (usb_clk_gen)
+    input  wire        ld,           // island strobe (usb_clk_gen)
+    input  wire        clkout,       // CLKOUT (usb_clk_gen), to the CLK pad only
     output wire        core_rst_n,
 
     // RX datapath
@@ -223,14 +230,14 @@ module usb_ulpi_phy_pads #(
     );
 
     BBSUD8F u_pad_clk (
-        .A(clk60), .EN(1'b0), .PUEN(1'b1), .PDEN(1'b1),
+        .A(clkout), .EN(1'b0), .PUEN(1'b1), .PDEN(1'b1),
         .PAD(PAD_ULPI_CLK), .Y(clk_y), .PI(nt[12]), .PO(nt[13]),
         .VDDI(vdd), .VDDOI(vdd), .VDDRI(vdd), .GNDI(gnd), .GNDOI(gnd), .GNDRI(gnd), .PSUB(gnd)
     );
 
     // ---------------- reset synchronizer (async assert, sync release) ----------------
     reg [1:0] rst_sync;
-    always @(posedge clk_bit or negedge resetb_y) begin
+    always @(posedge clk60 or negedge resetb_y) begin
         if (!resetb_y) rst_sync <= 2'b00;
         else           rst_sync <= {rst_sync[0], 1'b1};
     end
@@ -245,7 +252,8 @@ module usb_ulpi_phy_pads #(
     ) u_core (
         .clk_bit       (clk_bit),
         .rst_n         (core_rst_n),
-        .ce60          (ce60),
+        .clk60         (clk60),
+        .ld            (ld),
         .ulpi_data_in  (ulpi_data_in),
         .ulpi_stp      (ulpi_stp),
         .ulpi_dir      (ulpi_dir),

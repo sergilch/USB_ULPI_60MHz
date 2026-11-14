@@ -4,7 +4,7 @@
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_core usb_ulpi_input_capture.v usb_ulpi_bus_owner.v \
 //            usb_ulpi_reg_access.v usb_ulpi_burst_mux.v usb_tx_holding.v usb_tx_sync_mux.v \
-//            usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_path.v \
+//            usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v \
 //            usb_tx_datapath.v usb_ulpi_core.v tb_usb_ulpi_core.v
 //   vvp sim_core
 //
@@ -57,6 +57,17 @@ module tb_usb_ulpi_core;
         else        ce_cnt <= ce_cnt + 3'd1;
     end
 
+    // clk60 / ld for the DUT (Plan_60MHz.md P2): clk60 rises on the clk_bit edge on
+    // which the ce60 logic of the single-clock design updated (E0), set with a
+    // blocking assignment so it changes in the same simulation region as that
+    // edge (ideal zero-skew clocks); ld = phase 3, the serializer island strobe.
+    reg        clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire       ld = (ce_cnt == 3'd3);
+
     // ---------------- DUT ----------------
     reg  [7:0] lk_data    = 8'd0;          // Link-driven pins
     reg        lk_stp     = 1'b0;
@@ -84,7 +95,8 @@ module tb_usb_ulpi_core;
     usb_ulpi_core #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
         .clk_bit       (clk_bit),
         .rst_n         (rst_n),
-        .ce60          (ce60),
+        .clk60          (clk60),
+        .ld             (ld),
         .ulpi_data_in  (lk_data),
         .ulpi_stp      (lk_stp),
         .ulpi_dir      (ulpi_dir),

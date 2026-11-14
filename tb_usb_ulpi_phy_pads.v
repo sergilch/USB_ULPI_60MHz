@@ -6,7 +6,7 @@
 //   iverilog -g2005 -DDISPLAY_PD_PU_EN -o sim_pads X-FAB/VLG_PRIMITIVES.v X-FAB/BBSUD8F.v \
 //            usb_ulpi_input_capture.v usb_ulpi_bus_owner.v usb_ulpi_reg_access.v \
 //            usb_ulpi_burst_mux.v usb_tx_holding.v usb_tx_sync_mux.v usb_bit_stuffer.v \
-//            usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_path.v usb_tx_datapath.v \
+//            usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v usb_tx_datapath.v \
 //            usb_ulpi_core.v usb_ulpi_rx_handler.v usb_ulpi_rxcmd_gen.v \
 //            usb_ulpi_out_arbiter.v usb_ulpi_rx_path.v usb_ulpi_phy_if.v \
 //            usb_ulpi_reg_file.v usb_afe_trim_regs.v usb_mode_term_ctrl.v usb_ulpi_phy_top.v \
@@ -16,8 +16,11 @@
 // Without -DDISPLAY_PD_PU_EN the pads do not model their pulls: the test runs the same,
 // the bus floats (X) in turnaround cycles and the pull checks are skipped.
 //
-// Clocks: clk_bit 480 MHz, ce60 one cycle in eight, clk60 (to the CLK pad) rises half a
-// clk_bit cycle before the clk_bit edge on which the core samples (ce60 = 1).  So the
+// Clocks: clk_bit 480 MHz; the core clock clk60 rises on every eighth clk_bit edge (E0,
+// where the ce60 logic of the single-clock design updated; generated in the same
+// simulation region as that edge, like ideal zero-skew clocks), ld (phase 3) for the
+// TX serializer island; clkout (to the CLK pad) rises half a clk_bit cycle before the
+// clk60 edge on which the core samples, as from usb_clk_gen.  So the
 // core launches its outputs ~1 ns after the CLK pin edge, like a PHY clock-to-out, and
 // the Link model, clocked by the CLK pin, drives its outputs 2 ns after that edge
 // (hold time > the 1 ns sampling offset of the core).
@@ -54,8 +57,9 @@
 //     (driven high with command-like bytes on DATA, held high after a register write,
 //     or pulled up while the Link is tri-stated) no command is taken and DIR / NXT stay
 //     low; status changes meanwhile produce exactly one RXCMD when STP falls;
-//   * RESETB: asynchronous reset of the core, release two clk_bit edges after the pin,
-//     all registers back at their reset values.
+//   * RESETB: asynchronous reset of the core, release on the second clk60 edge after
+//     the pin (Plan_60MHz.md P2; before: two clk_bit edges), all registers back at
+//     their reset values.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -73,11 +77,18 @@ module tb_usb_ulpi_phy_pads;
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
     wire ce60 = (ce_cnt == 3'd7);
 
-    reg clk60 = 1'b0;
+    reg clkout = 1'b0;                       // CLKOUT, to the CLK pad
     always @(negedge clk_bit) begin
-        if (ce_cnt == 3'd7)      clk60 <= 1'b1;
-        else if (ce_cnt == 3'd3) clk60 <= 1'b0;
+        if (ce_cnt == 3'd7)      clkout <= 1'b1;
+        else if (ce_cnt == 3'd3) clkout <= 1'b0;
     end
+
+    reg clk60 = 1'b0;                        // core clock, rises on E0
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);              // island strobe (phase 3)
 
     // ---------------- pins ----------------
     wire       PAD_ULPI_CLK, PAD_ULPI_DIR, PAD_ULPI_NXT, PAD_ULPI_STP, PAD_RESETB;
@@ -114,8 +125,9 @@ module tb_usb_ulpi_phy_pads;
         .PAD_ULPI_STP  (PAD_ULPI_STP),
         .PAD_RESETB    (PAD_RESETB),
         .clk_bit       (clk_bit),
-        .ce60          (ce60),
         .clk60         (clk60),
+        .ld            (ld),
+        .clkout        (clkout),
         .core_rst_n    (core_rst_n),
         .rx_start      (1'b0),
         .rx_valid      (1'b0),
@@ -495,10 +507,10 @@ module tb_usb_ulpi_phy_pads;
     always @(negedge clk_bit) begin
         if (resetb && core_rst_n) begin
             pad_checks = pad_checks + 1;
-            if ((PAD_ULPI_DIR !== dut.ulpi_dir) || (PAD_ULPI_NXT !== dut.ulpi_nxt) || (PAD_ULPI_CLK !== clk60)) begin
+            if ((PAD_ULPI_DIR !== dut.ulpi_dir) || (PAD_ULPI_NXT !== dut.ulpi_nxt) || (PAD_ULPI_CLK !== clkout)) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: output pads DIR/NXT/CLK = %b%b%b, core %b%b%b", $time,
-                         PAD_ULPI_DIR, PAD_ULPI_NXT, PAD_ULPI_CLK, dut.ulpi_dir, dut.ulpi_nxt, clk60);
+                         PAD_ULPI_DIR, PAD_ULPI_NXT, PAD_ULPI_CLK, dut.ulpi_dir, dut.ulpi_nxt, clkout);
             end
             if (dut.ulpi_data_oe && lk_drv_eff) begin
                 errors = errors + 1;
@@ -713,15 +725,15 @@ module tb_usb_ulpi_phy_pads;
             wait_clk(10);
             @(negedge clk_bit);
             resetb = 1'b1;
-            @(posedge clk_bit); #(0.1);
+            @(posedge clk60); #(0.1);
             if (core_rst_n !== 1'b0) begin
                 errors = errors + 1;
-                $display("ERROR @%0t: core_rst_n released after one clk_bit edge", $time);
+                $display("ERROR @%0t: core_rst_n released after one clk60 edge", $time);
             end
-            @(posedge clk_bit); #(0.1);
+            @(posedge clk60); #(0.1);
             if (core_rst_n !== 1'b1) begin
                 errors = errors + 1;
-                $display("ERROR @%0t: core_rst_n not released two clk_bit edges after RESETB", $time);
+                $display("ERROR @%0t: core_rst_n not released two clk60 edges after RESETB", $time);
             end
             sh_reset;
             wait_clk(10);

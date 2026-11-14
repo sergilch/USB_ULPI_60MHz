@@ -155,7 +155,8 @@ module ams_phy_end #(
     wire txd, tx_en, tx_se0, tx_busy, tx_done, tx_under, tx_act;
     wire [1:0] tx_spd;
     usb_tx_path u_tx (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60), .speed(xs), .bypass_en(byp), .eop_dis(edis),
+        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60), .clk60(1'b0), .ld(1'b0),       // SPLIT = 0
+        .speed(xs), .bypass_en(byp), .eop_dis(edis),
         .in_valid(in_valid), .in_ready(in_ready), .in_data(in_data), .in_last(in_last),
         .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_speed(tx_spd),
         .busy(tx_busy), .tx_done(tx_done), .tx_underrun(tx_under));

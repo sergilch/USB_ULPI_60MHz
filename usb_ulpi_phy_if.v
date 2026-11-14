@@ -14,8 +14,16 @@
 //   RX datapath ----> usb_ulpi_rx_path (RX Data Handler, RXCMD Generator, Output Arbiter)
 //   status / IE masks ---^
 //
-// Everything runs on clk_bit with the tick enable ce60 (one cycle in eight, aligned with
-// clk60).  Open ends of the PHY: the Register File itself (reg_*), the RX datapath
+// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
+// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
+// serializer stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
+// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
+// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
+// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
+// than in the single-clock design; every ULPI-side event is in the same tick.
+// All other inputs and outputs are clk60-domain signals.
+//
+// Open ends of the PHY: the Register File itself (reg_*), the RX datapath
 // (rx_*), the line state / VBUS / ID detectors (status inputs) and the low-power
 // controller (dir_hold).
 //-----------------------------------------------------------------------------
@@ -27,9 +35,10 @@ module usb_ulpi_phy_if #(
     parameter DIV_W    = 9,
     parameter RX_DEPTH = 8
 ) (
-    input  wire        clk_bit,
+    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        ce60,
+    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
+    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
 
     // ULPI pins
     input  wire [7:0]  ulpi_data_in,
@@ -96,7 +105,8 @@ module usb_ulpi_phy_if #(
     ) u_core (
         .clk_bit       (clk_bit),
         .rst_n         (rst_n),
-        .ce60          (ce60),
+        .clk60          (clk60),
+        .ld             (ld),
         .ulpi_data_in  (ulpi_data_in),
         .ulpi_stp      (ulpi_stp),
         .ulpi_dir      (ulpi_dir),
@@ -130,9 +140,9 @@ module usb_ulpi_phy_if #(
     );
 
     usb_ulpi_rx_path #(.DEPTH(RX_DEPTH)) u_rx (
-        .clk         (clk_bit),
+        .clk         (clk60),
         .rst_n       (rst_n),
-        .ce          (ce60),
+        .ce          (1'b1),
         .rx_start    (rx_start),
         .rx_valid    (rx_valid),
         .rx_data     (rx_data),

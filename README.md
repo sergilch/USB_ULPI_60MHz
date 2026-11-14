@@ -39,7 +39,8 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 └── usb_ulpi_phy_if
     ├── usb_ulpi_core
     │   ├── usb_ulpi_input_capture   registers pins, decodes TXCMD / RegWrite / RegRead / ext (AFh/EFh)
-    │   ├── usb_tx_datapath          holding -> SYNC/PID mux -> usb_tx_path (bit stuffer -> NRZI -> serializer+EOP)
+    │   ├── usb_tx_datapath          holding -> SYNC/PID mux -> usb_tx_path (bit stuffer -> NRZI -> serializer+EOP;
+    │   │                            SPLIT = 1: clk60 byte side, serializer on clk_bit behind usb_tx_ser_bridge)
     │   │   └── usb_tx_holding       4-byte FIFO, paces the Link with NXT, ends packet on STP
     │   ├── usb_ulpi_reg_access      register read/write FSM toward reg_*
     │   ├── usb_ulpi_burst_mux       merges register read data with PHY bursts
@@ -108,6 +109,8 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | `tb_usb_tx_sync_mux.v`        | `usb_tx_sync_mux.v`                                  |
 | `tb_usb_nrzi_encoder.v`       | `usb_nrzi_encoder.v`                                 |
 | `tb_usb_tx_path.v`            | `usb_bit_stuffer.v` `usb_nrzi_encoder.v` `usb_tx_serializer.v` `usb_tx_path.v` |
+| `tb_usb_tx_path_split.v`      | as `tb_usb_tx_path.v` plus `usb_tx_ser_bridge.v`: `SPLIT = 1` against `SPLIT = 0`, same ticks, line 4 `clk_bit` earlier |
+| `tb_usb_clk_gen.v`            | `usb_clk_gen.v`                                      |
 | `tb_usb_tx_holding.v`         | `usb_ulpi_input_capture.v` `usb_tx_holding.v`        |
 | `tb_usb_ulpi_input_capture.v` | `usb_ulpi_input_capture.v`                           |
 | `tb_usb_ulpi_bus_owner.v`     | `usb_ulpi_bus_owner.v`                               |
