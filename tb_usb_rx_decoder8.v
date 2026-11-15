@@ -7,10 +7,10 @@
 //            usb_rx_decoder.v usb_rx_decoder8.v tb_usb_rx_decoder8.v
 //   vvp sim_rx_decoder8
 //   (more packets / other seed: iverilog ... -Ptb_usb_rx_decoder8.NPKT=100000,
-//    vvp sim_rx_decoder8 +seed=7)
+//    vvp sim_rx_decoder8 +seed=7; HS SYNC length: -Ptb_usb_rx_decoder8.ZMIN_HS=4)
 //
 // One stream of received bits {lvl, se0, act} goes into serial usb_rx_decoder
-// references (HS = 1 / ZMIN 6 and HS = 0 / ZMIN 4), one bit per clock, and into
+// references (HS = 1 / ZMIN_HS and HS = 0 / ZMIN 4), one bit per clock, and into
 // usb_rx_decoder8, n bits per tick.  Each tick of the DUT is 8 clocks of the
 // references: its n bits, then 8 - n clocks without a bit.  The event
 // sequences (START / BYTE / END with the error bit) and the number of dropped
@@ -26,7 +26,11 @@
 // receiver-inactive bits so both sides are idle at the boundary):
 //   HS: 8 bits per tick, sometimes 0..7; squelch gaps (sometimes none); SYNC
 //       with 0..31 zeros (short ones are not detected); 0..40 bit-stuffed
-//       bytes; HS EOP (01111111 before NRZI).
+//       bytes; HS EOP (01111111 before NRZI); noise bursts (random levels,
+//       receiver active / inactive per bit), and forced 3 / 4-event ticks
+//       (ZMIN_HS <= 5): a START (SYNC with carried zeros) or the last bit of a
+//       byte in slot 0, a 1-bit squelch, ZMIN_HS zeros and a SYNC, a 1-bit
+//       squelch - START END START END / BYTE END START END at ZMIN_HS = 4.
 //   FS / LS: 0 or 1 bit per tick; idle J, SE0 glitches, RX disabled; SYNC with
 //       0..7 zeros; 0..12 bytes; EOP SE0 SE0 J.
 //   Errors in a quarter of the packets: flipped bit, cut off (squelch / RX
@@ -38,6 +42,7 @@ module tb_usb_rx_decoder8;
 
     parameter integer NPKT  = 1000;       // packets in total
     parameter integer BATCH = 100;        // packets per batch
+    parameter integer ZMIN_HS = 6;        // 4..8
     localparam integer MAXB = 100000;     // bits per batch (upper bound)
     localparam integer MAXT = 2 * MAXB + 64;  // ticks per batch (upper bound)
 
@@ -56,7 +61,7 @@ module tb_usb_rx_decoder8;
     wire       rh_wr, rf_wr, rh_ovf, rf_ovf;
     wire [9:0] rh_d, rf_d;
 
-    usb_rx_decoder #(.HS(1), .ZMIN(6)) u_rh (.clk(clk_s), .rst_n(rst_n),
+    usb_rx_decoder #(.HS(1), .ZMIN(ZMIN_HS)) u_rh (.clk(clk_s), .rst_n(rst_n),
         .b_en(s_en), .b_lvl(s_lvl), .b_se0(s_se0), .b_act(s_act), .buf_afull(s_afull),
         .ev_wr(rh_wr), .ev_data(rh_d), .busy(), .ovf(rh_ovf));
     usb_rx_decoder #(.HS(0), .ZMIN(4)) u_rf (.clk(clk_s), .rst_n(rst_n),
@@ -67,12 +72,14 @@ module tb_usb_rx_decoder8;
     reg        hs = 1'b1;
     reg  [7:0] t_en = 0, t_lvl = 8'hFF, t_se0 = 0, t_act = 0;
     reg        t_afull = 1'b0;
-    wire       d_w0, d_w1, d_ovf, d_busy;
-    wire [9:0] d_e0, d_e1;
+    wire       d_w0, d_w1, d_w2, d_w3, d_busy;
+    wire [1:0] d_ovf;
+    wire [9:0] d_e0, d_e1, d_e2, d_e3;
 
-    usb_rx_decoder8 #(.ZMIN_HS(6), .ZMIN_FS(4)) dut (.clk60(clk_t), .rst_n(rst_n), .hs(hs),
+    usb_rx_decoder8 #(.ZMIN_HS(ZMIN_HS), .ZMIN_FS(4)) dut (.clk60(clk_t), .rst_n(rst_n), .hs(hs),
         .s_en(t_en), .s_lvl(t_lvl), .s_se0(t_se0), .s_act(t_act), .buf_afull(t_afull),
         .ev0_wr(d_w0), .ev0_data(d_e0), .ev1_wr(d_w1), .ev1_data(d_e1),
+        .ev2_wr(d_w2), .ev2_data(d_e2), .ev3_wr(d_w3), .ev3_data(d_e3),
         .busy(d_busy), .ovf(d_ovf));
 
     // ---------------- event queues ----------------
@@ -80,6 +87,7 @@ module tb_usb_rx_decoder8;
     reg [9:0] q_r [0:QL-1], q_d [0:QL-1];
     integer   n_r, n_d, o_r, o_d;
     integer   c_start, c_byte, c_end_ok, c_end_err, c_two, c_end_start, c_byte_end;
+    integer   c_three, c_four, c_sese, c_bese, c_dov;
 
     always @(posedge clk_s) if (rst_n) begin
         if (hs ? rh_wr : rf_wr) begin q_r[n_r % QL] = hs ? rh_d : rf_d; n_r = n_r + 1; end
@@ -97,8 +105,15 @@ module tb_usb_rx_decoder8;
     always @(posedge clk_t) if (rst_n) begin
         if (d_w0) begin q_d[n_d % QL] = d_e0; n_d = n_d + 1; end
         if (d_w1) begin q_d[n_d % QL] = d_e1; n_d = n_d + 1; end
-        if (d_w1 && !d_w0) err("ev1 without ev0");
-        if (d_ovf) o_d = o_d + 1;
+        if (d_w2) begin q_d[n_d % QL] = d_e2; n_d = n_d + 1; end
+        if (d_w3) begin q_d[n_d % QL] = d_e3; n_d = n_d + 1; end
+        if ((d_w1 && !d_w0) || (d_w2 && !d_w1) || (d_w3 && !d_w2)) err("ev*_wr not a thermometer code");
+        o_d = o_d + d_ovf;
+        if (d_ovf == 2'd2) c_dov = c_dov + 1;
+        if (d_w2) c_three = c_three + 1;
+        if (d_w3) c_four  = c_four + 1;
+        if (d_w3 && d_e0[9:8] == 2'b01 && d_e2[9:8] == 2'b01) c_sese = c_sese + 1;
+        if (d_w3 && d_e0[9:8] == 2'b00 && d_e2[9:8] == 2'b01) c_bese = c_bese + 1;
         // coverage
         if (d_w0 && d_e0[9:8] == 2'b01) c_start = c_start + 1;
         if (d_w1 && d_e1[9:8] == 2'b01) c_start = c_start + 1;
@@ -170,6 +185,29 @@ module tb_usb_rx_decoder8;
         integer nz, nby, b, bit_i, err_kind, err_at, cnt, tot;
         reg [7:0] by;
         begin
+            // HS noise burst / forced two-SYNC tick in front of some packets
+            if (hs && !quick && rnd(8) == 0) begin
+                for (b = 8 + rnd(40); b > 0; b = b - 1) begin
+                    if (rnd(5) == 0) put_bit(1'b1, 1'b0, 1'b0);
+                    else             begin lvl = rnd(2); put_bit(lvl, 1'b0, 1'b1); end
+                end
+                idle_inactive(1 + rnd(3));
+            end
+            if (hs && !quick && ZMIN_HS <= 5 && rnd(16) == 0) begin
+                repeat (ZMIN_HS + 2) put_dec(1'b0);       // SYNC (zeros carried into the tick)
+                put_dec(1'b1);
+                if (rnd(2)) begin                         // START in slot 0 ...
+                    mark[k-1] = 1'b1;
+                end else begin                            // ... or a BYTE (00h) in slot 0
+                    ones = 1;
+                    repeat (8) put_data(1'b0);
+                    mark[k-1] = 1'b1;
+                end
+                idle_inactive(1);                         // END in slot 1
+                repeat (ZMIN_HS) put_dec(1'b0);
+                put_dec(1'b1);                            // START in slot ZMIN_HS + 2
+                idle_inactive(1 + rnd(4));                // (ZMIN_HS = 4: END in slot 7)
+            end
             // gap in front
             if (hs) begin
                 if (!quick && rnd(10) != 0) idle_inactive(1 + rnd(20));
@@ -243,6 +281,7 @@ module tb_usb_rx_decoder8;
         if ($value$plusargs("seed=%d", seed)) $display("seed %0d", seed);
         n_r = 0; n_d = 0; o_r = 0; o_d = 0;
         c_start = 0; c_byte = 0; c_end_ok = 0; c_end_err = 0; c_two = 0; c_end_start = 0; c_byte_end = 0;
+        c_three = 0; c_four = 0; c_sese = 0; c_bese = 0; c_dov = 0;
         n_pkt_total = 0; n_hs_b = 0; n_fs_b = 0;
         repeat (4) @(posedge clk_s);
         rst_n = 1'b1;
@@ -336,10 +375,15 @@ module tb_usb_rx_decoder8;
         if (o_d == 0)       err("backpressure never dropped anything");
         if (c_end_start == 0) err("no END + START in one tick");
         if (c_byte_end == 0)  err("no BYTE + END in one tick");
+        if (ZMIN_HS < 6 && c_three == 0) err("no tick with three events");
+        if (ZMIN_HS == 4 && c_sese == 0) err("no START END START END tick");
+        if (ZMIN_HS == 4 && c_bese == 0) err("no BYTE END START END tick");
         $display("%0d packets in %0d HS + %0d FS/LS batches; %0d events: %0d START, %0d BYTE, END %0d ok / %0d error",
                  n_pkt_total, n_hs_b, n_fs_b, n_d, c_start, c_byte, c_end_ok, c_end_err);
         $display("two events in a tick: %0d (END+START %0d, BYTE+END %0d); drops (ovf): %0d",
                  c_two, c_end_start, c_byte_end, o_d);
+        $display("ZMIN_HS %0d: three events %0d, four %0d (START END START END %0d, BYTE END START END %0d); two drops in a tick %0d",
+                 ZMIN_HS, c_three, c_four, c_sese, c_bese, c_dov);
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED: %0d errors", errors);
         $finish;

@@ -19,6 +19,10 @@
 #            Only a reference for the ULPI I/O constraints, it clocks no flop.
 #   clk_rx   480 MHz +- 1000 ppm CDR clock, asynchronous to clk_bit.  Timed at
 #            +1000 ppm (period 2.081 ns).
+#   clk_rxw  HS word clock, clk_rx / 8, a flop in usb_rx_hs_sipo (generated).
+#            Writes the HS word FIFO; same boundary rule against clk_rx as
+#            clk60 against clk_bit (word register on phase 3 = E4, clk_rxw
+#            rises on E0), so clk_rx -> clk_rxw is a 4 / 3 multicycle.
 #   ref_clk  24 MHz reference (usb_pwr_seq, usb_pll_lock_det), asynchronous.
 #
 # clk60 <-> clk_bit boundary (usb_clk_gen header, "boundary rule")
@@ -76,9 +80,17 @@ if {[llength [get_ports -quiet clk60]] && [get_property [get_ports clk60] direct
 }
 
 set has_rx 0
+set has_rxw 0
 if {[llength [get_ports -quiet clk_rx]]} {
     create_clock -name clk_rx -period $T_RX [get_ports clk_rx]
     set has_rx 1
+    set drv [usb_net_driver clk_rxw]
+    if {$drv != ""} {
+        create_generated_clock -name clk_rxw -source [get_ports clk_rx] -divide_by 8 $drv
+        set has_rxw 1
+        set_multicycle_path -setup -start 4 -from [get_clocks clk_rx] -to [get_clocks clk_rxw]
+        set_multicycle_path -hold  -start 3 -from [get_clocks clk_rx] -to [get_clocks clk_rxw]
+    }
 }
 
 set has_ref 0
@@ -102,7 +114,8 @@ foreach c {clk_bit clk60 clkout} {
 }
 set groups {}
 if {[llength $sync_grp]} { lappend groups -group $sync_grp }
-if {$has_rx}             { lappend groups -group {clk_rx} }
+if {$has_rx && $has_rxw} { lappend groups -group {clk_rx clk_rxw} } \
+elseif {$has_rx}         { lappend groups -group {clk_rx} }
 if {$has_ref}            { lappend groups -group {ref_clk} }
 if {[llength $groups] > 2} {
     set_clock_groups -name usb_async -asynchronous {*}$groups
@@ -115,5 +128,6 @@ foreach c [all_clocks] { set_clock_uncertainty 0.05 $c }
 #   * ULPI DATA / DIR / NXT / STP relative to clkout incl. BBSUD8F pad delays
 #     (ULPI 1.1: 5 ns setup / 0 ns hold at the PHY);
 #   * AFE pins (DOC/afe_interface_spec.md 4.1 / 4.2);
-#   * set_max_delay -datapath_only on the RX word-FIFO Gray pointers (P5);
+#   * set_max_delay -datapath_only on the RX word-FIFO Gray pointers (clk_rxw <->
+#     clk60, now cut by the asynchronous groups);
 #   * false paths into the first flop of each 2-FF synchronizer.

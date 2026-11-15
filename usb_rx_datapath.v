@@ -4,29 +4,42 @@
 // RX datapath of the USB 2.0 PHY (HS / FS / LS), from the AFE receiver outputs
 // to the RX Data Handler of the ULPI Interface Controller (usb_ulpi_rx_path):
 //
-//   HS:    CDR rxd/clk_rx -> usb_rx_hs_frontend -> usb_rx_decoder (HS, clk_rx)
-//                         -> usb_rx_elastic_buffer (async, clk_rx -> clk60) ----+
-//   FS/LS: rxrcv/rxdp/rxdm -> usb_rx_fsls_sampler (clk_bit island, word on ld)   |
-//                         -> usb_rx_fsls_dpll -> usb_rx_decoder8 (FS/LS)         |
-//                         -> event FIFO (4 entries, clk60) ----------------------+
-//                                                                                 |
-//          RX output stage (clk60) <---------------------------------------------+
+//   HS:    CDR rxd/clk_rx -> usb_rx_hs_sipo (clk_rx island: front end, 1:8 SIPO,
+//                            word clock clk_rxw)
+//                         -> usb_rx_elastic_buffer (word FIFO, clk_rxw -> clk60) --+
+//   FS/LS: rxrcv/rxdp/rxdm -> usb_rx_fsls_sampler (clk_bit island, word on ld)     |
+//                         -> usb_rx_fsls_dpll (clk60, <= 1 bit per tick) ----------+
+//                                                                                   |
+//          input register (HS word / FS bit / mode-change idle bit) <---------------+
+//            -> usb_rx_decoder8 (one instance, hs = XcvrSelect 00)
+//            -> event FIFO (8 entries, up to 4 writes per tick)
+//            -> RX output stage (clk60)
 //            -> rx_start / rx_valid + rx_data / rx_end / rx_error
 //
-// Clocking (Plan_60MHz.md P4): the FS/LS half and the output stage run on the
-// core clock clk60; only the FS/LS sampler (2-FF synchronizers, 1:8 SIPO) and
-// the transmit hold-off counter are clk_bit islands, read by clk60 through
-// registers that change on ld (usb_clk_gen boundary rule).  The HS half is
-// unchanged on clk_rx (moves in P5); its elastic buffer now delivers to clk60.
+// Clocking (Plan_60MHz.md P4 / P5): everything from the word FIFO / DPLL on runs
+// on the core clock clk60.  Islands: the FS/LS sampler and a tx_en capture on
+// clk_bit (read through registers that change on ld, usb_clk_gen boundary
+// rule); the HS front end and SIPO on the CDR clock clk_rx, whose word clock
+// clk_rxw writes the word FIFO.  clk_rxw and clk60 are asynchronous (Gray
+// pointers in the FIFO).
 //
-// usb_rx_decoder is: NRZI decoder -> SYNC detect -> bit unstuffer ->
-// deserializer 1:8 -> EOP / RxError check.  usb_rx_decoder8 is the same chain for
-// up to 8 bits per clk60 tick; the FS/LS DPLL gives it at most one bit per tick.
-// It can write two events per tick, so a 4-entry FIFO (buf_afull = fewer than 3
-// free entries) sits in front of the output stage.
-//
-// Mode (speed = XcvrSelect, quasi-static): 00 HS chain; 01 FS, 10 LS, 11 FS
-//   (FS/LS chain).  Changing the mode during a packet ends it with an error.
+// HS: the SIPO writes 8-bit words {act, lvl} only while the receiver is active
+//   (plus one closing word), so the FIFO drains between packets; the clk60 side
+//   pops a word whenever one is there and gives the decoder 8 bits, or none.
+//   A slower far end gives ticks without bits, a faster one (<= 1000 ppm) makes
+//   the FIFO hold up to about one more word per 1000; 8 words leave margin.
+// FS/LS: at most one DPLL bit per tick.
+// usb_rx_decoder8 is the bit chain of usb_rx_decoder (NRZI decoder -> SYNC
+//   detect -> bit unstuffer -> deserializer 1:8 -> EOP / RxError check) for up
+//   to 8 bits per tick.  It can write up to four events per tick (two with
+//   HS_ZMIN >= 6), so an 8-entry FIFO (buf_afull = fewer than 4 entries left
+//   after the writes in flight) sits in front of the output stage.
+
+// Mode (speed = XcvrSelect, quasi-static): 00 HS; 01 FS, 10 LS, 11 FS.  A mode
+//   change feeds the decoder one inactive bit (in the old mode) instead of the
+//   tick's bits, so a packet open at that moment ends with an error, and the
+//   decoder never mixes the bits of two modes.  HS words that arrive while not
+//   in HS mode are discarded.
 //
 // Local transmitter: while tx_en is high and for HOLDOFF clk_bit cycles after
 //   it falls, both chains are disabled (receiver inactive), so the PHY never
@@ -41,21 +54,30 @@
 // FS/LS receiver samples for usb_line_state: ls_dp / ls_dm / ls_rcv = the newest
 //   sample of the current sampler word (clk60-domain, changes on ld).
 //
-// Output (clk60 domain, registered, so every pulse is one tick long - the
-//   format of usb_ulpi_rx_handler):
+// Output (clk60 domain, combinational from registers - the decoder's event
+//   registers, the event FIFO and the open flag - so every pulse is one tick
+//   long, the format of usb_ulpi_rx_handler):
 //   rx_start           a packet starts (SYNC received)
 //   rx_valid, rx_data  a byte of the packet (PID first; SYNC and EOP stripped)
 //   rx_end             the packet is over; rx_error = 1 in the same tick if the
 //                      packet had an error (bit-stuff violation, not ending on a
 //                      byte boundary, signal lost before the EOP, buffer
 //                      overflow)
-//   At most one event per tick.  The output stage pops one event per tick from
-//   the buffer of the active chain; a packet that was started is always ended,
-//   events outside a packet are dropped.
+//   At most one event per tick.  The output stage shows the oldest event (FIFO
+//   head, or the decoder's first event directly while the FIFO is empty); a
+//   packet that was started is always ended, events outside a packet are
+//   dropped.
+//
+// Latency (HS, line bit -> rx_*): front end 3 bits + up to 8 into a word + 4 to
+//   clk_rxw + FIFO pointer synchronizer (1 - 2 ticks) + decoder (3 ticks, its
+//   input is the FIFO head itself); the output shows the decoder's event in the
+//   tick it is registered.  ULPI 1.1 Table 9 (RX End Delay, HS 3 - 8 clocks to
+//   RxActive low) is measured in tb_usb_rx_datapath.
 //
 // Clocks / resets: clk60 (core) + clk_bit / ld (islands), clk_rx (HS recovered
-//   clock).  rst_n is asynchronous; its release is synchronized to clk_rx here
-//   (it is assumed to be synchronous to clk60 / clk_bit already).
+//   clock) + clk_rxw.  rst_n is asynchronous; its release is synchronized to
+//   clk_rx / clk_rxw in usb_rx_hs_sipo (it is assumed to be synchronous to
+//   clk60 / clk_bit already).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -63,12 +85,12 @@ module usb_rx_datapath #(
     parameter FS_DIV  = 40,
     parameter LS_DIV  = 320,
     parameter DIV_W   = 9,
-    parameter HS_ZMIN = 6,            // SYNC zeros needed, HS
+    parameter HS_ZMIN = 6,            // SYNC zeros needed, HS (4..8)
     parameter FS_ZMIN = 4,            // SYNC zeros needed, FS / LS
-    parameter HS_AW   = 4,            // HS elastic buffer: 16 events
+    parameter HS_AW   = 3,            // HS word FIFO: 8 words
     parameter HOLDOFF = 64            // clk_bit cycles after tx_en
 ) (
-    input  wire        clk_bit,       // 480 MHz: FS/LS sampler and hold-off islands
+    input  wire        clk_bit,       // 480 MHz: FS/LS sampler and tx_en islands
     input  wire        rst_n,
     input  wire        clk60,         // core clock (usb_clk_gen)
     input  wire        ld,            // island strobe (usb_clk_gen)
@@ -93,11 +115,11 @@ module usb_rx_datapath #(
     output wire        ls_rcv,
 
     // to usb_ulpi_rx_path
-    output reg         rx_start,
-    output reg         rx_valid,
-    output reg  [7:0]  rx_data,
-    output reg         rx_end,
-    output reg         rx_error,
+    output wire        rx_start,
+    output wire        rx_valid,
+    output wire [7:0]  rx_data,
+    output wire        rx_end,
+    output wire        rx_error,
 
     output wire        rx_busy        // a packet is open at the output
 );
@@ -112,7 +134,7 @@ module usb_rx_datapath #(
 
     reg          txe_t, txe_a;        // clk_bit island: tx_en seen in the tick
     reg [HW-1:0] hold;
-    reg          hs_en_q, fs_en_q, ls_q;
+    reg          hs_en_q, fs_en_q, ls_q, hs_q, hs_d;
     wire         block = txe_t || (hold != {HW{1'b0}});
 
     always @(posedge clk_bit or negedge rst_n) begin
@@ -133,85 +155,57 @@ module usb_rx_datapath #(
             hs_en_q <= 1'b0;
             fs_en_q <= 1'b0;
             ls_q    <= 1'b0;
+            hs_q    <= 1'b0;
+            hs_d    <= 1'b0;
         end else begin
             if (txe_t)                    hold <= HT;
             else if (hold != {HW{1'b0}})  hold <= hold - 1'b1;
             hs_en_q <= rx_en && !block && (speed == 2'b00);
             fs_en_q <= rx_en && !block && (speed != 2'b00);
             ls_q    <= (speed == 2'b10);
+            hs_q    <= (speed == 2'b00);
+            hs_d    <= hs_q;
         end
     end
 
-    // ---------------- clk_rx reset synchronizer ----------------
-    reg rr1, rst_rx_n;
-    always @(posedge clk_rx or negedge rst_n) begin
-        if (!rst_n) begin
-            rr1      <= 1'b0;
-            rst_rx_n <= 1'b0;
-        end else begin
-            rr1      <= 1'b1;
-            rst_rx_n <= rr1;
-        end
-    end
+    // ---------------- HS: clk_rx island + word FIFO ----------------
+    wire        clk_rxw, hw_en, hw_full, hw_rst_n;
+    wire [15:0] hw_data;
+    wire        h_valid;
+    wire [15:0] h_rdata;
 
-    // ---------------- HS chain (clk_rx) ----------------
-    wire       hb_en, hb_lvl, hb_se0, hb_act;
-    wire       h_ev_wr, h_afull, h_full, h_wovf, h_busy, h_ovf;
-    wire [9:0] h_ev;
-    wire       h_valid;
-    wire [9:0] h_rdata;
-    wire       h_pop;
-
-    usb_rx_hs_frontend u_hs_fe (
+    usb_rx_hs_sipo u_hs_sipo (
         .clk_rx   (clk_rx),
-        .rst_n    (rst_rx_n),
+        .rst_n    (rst_n),
         .rxd      (hs_rxd),
         .squelch  (hs_squelch),
         .cdr_lock (hs_cdr_lock),
         .enable   (hs_en_q),
-        .b_en     (hb_en),
-        .b_lvl    (hb_lvl),
-        .b_se0    (hb_se0),
-        .b_act    (hb_act)
+        .clk_rxw  (clk_rxw),
+        .w_en     (hw_en),
+        .w_data   (hw_data),
+        .w_full   (hw_full),
+        .w_rst_n  (hw_rst_n)
     );
 
-    usb_rx_decoder #(.HS(1), .ZMIN(HS_ZMIN)) u_hs_dec (
-        .clk       (clk_rx),
-        .rst_n     (rst_rx_n),
-        .b_en      (hb_en),
-        .b_lvl     (hb_lvl),
-        .b_se0     (hb_se0),
-        .b_act     (hb_act),
-        .buf_afull (h_afull),
-        .ev_wr     (h_ev_wr),
-        .ev_data   (h_ev),
-        .busy      (h_busy),
-        .ovf       (h_ovf)
-    );
-
-    usb_rx_elastic_buffer #(.W(10), .AW(HS_AW), .ASYNC(1)) u_hs_eb (
-        .wclk    (clk_rx),
-        .wrst_n  (rst_rx_n),
-        .w_en    (h_ev_wr),
-        .w_data  (h_ev),
-        .w_full  (h_full),
-        .w_afull (h_afull),
-        .w_ovf   (h_wovf),
+    usb_rx_elastic_buffer #(.W(16), .AW(HS_AW), .ASYNC(1)) u_hs_wf (
+        .wclk    (clk_rxw),
+        .wrst_n  (hw_rst_n),
+        .w_en    (hw_en),
+        .w_data  (hw_data),
+        .w_full  (hw_full),
+        .w_afull (),
+        .w_ovf   (),
         .rclk    (clk60),
         .rrst_n  (rst_n),
         .r_valid (h_valid),
         .r_data  (h_rdata),
-        .r_pop   (h_pop)
+        .r_pop   (1'b1)                // every word is taken (discarded outside HS)
     );
 
     // ---------------- FS / LS chain (sampler island + clk60) ----------------
     wire [7:0] rcv_v, dp_v, dm_v;
     wire       fb_en, fb_lvl, fb_se0, fb_act;
-    wire       f_w0, f_w1, f_busy, f_ovf;
-    wire [9:0] f_e0, f_e1;
-    wire       f_valid, f_afull;
-    wire [9:0] f_rdata;
-    wire       f_pop;
 
     usb_rx_fsls_sampler u_fs_smp (
         .clk_bit (clk_bit),
@@ -243,107 +237,117 @@ module usb_rx_datapath #(
         .b_act  (fb_act)
     );
 
-    usb_rx_decoder8 #(.ZMIN_HS(6), .ZMIN_FS(FS_ZMIN)) u_fs_dec (
-        .clk60     (clk60),
-        .rst_n     (rst_n),
-        .hs        (1'b0),
-        .s_en      ({7'd0, fb_en}),
-        .s_lvl     ({7'h7F, fb_lvl}),
-        .s_se0     ({7'd0, fb_se0}),
-        .s_act     ({7'd0, fb_act}),
-        .buf_afull (f_afull),
-        .ev0_wr    (f_w0),
-        .ev0_data  (f_e0),
-        .ev1_wr    (f_w1),
-        .ev1_data  (f_e1),
-        .busy      (f_busy),
-        .ovf       (f_ovf)
-    );
+    // ---------------- decoder input (combinational, from registers) ----------------
+    // HS: the word FIFO's head (Gray-synchronized r_valid, memory read);
+    // FS / LS: the DPLL's registered bit; a mode change: one inactive bit.
+    reg [7:0] in_en, in_lvl, in_se0, in_act;
 
-    // event FIFO: 4 entries, up to two writes (ev0 then ev1) and one pop per tick
-    reg [9:0] fq [0:3];
-    reg [1:0] f_rp;
-    reg [2:0] f_cnt;
-    wire [1:0] f_wp = f_rp + f_cnt[1:0];
-
-    assign f_valid = (f_cnt != 3'd0);
-    assign f_rdata = fq[f_rp];
-    assign f_afull = (f_cnt >= 3'd2);            // fewer than 3 free entries
-
-    always @(posedge clk60) begin
-        if (f_w0) fq[f_wp]        <= f_e0;
-        if (f_w1) fq[f_wp + 2'd1] <= f_e1;
-    end
-
-    always @(posedge clk60 or negedge rst_n) begin
-        if (!rst_n) begin
-            f_rp  <= 2'd0;
-            f_cnt <= 3'd0;
+    always @* begin
+        if (hs_q != hs_d) begin
+            in_en = 8'h01; in_lvl = 8'hFF; in_se0 = 8'd0; in_act = 8'd0;
+        end else if (hs_d) begin
+            in_en = {8{h_valid}}; in_lvl = h_rdata[7:0]; in_se0 = 8'd0; in_act = h_rdata[15:8];
         end else begin
-            if (f_pop) f_rp <= f_rp + 2'd1;
-            f_cnt <= f_cnt + f_w0 + f_w1 - (f_pop ? 3'd1 : 3'd0);
+            in_en  = {7'd0, fb_en};
+            in_lvl = {7'h7F, fb_lvl};
+            in_se0 = {7'd0, fb_se0};
+            in_act = {7'd0, fb_act};
         end
     end
 
-    // ---------------- output stage (clk60, one event per tick) ----------------
-    reg        open;                  // a packet is open at the output
-    reg        src;                   // 0 = HS chain, 1 = FS/LS chain (while open)
+    // ---------------- decoder ----------------
+    wire       d_w0, d_w1, d_w2, d_w3, d_busy;
+    wire [1:0] d_ovf;
+    wire [9:0] d_e0, d_e1, d_e2, d_e3;
+    wire       f_afull, f_pop;
 
-    wire       sel   = open ? src : !h_valid;          // idle: HS first
-    wire       e_val = sel ? f_valid : h_valid;
-    wire [9:0] e_dat = sel ? f_rdata : h_rdata;
+    usb_rx_decoder8 #(.ZMIN_HS(HS_ZMIN), .ZMIN_FS(FS_ZMIN)) u_dec (
+        .clk60     (clk60),
+        .rst_n     (rst_n),
+        .hs        (hs_d),
+        .s_en      (in_en),
+        .s_lvl     (in_lvl),
+        .s_se0     (in_se0),
+        .s_act     (in_act),
+        .buf_afull (f_afull),
+        .ev0_wr    (d_w0),
+        .ev0_data  (d_e0),
+        .ev1_wr    (d_w1),
+        .ev1_data  (d_e1),
+        .ev2_wr    (d_w2),
+        .ev2_data  (d_e2),
+        .ev3_wr    (d_w3),
+        .ev3_data  (d_e3),
+        .busy      (d_busy),
+        .ovf       (d_ovf)
+    );
+
+    // ---------------- event FIFO + output stage (clk60) ----------------
+    // The output shows the oldest event: the FIFO head, or, while the FIFO is
+    // empty, ev0 of the decoder directly (its registered output).  The events
+    // of a tick that are not shown go into the FIFO (8 entries, up to four
+    // writes, one pop per tick).  buf_afull counts the writes in flight.
+    reg  [9:0] fq [0:7];
+    reg  [2:0] f_rp, f_wp;
+    reg  [3:0] f_cnt;
+    reg        open;                  // a packet is open at the output
+
+    wire [2:0] f_nw    = {2'd0, d_w0} + {2'd0, d_w1} + {2'd0, d_w2} + {2'd0, d_w3};
+    wire       f_valid = (f_cnt != 4'd0);
+    assign     f_afull = (f_cnt + {1'b0, f_nw}) > 4'd4;     // fewer than 4 entries left
+
+    wire       e_val = f_valid | d_w0;
+    wire [9:0] e_dat = f_valid ? fq[f_rp] : d_e0;
     wire [1:0] e_typ = e_dat[9:8];
 
-    // a START while a packet is open is not popped: the open packet is closed
-    // with an error first (cannot happen with usb_rx_eop_check, which always
-    // pairs START / END)
-    wire       e_pop = e_val && !(open && (e_typ == EV_START));
-    assign h_pop = e_pop && !sel;
-    assign f_pop = e_pop &&  sel;
+    // every event is taken in its tick (the FIFO head does not wait); a START
+    // while a packet is open closes it with an error and is dropped (cannot
+    // happen: usb_rx_decoder8 ends a packet before the next SYNC, as
+    // usb_rx_eop_check does)
+    wire       dir   = !f_valid && d_w0;                     // ev0 shown directly
+    assign     f_pop = f_valid;
 
-    assign rx_busy = open;
+    // events into the FIFO, in order (without ev0 when it was shown)
+    wire [9:0] q0 = dir ? d_e1 : d_e0;
+    wire [9:0] q1 = dir ? d_e2 : d_e1;
+    wire [9:0] q2 = dir ? d_e3 : d_e2;
+    wire [9:0] q3 = d_e3;
+    wire       v0 = dir ? d_w1 : d_w0;
+    wire       v1 = dir ? d_w2 : d_w1;
+    wire       v2 = dir ? d_w3 : d_w2;
+    wire       v3 = dir ? 1'b0 : d_w3;
+    wire [3:0] f_in = {3'd0, v0} + {3'd0, v1} + {3'd0, v2} + {3'd0, v3};
+
+    always @(posedge clk60) begin
+        if (v0) fq[f_wp]        <= q0;
+        if (v1) fq[f_wp + 3'd1] <= q1;
+        if (v2) fq[f_wp + 3'd2] <= q2;
+        if (v3) fq[f_wp + 3'd3] <= q3;
+    end
 
     always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n) begin
-            open     <= 1'b0;
-            src      <= 1'b0;
-            rx_start <= 1'b0;
-            rx_valid <= 1'b0;
-            rx_data  <= 8'd0;
-            rx_end   <= 1'b0;
-            rx_error <= 1'b0;
+            f_rp  <= 3'd0;
+            f_wp  <= 3'd0;
+            f_cnt <= 4'd0;
+            open  <= 1'b0;
         end else begin
-            rx_start <= 1'b0;
-            rx_valid <= 1'b0;
-            rx_end   <= 1'b0;
-            rx_error <= 1'b0;
+            if (f_pop) f_rp <= f_rp + 3'd1;
+            f_wp  <= f_wp + f_in[2:0];
+            f_cnt <= f_cnt + f_in - (f_pop ? 4'd1 : 4'd0);
             if (e_val) begin
-                if (!open) begin
-                    if (e_typ == EV_START) begin
-                        rx_start <= 1'b1;
-                        open     <= 1'b1;
-                        src      <= sel;
-                    end                                     // else: orphan, dropped
-                end else begin
-                    case (e_typ)
-                        EV_BYTE: begin
-                            rx_valid <= 1'b1;
-                            rx_data  <= e_dat[7:0];
-                        end
-                        EV_END: begin
-                            rx_end   <= 1'b1;
-                            rx_error <= e_dat[0];
-                            open     <= 1'b0;
-                        end
-                        default: begin                      // START while open
-                            rx_end   <= 1'b1;
-                            rx_error <= 1'b1;
-                            open     <= 1'b0;
-                        end
-                    endcase
-                end
+                if (!open) open <= (e_typ == EV_START);        // else: orphan, dropped
+                else       open <= (e_typ == EV_BYTE);         // END (or START: error)
             end
         end
     end
+
+    // outputs: combinational from registers (decoder outputs, FIFO, open)
+    assign rx_start = e_val && !open && (e_typ == EV_START);
+    assign rx_valid = e_val &&  open && (e_typ == EV_BYTE);
+    assign rx_data  = e_dat[7:0];
+    assign rx_end   = e_val &&  open && (e_typ != EV_BYTE);
+    assign rx_error = rx_end && ((e_typ == EV_START) || e_dat[0]);
+    assign rx_busy  = open;
 
 endmodule

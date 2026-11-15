@@ -4,22 +4,23 @@
 // HS part of the "RX Data Capture / Clock Buffer" (AFE interface) of the USB
 // 2.0 PHY.  Position:
 //
-//   AFE: HS receiver + CDR --rxd, clk_rx--> [THIS BLOCK] --> HS RX bit chain
-//                                                           (usb_rx_decoder, HS)
+//   AFE: HS receiver + CDR --rxd, clk_rx--> [THIS BLOCK] --> 1:8 SIPO (both in
+//        usb_rx_hs_sipo) --> word FIFO --> usb_rx_decoder8 (HS, clk60)
 //
 // Assumption (work plan, decision D1): the CDR delivers a recovered bit clock
 // clk_rx (480 MHz nominal, phase- and frequency-locked to the far transmitter,
 // free-running at the local rate while there is no signal) and the retimed
-// data rxd on it, J = 1 / K = 0.  The whole HS bit chain runs on clk_rx; the
-// elastic buffer crosses into clk_bit.  If the AFE delivers oversampled data
-// on the PLL clock instead, only this block changes.
+// data rxd on it, J = 1 / K = 0.  Since Plan_60MHz.md P5 only this block and
+// the SIPO behind it run on clk_rx; the bit chain runs on clk60.  Its
+// outputs are exactly those of the single-clock design, so the squelch /
+// lock / delay settings measured in A3 keep their meaning.
 //
 // What it does
 //   * captures rxd on clk_rx;
 //   * synchronizes the asynchronous qualifiers into clk_rx (2-FF):
 //       squelch  : 1 = no valid HS signal on the line (AFE squelch detector),
 //       cdr_lock : 1 = the CDR is locked (data valid),
-//       enable   : 1 = HS reception allowed (from clk_bit: HS mode, RX enabled,
+//       enable   : 1 = HS reception allowed (from clk60: HS mode, RX enabled,
 //                  not blocked by the local transmitter);
 //   * delays the data by the synchronizer latency, so that b_act and b_lvl
 //     refer to the same bit;

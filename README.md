@@ -18,8 +18,8 @@ The analog front end and the line-state, VBUS and ID detectors are **not** part 
   - HS EOP is 8 bit times at the inverted level. FS/LS EOP is SE0 for 2 bits, then J.
   - HS underrun detection (`tx_underrun`).
   - OpMode `10` bypass (no bit stuffing, no NRZI) for chirp and test modes.
-- **RX datapath:** NRZI decoder → SYNC detect → bit unstuffer → deserializer 1:8 → EOP / RxError check → elastic buffer.
-  - HS on the clock recovered by the CDR, with an asynchronous elastic buffer into the local clock domain; tolerates lost SYNC bits (12-bit minimum SYNC) and ±1000 ppm.
+- **RX datapath:** NRZI decoder → SYNC detect → bit unstuffer → deserializer 1:8 → EOP / RxError check, for up to 8 bits per 60 MHz clock (`usb_rx_decoder8`), one instance for all speeds.
+  - HS: captured and packed into 8-bit words on the clock recovered by the CDR, then an asynchronous word FIFO into the 60 MHz core clock; tolerates lost SYNC bits (12-bit minimum SYNC) and ±1000 ppm.
   - FS/LS recovered digitally by a DPLL that oversamples D+/D− 40× / 320× on the 480 MHz clock; tolerates the FS ±0.25 % and LS ±1.5 % clock limits and D+/D− skew.
   - Errors: bit-stuff violation, EOP not on a byte boundary, signal lost before the EOP, buffer overflow → `rx_error`.
   - No reception of the PHY's own packets (local-TX hold-off).
@@ -55,13 +55,13 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 
 `usb_ulpi_tx_top` is an older, smaller top level: input capture, TX datapath and bus owner only, with no register access.
 
-`usb_rx_decoder8` (`Plan_60MHz.md` P3) is the 60 MHz replacement for `usb_rx_decoder`: the same RX bit chain for up to 8 bits per `clk60` tick, in three pipeline stages, one instance for HS and FS/LS. Since P4 it is the FS/LS chain of `usb_rx_datapath`, behind `usb_rx_fsls_sampler` (480 MHz island) and `usb_rx_fsls_dpll` (60 MHz); the HS chain still uses `usb_rx_decoder` on the recovered clock until P5. `usb_rx_fsls_frontend` is no longer used in the design; it stays as the reference model of `tb_usb_rx_fsls_frontend`.
+`usb_rx_datapath` (since `Plan_60MHz.md` P4 / P5) runs on `clk60`: HS through `usb_rx_hs_sipo` (480 MHz island on the CDR clock: `usb_rx_hs_frontend`, 1:8 SIPO, word clock) and a word FIFO, FS/LS through `usb_rx_fsls_sampler` (480 MHz island) and `usb_rx_fsls_dpll`, both into one `usb_rx_decoder8` (the RX bit chain for up to 8 bits per tick, three pipeline stages, up to four events per tick) and an event FIFO. The serial `usb_rx_decoder` chain and `usb_rx_fsls_frontend` are no longer used in the design; they stay as the reference models of `tb_usb_rx_decoder8` and `tb_usb_rx_fsls_frontend`.
 
 Each module's header comment holds its detailed spec: pipeline position, timing and corner cases.
 
 ### Clocking and conventions
 
-- **Clocks (migration in progress, `Plan_60MHz.md`):** the ULPI core (`usb_ulpi_phy_top` and below, `usb_ulpi_tx_top`, `usb_ulpi_phy_pads`) runs on the 60 MHz core clock `clk60` from `usb_clk_gen`; only the TX serializer stays on `clk_bit` (480 MHz) behind `usb_tx_ser_bridge`. The blocks not moved yet (RX datapath, line state, status sync, AFE interfaces, lock detector, power sequencer) run on `clk_bit` with the clock enable `ce60`, high for one `clk_bit` cycle in eight (8-cycle multicycle paths).
+- **Clocks (migration in progress, `Plan_60MHz.md`):** the ULPI core (`usb_ulpi_phy_top` and below, `usb_ulpi_tx_top`, `usb_ulpi_phy_pads`) runs on the 60 MHz core clock `clk60` from `usb_clk_gen`; only the TX serializer stays on `clk_bit` (480 MHz) behind `usb_tx_ser_bridge`. `usb_rx_datapath` and `usb_line_state` also run on `clk60`, with small 480 MHz islands (FS/LS sampler on `clk_bit`, HS front end and SIPO on the CDR clock `clk_rx`). The blocks not moved yet (status sync, AFE interfaces, lock detector, power sequencer) run on `clk_bit` with the clock enable `ce60`, high for one `clk_bit` cycle in eight (8-cycle multicycle paths).
 - **Reset:** active-low asynchronous `rst_n`.
 - **Speed encoding** follows ULPI XcvrSelect: `00` HS, `01` FS, `10` LS, `11` sent at FS rate.
 - **Line encoding:** `txd` J = 1 / K = 0, LSB first. `tx_en` and `tx_se0` go to the transmitter.
@@ -126,6 +126,7 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | `tb_usb_rx_elastic_buffer.v`  | `usb_rx_elastic_buffer.v`                            |
 | `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_sampler.v` `usb_rx_fsls_dpll.v`, reference `usb_rx_fsls_frontend.v` |
 | `tb_usb_rx_hs_frontend.v`     | `usb_rx_hs_frontend.v`                               |
+| `tb_usb_rx_hs_sipo.v`         | `usb_rx_hs_frontend.v` `usb_rx_hs_sipo.v`: words bit for bit, write rule, lost-word replacement, E4 rule |
 | `tb_usb_rx_status_sync.v`     | `usb_rx_status_flt.v` `usb_rx_status_sync.v`         |
 | `tb_usb_line_state.v`         | `usb_line_state.v`                                   |
 | `tb_usb_mode_term_ctrl.v`     | `usb_mode_term_ctrl.v`                               |
@@ -174,7 +175,7 @@ Copy the integration testbenches' file lists from their headers.
 
 ## Project status
 
-- ✅ The TX path and the RX datapath are complete. All 38 testbenches (32 for the RTL, 2 Icarus shadows of the Spectre AMS testbenches, 4 for the AFE behavioural models) pass with Icarus Verilog.
+- ✅ The TX path and the RX datapath are complete. All 42 testbenches (36 for the RTL, 2 Icarus shadows of the Spectre AMS testbenches, 4 for the AFE behavioural models) pass with Icarus Verilog.
 - ✅ TX data boundary to the AFE (`usb_afe_tx_if`: retiming, HS / FS / LS driver select, `TX_EN` lead / lag, idle clamp), verified through the AFE models; not wired into the top level yet.
 - ✅ HS receive boundary to the AFE (`usb_afe_rx_if`: RX / CDR enables, isolation, squelch-based CDR lock, squelch-latency compensation), with the lock-time margin measured through the AFE models; not wired into the top level yet.
 - ✅ Clocking: `ce60` / CLKOUT generator (`usb_clk_gen`, glitch-free start / stop; since `Plan_60MHz.md` P1 also the 60 MHz core clock `clk60` and the island strobe `ld`) and the digital PLL lock detector (`usb_pll_lock_det`, REFSEL decode, loss-of-lock and dead-clock detection), verified with a PLL model; not wired into the top level yet.

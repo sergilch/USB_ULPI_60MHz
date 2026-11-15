@@ -30,7 +30,7 @@ A working USB 2.0 PHY needs the digital core (ULPI controller, TX / RX datapaths
 | Direction | Signal(s) | Module | Meaning |
 |---|---|---|---|
 | core → AFE | `txd`, `tx_en`, `tx_se0`, `tx_speed[1:0]` | `usb_ulpi_phy_top` (from `usb_tx_path`) | Line state per bit on `clk_bit`: J = 1 / K = 0; `tx_se0` = SE0 (FS/LS EOP); `tx_en` = drive the line; `tx_speed` = XcvrSelect (00 HS, 01 FS, 10 LS). HS: one bit per `clk_bit` cycle. FS/LS: bits held for 40 / 320 cycles. |
-| AFE → core | `clk_rx`, `hs_rxd`, `hs_squelch`, `hs_cdr_lock` | `usb_rx_datapath` → `usb_rx_hs_frontend` | HS: recovered clock and retimed data, squelch (1 = no signal), CDR lock. Assumes the CDR free-runs while there is no data (assumption D1). |
+| AFE → core | `clk_rx`, `hs_rxd`, `hs_squelch`, `hs_cdr_lock` | `usb_rx_datapath` → `usb_rx_hs_sipo` → `usb_rx_hs_frontend` | HS: recovered clock and retimed data, squelch (1 = no signal), CDR lock. Assumes the CDR free-runs while there is no data (assumption D1). |
 | AFE → core | `rxrcv`, `rxdp`, `rxdm` | `usb_rx_datapath` → `usb_rx_fsls_sampler` (since `Plan_60MHz.md` P4; was `usb_rx_fsls_frontend`) | FS/LS: differential receiver and single-ended DP / DM receivers, asynchronous; recovered by a DPLL on `clk_bit` (D2). |
 | AFE → core | `linestate[1:0]`, `host_disc`, `a_vbus_vld`, `sess_vld`, `sess_end`, `id_gnd` | `usb_ulpi_phy_top` | Currently top-level inputs; to be derived from receiver / comparator outputs in WORK_PLAN phases 3–4. |
 | core → AFE | `xcvrselect`, `termselect`, `opmode`, `suspendm`, `otg_ctrl` | `usb_ulpi_phy_top` | Raw register fields; the termination / pull / power controls derived from them are not implemented yet (phases 3–6). |
@@ -67,8 +67,8 @@ usb_tx_path ─txd,tx_en,tx_se0,tx_speed─► usb_afe_tx_if (new, digital, clk_
 DP/DM ─► HS RX ─RX_OUT_P─► level shift 3.3→1.8 V ─► CDR_DATA ─► CDR ─► recovered clock + retimed data
                                                                      │
                      squelch detector (new) ─SQUELCH_A─┐             ▼
-                                                       └─► usb_rx_hs_frontend (clk_rx = CDR clock, hs_rxd = CDR data)
-                                                           ─► elastic buffer ─► clk_bit domain
+                                                       └─► usb_rx_hs_sipo: usb_rx_hs_frontend + 1:8 SIPO (clk_rx = CDR clock)
+                                                           ─► word FIFO (clk_rxw = clk_rx / 8) ─► clk60 domain
 ```
 
 | Item | Target |
@@ -77,7 +77,7 @@ DP/DM ─► HS RX ─RX_OUT_P─► level shift 3.3→1.8 V ─► CDR_DATA ─
 | Free-running | With no data (squelch) the CDR VCO is held near 480 MHz by the PLL control voltage. This matches the digital assumption D1: `clk_rx` keeps running and the elastic buffer write side stays alive. |
 | Lock time | Through five hubs a receiver can see a SYNC as short as 12 bits. Measured in A0: with `HS_ZMIN` = 6 the digital needs the last 8 SYNC bits, so squelch release + CDR lock must fit into **4 bit times (8.3 ns)**; with `HS_ZMIN` = 4, 6 bit times (12.5 ns). That is a hard requirement on the CDR loop (bang-bang + coarse loop) and must be shown in simulation (I2; `DOC/afe_interface_spec.md` 4.2). A3 refined this: squelch release and CDR lock overlap, so a squelch release up to 12 ns costs nothing extra, and with `HS_ZMIN` = 4 + `LOCK_DLY` = 2 the CDR may deliver up to 6 wrong bits after the first transition. |
 | Lock indication | The CDR has no lock detector. `hs_cdr_lock` will be generated digitally: a fixed delay after squelch drops (default sized from the simulated lock time, programmable), because a frequency check alone can't tell lock from free-running. |
-| Frequency tolerance | Host ±500 ppm, own reference ±500 ppm → the CDR must track ±1000 ppm. The elastic buffer (16 events) already covers this for maximum-length packets (`tb_usb_rx_datapath`). |
+| Frequency tolerance | Host ±500 ppm, own reference ±500 ppm → the CDR must track ±1000 ppm. The HS word FIFO (8 words, written only while receiving; `Plan_60MHz.md` P5) covers this for maximum-length packets (`tb_usb_rx_datapath`). |
 
 ### 3.3 FS / LS paths
 

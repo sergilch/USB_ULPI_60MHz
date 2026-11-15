@@ -2,13 +2,10 @@
 // tb_usb_rx_datapath.v - top-level (loopback) testbench for the RX datapath
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxdp usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v usb_rx_nrzi_decoder.v \
-//            usb_rx_sync_detect.v usb_rx_bit_unstuffer.v usb_rx_deserializer.v \
-//            usb_rx_eop_check.v usb_rx_decoder.v usb_rx_elastic_buffer.v \
-//            usb_rx_hs_frontend.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v \
-//            usb_rx_decoder8.v usb_rx_datapath.v usb_ulpi_rx_handler.v \
-//            tb_usb_rx_datapath.v
+//   iverilog -g2005 -o sim_rxdp usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v \
+//            usb_tx_path.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_hs_sipo.v \
+//            usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
+//            usb_ulpi_rx_handler.v tb_usb_rx_datapath.v
 //   vvp sim_rxdp
 //
 // Set-up

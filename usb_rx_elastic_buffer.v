@@ -3,24 +3,26 @@
 //
 // "Elastic Buffer (CDC)" of the USB 2.0 PHY RX path.  Position:
 //
-//   ... -> EOP / RxError check -> [THIS BLOCK] -> RX output stage (clk_bit, ce60)
+//   usb_rx_hs_sipo (clk_rxw) -> [THIS BLOCK] -> usb_rx_decoder8 (clk60)
 //
-// A FIFO of packet events (usb_rx_eop_check event words) from the write clock
-// to the read clock.  In HS the write clock is the clock recovered by the CDR
-// (the far transmitter's bit clock, up to +-1000 ppm away from the local PLL);
-// the read side runs on clk_bit and takes at most one word per ce60 tick.  The
-// writer produces at most one word per 7 recovered bits, i.e. about one word
-// per tick, so the occupancy stays small (a few words of synchronizer latency
-// plus the ppm drift over one packet); DEPTH = 16 leaves a wide margin.  The
-// buffer does not need to be pre-filled: the ULPI RX Data Handler behind it
-// accepts bytes at any rate.
+// A generic dual-clock FIFO.  In the design (Plan_60MHz.md P5) it is the HS
+// word FIFO of usb_rx_datapath: W = 16 ({act, lvl} of 8 recovered bits), AW = 3,
+// ASYNC = 1, written on clk_rxw (the CDR clock / 8, i.e. the far transmitter's
+// rate, up to +-1000 ppm away from the local PLL) only while bits are received,
+// read on clk60 whenever a word is there.  So the occupancy stays small (the
+// synchronizer latency plus the ppm drift over one packet) and the FIFO drains
+// between packets; it needs no pre-fill.  (Before P5 it carried decoder events
+// from clk_rx to the clk_bit / ce60 domain.)
 //
 // ASYNC = 1: write and read clocks are unrelated.  Gray-coded pointers, 2-FF
 //   synchronizers in both directions.  The flags are conservative: w_full /
 //   w_afull may stay set a few write clocks after a read, r_valid may rise a
 //   few read clocks after a write.
-// ASYNC = 0: both sides on the same clock (used for FS / LS, where the bit
-//   chain already runs on clk_bit); the pointers are compared directly.
+// ASYNC = 0: both sides on the same clock; the pointers are compared directly
+//   (not used in the design since P4; kept for tb_usb_rx_elastic_buffer).
+//
+// The write side computes the next pointer and flags for "write" and "no
+// write" in parallel, so a late w_en only drives the selects.
 //
 // Write side (wclk): w_en writes w_data when w_full = 0 (a write while full is
 //   dropped and pulses w_ovf).  w_full / w_afull are registered:
@@ -79,9 +81,14 @@ module usb_rx_elastic_buffer #(
     // ---------------- write side ----------------
     reg  [AW:0] wbin, wgray;
     wire [AW:0] rgray_w;              // read pointer seen in the write domain
-    wire        do_wr  = w_en && !w_full;
-    wire [AW:0] wbin_n = wbin + (do_wr ? 1'b1 : 1'b0);
-    wire [AW:0] wcnt_n = wbin_n - gray2bin(rgray_w);
+    // next state for "no write" and "write" computed in parallel, so w_en
+    // (often late) only selects
+    wire        do_wr   = w_en && !w_full;
+    wire [AW:0] wbin_1  = wbin + 1'b1;
+    wire [AW:0] rbin_w  = gray2bin(rgray_w);
+    wire [AW:0] wcnt_0  = wbin   - rbin_w;
+    wire [AW:0] wcnt_1  = wbin_1 - rbin_w;
+    wire [AW:0] wgray_1 = bin2gray(wbin_1);
 
     always @(posedge wclk) begin
         if (do_wr) mem[wbin[AW-1:0]] <= w_data;
@@ -95,10 +102,12 @@ module usb_rx_elastic_buffer #(
             w_afull <= 1'b0;
             w_ovf   <= 1'b0;
         end else begin
-            wbin    <= wbin_n;
-            wgray   <= bin2gray(wbin_n);
-            w_full  <= (wcnt_n >= DEPTH);
-            w_afull <= (wcnt_n >= DEPTH - 1);
+            if (do_wr) begin
+                wbin  <= wbin_1;
+                wgray <= wgray_1;
+            end
+            w_full  <= do_wr ? (wcnt_1 >= DEPTH)     : (wcnt_0 >= DEPTH);
+            w_afull <= do_wr ? (wcnt_1 >= DEPTH - 1) : (wcnt_0 >= DEPTH - 1);
             w_ovf   <= w_en && w_full;
         end
     end

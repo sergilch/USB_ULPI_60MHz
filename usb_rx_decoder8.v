@@ -3,7 +3,7 @@
 //
 //   bits (n per tick) -> [1] NRZI decode + SYNC detect -> [2] bit unstuff
 //                     -> [3] deserialize 1:8 + EOP / RxError check
-//                     -> up to 2 events per tick (to the event FIFO)
+//                     -> up to 4 events per tick (to the event FIFO)
 //
 // The clk60 replacement for usb_rx_decoder (one bit per clock).  One instance
 // serves HS (0..8 bits per tick from the HS SIPO / word FIFO) and FS / LS (0 or 1
@@ -41,29 +41,41 @@
 //       byte that completes in a tick is {held bits, first data bits of the
 //       tick}, a barrel shift by the held count; the data bits of the tick are
 //       compacted by their prefix count.  EOP check: at most one BYTE per tick
-//       (it needs 8 data bits) and at most one SYNC (ZMIN_HS >= 6), so the
+//       (it needs 8 data bits).  A SYNC needs a rearm bit and ZMIN zeros in
+//       front of it, so with ZMIN_HS >= 6 a tick has at most one SYNC, with
+//       ZMIN_HS = 4 / 5 at most two (the first in slot 0 / 1, the second in
+//       slot 6 / 7, a packet in between that starts and ends in the tick).  The
 //       events of a tick are, in order: BYTE, END of the open packet, START,
-//       END of the packet started in this tick - at most two of them.
-//   The facts these rest on (one SYNC and at most two events per tick; a SYNC
-//   only after the open packet has ended, because the rearm bit in front of it
-//   is an end condition; at most 6 data bits behind a SYNC in its tick, so its
-//   packet cannot end without error there) need ZMIN_HS >= 6 and ZMIN_FS >= 1
-//   (checked at elaboration in simulation) and <= 8 bits per tick.
+//       END, START, END of the packets started in the tick.  At most four
+//       occur (BYTE END START END or START END START END, ZMIN_HS = 4), three
+//       with ZMIN_HS = 5, two with ZMIN_HS >= 6.
+//   The facts these rest on (a SYNC only after the open packet has ended,
+//   because the rearm bit in front of it is an end condition; a packet started
+//   in a tick that also holds the next SYNC has ended in between, for the same
+//   reason; at most 7 bits behind a SYNC in its tick, so no byte completes and
+//   an END there is always an error; an open packet and two SYNCs never share
+//   a tick) need ZMIN_HS >= 4 and ZMIN_FS >= 1 (checked at elaboration in
+//   simulation) and <= 8 bits per tick.  (FS / LS: one bit per tick, so one
+//   event.)
 //
-// Output: up to two events per tick, in order (ev0 before ev1), with the event
-//   word of usb_rx_eop_check: {type[1:0], data[7:0]}, type 01 START, 00 BYTE,
-//   10 END (data[0] = error).  Possible pairs: BYTE + END (receiver lost right
-//   after a byte), END + START (HS: receiver lost, then a new SYNC within the
-//   tick).  busy = a packet is open in stage 3 (as usb_rx_eop_check); ovf
-//   pulses for one tick when a byte or a packet was dropped.
+// Output: up to four events per tick, in order ev0, ev1, ev2, ev3 (ev<k>_wr is
+//   a thermometer code), with the event word of usb_rx_eop_check:
+//   {type[1:0], data[7:0]}, type 01 START, 00 BYTE, 10 END (data[0] = error).
+//   Typical pairs: BYTE + END (receiver lost right after a byte), END + START
+//   (HS: receiver lost, then a new SYNC within the tick); three or four events
+//   only with ZMIN_HS < 6 and squelch / lock glitches of a few bits.
+//   busy = a packet is open in stage 3 (as usb_rx_eop_check); ovf = number of
+//   bytes / packets dropped in the tick (0..2; usb_rx_eop_check pulses once per
+//   drop).
 //
-// Buffer room: buf_afull = the event FIFO has fewer than 3 free entries (two
-//   events of this tick plus the END that a START or BYTE reserves), from the
-//   FIFO's count after the previous tick's writes (same clock, so it is current).
-//   It is used by stage 3 in the tick in which it assembles the bits (two ticks
-//   after they arrived); the rules of usb_rx_eop_check then apply unchanged: no
-//   START without room (packet skipped), a BYTE that does not fit is dropped and
-//   the END gets the error.
+// Buffer room: buf_afull = the event FIFO cannot take 4 more events, counting
+//   the events on ev*_wr (written at the end of this tick): up to three events
+//   of a tick plus the END that a packet left open reserves, or four events
+//   that leave no packet open.  It is used by stage 3 in the tick in which it
+//   assembles the bits (two ticks after they arrived); the rules of
+//   usb_rx_eop_check then apply unchanged: no START without room (packet
+//   skipped), a BYTE that does not fit is dropped and the END gets the error;
+//   the END of an open packet is always written (its entry is reserved).
 //
 // Latency: the bits of tick t are decoded by stage 1 in tick t, stage 2 in t+1
 //   and stage 3 in t+2; their events are in ev*_wr / ev*_data during tick t+3
@@ -74,7 +86,7 @@
 `timescale 1ns/1ps
 
 module usb_rx_decoder8 #(
-    parameter ZMIN_HS = 6,            // SYNC zeros needed, HS    (6..8)
+    parameter ZMIN_HS = 6,            // SYNC zeros needed, HS    (4..8)
     parameter ZMIN_FS = 4             // SYNC zeros needed, FS/LS (1..8)
 ) (
     input  wire       clk60,
@@ -91,8 +103,12 @@ module usb_rx_decoder8 #(
     output reg  [9:0] ev0_data,
     output reg        ev1_wr,
     output reg  [9:0] ev1_data,
+    output reg        ev2_wr,
+    output reg  [9:0] ev2_data,
+    output reg        ev3_wr,
+    output reg  [9:0] ev3_data,
     output wire       busy,
-    output reg        ovf
+    output reg  [1:0] ovf
 );
 
     localparam [1:0] EV_BYTE  = 2'b00;
@@ -104,8 +120,8 @@ module usb_rx_decoder8 #(
     localparam [1:0] ST_SKIP = 2'd2;
 
     // synthesis translate_off
-    initial if (ZMIN_HS < 6 || ZMIN_HS > 8 || ZMIN_FS < 1 || ZMIN_FS > 8) begin
-        $display("usb_rx_decoder8: ZMIN_HS = %0d (6..8), ZMIN_FS = %0d (1..8)", ZMIN_HS, ZMIN_FS);
+    initial if (ZMIN_HS < 4 || ZMIN_HS > 8 || ZMIN_FS < 1 || ZMIN_FS > 8) begin
+        $display("usb_rx_decoder8: ZMIN_HS = %0d (4..8), ZMIN_FS = %0d (1..8)", ZMIN_HS, ZMIN_FS);
         $finish;
     end
     always @(posedge clk60)
@@ -313,17 +329,23 @@ module usb_rx_decoder8 #(
 
     reg [2:0]  pc [0:7];              // data bits of this tick in front of bit p
     reg [8:0]  syb;                   // a SYNC in front of bit p
+    reg [8:0]  syb2;                  // two SYNCs in front of bit p
     reg [2:0]  n7, n0, n_n;
     reg [7:0]  endc, eerr, bytec, g;
     reg [3:0]  nd;
     reg [15:0] seq;
     reg [7:0]  sh_n, byte_v;
-    reg        open, any_sy, e_pre, e_pre_err, e_post, bb, x;
-    reg        start, b_wr, b_drop, s_wr, pre_wr, post_wr;
+    reg        open, any_sy, two_sy, e_pre, e_pre_err, e_post1, e_post2, bb, x;
+    reg        b_wr, b_drop, s_wr, pre_wr, post1_wr, post2_wr, s2_wr;
     reg [1:0]  st_n;
-    reg        ovf_f_n, ovf_n, lost;
-    reg        w0, w1;
-    reg [9:0]  d0, d1;
+    reg        ovf_f_n;
+    reg [1:0]  ovf_n;
+    reg [4:0]  ev_v;                  // END, START, END, START, END (no BYTE)
+    reg [9:0]  ev_d [0:4];
+    reg [3:0]  e_w, w_n;
+    reg [9:0]  e_d [0:3];
+    reg [9:0]  d_n [0:3];
+    reg [2:0]  ps;                    // events in front of event j
 
     always @* begin
         // Data bit counts.  pc[i] = data bits of this tick in front of bit i
@@ -332,11 +354,15 @@ module usb_rx_decoder8 #(
         // pc[i] == 7 - n_q (= ~n_q) and pc[i] == -n_q.  A SYNC never comes
         // while a packet is open (the rearm bit in front of it ends the packet),
         // so bits behind a SYNC need no count: no byte completes there (at most
-        // 6 data bits follow it in the tick) and an END there is always an error.
+        // 7 data bits follow it in the tick) and an END there is always an error.
         for (i = 0; i < 8; i = i + 1) pc[i] = popc(r2_dat & ((8'd1 << i) - 8'd1));
-        syb[0] = 1'b0;
-        for (i = 1; i <= 8; i = i + 1) syb[i] = syb[i-1] | r2_sy[i-1];
+        syb[0] = 1'b0; syb2[0] = 1'b0;
+        for (i = 1; i <= 8; i = i + 1) begin
+            syb[i]  = syb[i-1]  | r2_sy[i-1];
+            syb2[i] = syb2[i-1] | (r2_sy[i-1] & syb[i-1]);
+        end
         any_sy = syb[8];
+        two_sy = syb2[8];
         n7 = ~n_q;
         n0 = 3'd0 - n_q;
         for (i = 0; i < 8; i = i + 1) begin
@@ -344,7 +370,9 @@ module usb_rx_decoder8 #(
             endc[i]  = r2_en[i] & (!r2_act[i] | (r2_hs ? r2_serr[i] : (r2_se0[i] | r2_serr[i])));
             eerr[i]  = !r2_act[i] | (r2_hs ? (pc[i] != n7) : (r2_se0[i] ? (pc[i] != n0) : 1'b1));
         end
-        n_n = any_sy ? popc(r2_dat & syb[7:0]) : n_q + popc(r2_dat);
+        // data bits of the packet open after the tick (behind its SYNC)
+        n_n = two_sy ? popc(r2_dat & syb2[7:0]) :
+              any_sy ? popc(r2_dat & syb[7:0])  : n_q + popc(r2_dat);
         // compacted data bits of the tick, shift register, completed byte
         for (i = 0; i < 8; i = i + 1) begin
             g[i] = 1'b0;
@@ -375,36 +403,50 @@ module usb_rx_decoder8 #(
         bb     = bb & (st_q == ST_PKT);
         b_wr   = bb & !buf_afull;
         b_drop = bb &  buf_afull;
-        // SYNC: starts a packet (any open one has ended in front of it, see above)
-        start = any_sy;
-        s_wr  = start & !buf_afull;
-        // an end condition after the SYNC ends the new packet (always an error)
+        // SYNCs: each starts a packet (an open one has ended in front of it,
+        // see above); an end condition behind a SYNC ends its packet (always an
+        // error).  With two SYNCs the first packet has ended before the second.
+        s_wr = any_sy & !buf_afull;
         x = 1'b0;
-        for (i = 0; i < 8; i = i + 1) x = x | (syb[i] & endc[i]);
-        e_post  = start & x;
-        pre_wr  = e_pre & (st_q == ST_PKT);
-        post_wr = e_post & s_wr;
-        // next state
-        if (start)      st_n = e_post ? ST_IDLE : (buf_afull ? ST_SKIP : ST_PKT);
-        else if (e_pre) st_n = ST_IDLE;
-        else            st_n = st_q;
+        for (i = 0; i < 8; i = i + 1) x = x | (syb[i] & !syb2[i] & endc[i]);
+        e_post1 = any_sy & x;
+        x = 1'b0;
+        for (i = 0; i < 8; i = i + 1) x = x | (syb2[i] & endc[i]);
+        e_post2 = two_sy & x;
+        pre_wr   = e_pre & (st_q == ST_PKT);
+        post1_wr = e_post1 & s_wr;
+        s2_wr    = two_sy & s_wr;
+        post2_wr = e_post2 & s_wr;
+        // next state: the packet of the last SYNC, if it is still open
+        if (two_sy)      st_n = e_post2 ? ST_IDLE : (buf_afull ? ST_SKIP : ST_PKT);
+        else if (any_sy) st_n = e_post1 ? ST_IDLE : (buf_afull ? ST_SKIP : ST_PKT);
+        else if (e_pre)  st_n = ST_IDLE;
+        else             st_n = st_q;
         ovf_f_n = s_wr ? 1'b0 : (ovf_f_q | b_drop);
-        ovf_n   = b_drop | (start & buf_afull);
-        // event slots in order: BYTE, END (open packet), START, END (new packet)
-        w0 = 1'b0; w1 = 1'b0; d0 = 10'd0; d1 = 10'd0; lost = 1'b0;
-        if (b_wr) begin w0 = 1'b1; d0 = {EV_BYTE, byte_v}; end
-        if (pre_wr) begin
-            if (!w0) begin w0 = 1'b1; d0 = {EV_END, 7'd0, e_pre_err | ovf_f_q | b_drop}; end
-            else     begin w1 = 1'b1; d1 = {EV_END, 7'd0, e_pre_err | ovf_f_q | b_drop}; end
+        ovf_n   = {1'b0, b_drop} + {1'b0, any_sy & buf_afull} + {1'b0, two_sy & buf_afull};
+        // events in order, compacted into slots 0..3.  The BYTE (first in
+        // order) depends on the data bit counts and comes late; the others only
+        // on SYNC / end flags.  So those are compacted first (at most four: an
+        // open packet and two SYNCs never share a tick), and the BYTE shifts
+        // them by one slot (then at most three).
+        ev_v = {post2_wr, s2_wr, post1_wr, s_wr, pre_wr};
+        ev_d[0] = {EV_END, 7'd0, e_pre_err | ovf_f_q | b_drop};
+        ev_d[1] = {EV_START, 8'h00};
+        ev_d[2] = {EV_END, 7'd0, 1'b1};
+        ev_d[3] = {EV_START, 8'h00};
+        ev_d[4] = {EV_END, 7'd0, 1'b1};
+        for (k = 0; k < 4; k = k + 1) begin e_w[k] = 1'b0; e_d[k] = 10'd0; end
+        for (j = 0; j < 5; j = j + 1) begin
+            ps = 3'd0;
+            for (k = 0; k < j; k = k + 1) ps = ps + ev_v[k];
+            for (k = 0; k < 4; k = k + 1)
+                if (ev_v[j] && ps == k) begin e_w[k] = 1'b1; e_d[k] = ev_d[j]; end
         end
-        if (s_wr) begin
-            if (!w0)      begin w0 = 1'b1; d0 = {EV_START, 8'h00}; end
-            else if (!w1) begin w1 = 1'b1; d1 = {EV_START, 8'h00}; end
-            else          lost = 1'b1;
-        end
-        if (post_wr) begin
-            if (!w1) begin w1 = 1'b1; d1 = {EV_END, 7'd0, 1'b1}; end
-            else     lost = 1'b1;
+        w_n[0] = b_wr | e_w[0];
+        d_n[0] = b_wr ? {EV_BYTE, byte_v} : e_d[0];
+        for (k = 1; k < 4; k = k + 1) begin
+            w_n[k] = b_wr ? e_w[k-1] : e_w[k];
+            d_n[k] = b_wr ? e_d[k-1] : e_d[k];
         end
     end
 
@@ -420,19 +462,28 @@ module usb_rx_decoder8 #(
             ev0_data <= 10'd0;
             ev1_wr   <= 1'b0;
             ev1_data <= 10'd0;
-            ovf      <= 1'b0;
+            ev2_wr   <= 1'b0;
+            ev2_data <= 10'd0;
+            ev3_wr   <= 1'b0;
+            ev3_data <= 10'd0;
+            ovf      <= 2'd0;
         end else begin
             sh_q     <= sh_n;
             n_q      <= n_n;
             st_q     <= st_n;
             ovf_f_q  <= ovf_f_n;
-            ev0_wr   <= w0;
-            ev0_data <= d0;
-            ev1_wr   <= w1;
-            ev1_data <= d1;
+            ev0_wr   <= w_n[0];
+            ev0_data <= d_n[0];
+            ev1_wr   <= w_n[1];
+            ev1_data <= d_n[1];
+            ev2_wr   <= w_n[2];
+            ev2_data <= d_n[2];
+            ev3_wr   <= w_n[3];
+            ev3_data <= d_n[3];
             ovf      <= ovf_n;
             // synthesis translate_off
-            if (lost) $display("ERROR %m @%0t: more than two events in one tick", $time);
+            if ((b_wr + ev_v[0] + ev_v[1] + ev_v[2] + ev_v[3] + ev_v[4]) > 4)
+                $display("ERROR %m @%0t: more than four events in one tick", $time);
             // synthesis translate_on
         end
     end

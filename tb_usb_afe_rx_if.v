@@ -2,13 +2,11 @@
 // tb_usb_afe_rx_if.v - HS receive boundary through the AFE models (phase A3)
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_afe_rx_if usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v usb_rx_nrzi_decoder.v \
-//            usb_rx_sync_detect.v usb_rx_bit_unstuffer.v usb_rx_deserializer.v \
-//            usb_rx_eop_check.v usb_rx_decoder.v usb_rx_elastic_buffer.v \
-//            usb_rx_hs_frontend.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
-//            usb_afe_rx_if.v afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v \
-//            afe_hs_rx_bm.v afe_squelch_bm.v afe_cdr_bm.v tb_usb_afe_rx_if.v
+//   iverilog -g2005 -o sim_afe_rx_if usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v \
+//            usb_tx_path.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_hs_sipo.v \
+//            usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
+//            usb_afe_rx_if.v afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v afe_hs_rx_bm.v \
+//            afe_squelch_bm.v afe_cdr_bm.v tb_usb_afe_rx_if.v
 //   vvp sim_afe_rx_if                 (statistics: add -PTB.NPKT=300 or more)
 //
 // Chain (AFE_INTEGRATION_PLAN.md phase A3)

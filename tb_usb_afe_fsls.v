@@ -3,14 +3,11 @@
 //                     (AFE_INTEGRATION_PLAN.md phase A5)
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_afe_fsls usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v usb_afe_tx_if.v \
-//            usb_rx_nrzi_decoder.v usb_rx_sync_detect.v usb_rx_bit_unstuffer.v \
-//            usb_rx_deserializer.v usb_rx_eop_check.v usb_rx_decoder.v \
-//            usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_fsls_sampler.v \
-//            usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
-//            usb_line_state.v afe_line_bm.v afe_term_bm.v afe_fsls_bm.v \
-//            tb_usb_afe_fsls.v
+//   iverilog -g2005 -o sim_afe_fsls usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v \
+//            usb_tx_path.v usb_afe_tx_if.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
+//            usb_rx_hs_sipo.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v \
+//            usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v usb_line_state.v \
+//            afe_line_bm.v afe_term_bm.v afe_fsls_bm.v tb_usb_afe_fsls.v
 //   vvp sim_afe_fsls
 //
 // Set-up: two ends on one DP / DM pair (afe_line_bm)

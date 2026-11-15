@@ -35,9 +35,9 @@ These blocks exist in RTL. All 22 RTL testbenches (plus 4 for the AFE behavioura
 | SYNC + PID/Data Mux | `usb_tx_sync_mux` | Done, unit-tested (added 2026-11-08) |
 | NRZI Encoder | `usb_nrzi_encoder` | Done, unit-tested (added 2026-11-08) |
 | TX path wrapper (stuffer → NRZI → serializer, underrun discard) | `usb_tx_path` | Done, unit-tested (added 2026-11-08) |
-| RX front ends (HS capture on the recovered clock, FS/LS DPLL) | `usb_rx_hs_frontend`, `usb_rx_fsls_frontend` | Done, unit-tested (added 2026-11-08). FS/LS replaced 2026-11-14 by `usb_rx_fsls_sampler` + `usb_rx_fsls_dpll` (60 MHz migration, `Plan_60MHz.md` P4) |
-| NRZI Decoder, SYNC Detect, Bit Unstuffer, Deserializer 1:8, EOP + RxError Check | `usb_rx_nrzi_decoder`, `usb_rx_sync_detect`, `usb_rx_bit_unstuffer`, `usb_rx_deserializer`, `usb_rx_eop_check`, wrapper `usb_rx_decoder` | Done, unit-tested (added 2026-11-08) |
-| Elastic Buffer (CDC) | `usb_rx_elastic_buffer` | Done, unit-tested (added 2026-11-08) |
+| RX front ends (HS capture on the recovered clock, FS/LS DPLL) | `usb_rx_hs_frontend`, `usb_rx_fsls_frontend` | Done, unit-tested (added 2026-11-08). FS/LS replaced 2026-11-14 by `usb_rx_fsls_sampler` + `usb_rx_fsls_dpll` (60 MHz migration, `Plan_60MHz.md` P4); HS front end since 2026-11-15 inside `usb_rx_hs_sipo` (P5) |
+| NRZI Decoder, SYNC Detect, Bit Unstuffer, Deserializer 1:8, EOP + RxError Check | `usb_rx_nrzi_decoder`, `usb_rx_sync_detect`, `usb_rx_bit_unstuffer`, `usb_rx_deserializer`, `usb_rx_eop_check`, wrapper `usb_rx_decoder` | Done, unit-tested (added 2026-11-08) Since 2026-11-15 (`Plan_60MHz.md` P5) the design uses `usb_rx_decoder8` for all speeds; the serial chain is its reference model. |
+| Elastic Buffer (CDC) | `usb_rx_elastic_buffer` | Done, unit-tested (added 2026-11-08). Since P5 the HS word FIFO (`clk_rxw` → `clk60`, 16-bit words) |
 | RX datapath wrapper | `usb_rx_datapath` | Done; `tb_usb_rx_datapath` (TX → RX loopback) passes |
 | Interconnect | `usb_tx_datapath`, `usb_ulpi_core`, `usb_ulpi_phy_if`, `usb_ulpi_phy_top` | Done; `tb_usb_ulpi_tx_top`, `tb_usb_ulpi_core`, `tb_usb_ulpi_phy_if` pass |
 | Pad wrapper (BBSUD8F for CLK, DATA, DIR, NXT, STP, RESETB; protection pulls; RESETB synchronizer; NAND tree) | `usb_ulpi_phy_pads` | Done; `tb_usb_ulpi_phy_pads` (register access at the pins) passes (added 2026-11-10) |

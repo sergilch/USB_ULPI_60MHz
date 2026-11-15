@@ -3,14 +3,11 @@
 //                        AFE/ams/tb_ams_link.vams
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -I AFE/ams -o sim_ams_link_shadow \
-//            usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v \
-//            usb_afe_tx_if.v usb_afe_rx_if.v usb_rx_nrzi_decoder.v usb_rx_sync_detect.v \
-//            usb_rx_bit_unstuffer.v usb_rx_deserializer.v usb_rx_eop_check.v \
-//            usb_rx_decoder.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
-//            usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v \
-//            usb_rx_datapath.v usb_rx_status_flt.v \
-//            usb_rx_status_sync.v usb_line_state.v usb_mode_term_ctrl.v \
+//   iverilog -g2005 -I AFE/ams -o sim_ams_link_shadow usb_bit_stuffer.v usb_nrzi_encoder.v \
+//            usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v usb_afe_tx_if.v \
+//            usb_afe_rx_if.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_hs_sipo.v \
+//            usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
+//            usb_rx_status_flt.v usb_rx_status_sync.v usb_line_state.v usb_mode_term_ctrl.v \
 //            afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v afe_fsls_bm.v afe_hs_rx_bm.v \
 //            afe_squelch_bm.v afe_cdr_bm.v AFE/ams/ams_phy_end.v tb_ams_link_shadow.v
 //   vvp sim_ams_link_shadow
