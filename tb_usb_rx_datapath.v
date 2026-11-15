@@ -6,8 +6,9 @@
 //            usb_tx_serializer.v usb_tx_path.v usb_rx_nrzi_decoder.v \
 //            usb_rx_sync_detect.v usb_rx_bit_unstuffer.v usb_rx_deserializer.v \
 //            usb_rx_eop_check.v usb_rx_decoder.v usb_rx_elastic_buffer.v \
-//            usb_rx_hs_frontend.v usb_rx_fsls_frontend.v usb_rx_datapath.v \
-//            usb_ulpi_rx_handler.v tb_usb_rx_datapath.v
+//            usb_rx_hs_frontend.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v \
+//            usb_rx_decoder8.v usb_rx_datapath.v usb_ulpi_rx_handler.v \
+//            tb_usb_rx_datapath.v
 //   vvp sim_rxdp
 //
 // Set-up
@@ -69,6 +70,15 @@ module tb_usb_rx_datapath;
         if (!rst_n) ce_cnt <= 3'd0;
         else        ce_cnt <= ce_cnt + 3'd1;
     end
+
+    // clk60 / ld for the DUT (ULPI testbench convention: clk60 rises with a
+    // blocking assignment on the edge where ce60 was high; ld = phase 3)
+    reg       clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire      ld = (ce_cnt == 3'd3);
 
     reg [2:0] fce_cnt = 3'd0;
     wire      ce60_far = (fce_cnt == 3'd7);
@@ -213,7 +223,8 @@ module tb_usb_rx_datapath;
     ) dut (
         .clk_bit     (clk_bit),
         .rst_n       (rst_n),
-        .ce60        (ce60),
+        .clk60       (clk60),
+        .ld          (ld),
         .speed       (speed),
         .rx_en       (rx_en),
         .tx_en       (loc_tx),
@@ -224,6 +235,9 @@ module tb_usb_rx_datapath;
         .rxrcv       (rxrcv),
         .rxdp        (rxdp),
         .rxdm        (rxdm),
+        .ls_dp       (),
+        .ls_dm       (),
+        .ls_rcv      (),
         .rx_start    (rx_start),
         .rx_valid    (rx_valid),
         .rx_data     (rx_data),

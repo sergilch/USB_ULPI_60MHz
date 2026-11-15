@@ -1,9 +1,17 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_fsls_frontend.v - self-checking testbench for usb_rx_fsls_frontend
+// tb_usb_rx_fsls_frontend.v - self-checking testbench for the FS/LS receive
+//                              front end usb_rx_fsls_sampler + usb_rx_fsls_dpll
+//                              (Plan_60MHz.md P4)
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxfsfe usb_rx_fsls_frontend.v tb_usb_rx_fsls_frontend.v
+//   iverilog -g2005 -o sim_rxfsfe usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v \
+//            usb_rx_fsls_frontend.v tb_usb_rx_fsls_frontend.v
 //   vvp sim_rxfsfe
+//
+// DUT: usb_rx_fsls_sampler (clk_bit island, word on ld) -> usb_rx_fsls_dpll
+// (clk60).  Reference: the single-clock usb_rx_fsls_frontend on the same pins;
+// the DUT must strobe the same symbols in the same order (same samples, same
+// DPLL rule), at most one per tick.
 //
 // The testbench drives D+ / D- / rxrcv with symbol frames at the FS or LS bit
 // rate of a far clock with a ppm offset: idle J, then a frame that starts with
@@ -26,18 +34,47 @@ module tb_usb_rx_fsls_frontend;
     parameter integer FS_DIV = 40;
     parameter integer LS_DIV = 320;
 
-    reg clk = 1'b0;
+    reg clk = 1'b0;                           // clk_bit
     always #(HALF) clk = ~clk;
     reg rst_n;
+
+    // clk60 / ld as in the ULPI testbenches: clk60 rises (blocking) on the
+    // clk_bit edge where phase 7 ends (E0), ld = phase 3
+    reg [2:0] ce_cnt = 3'd0;
+    always @(posedge clk or negedge rst_n)
+        if (!rst_n) ce_cnt <= 3'd0;
+        else        ce_cnt <= ce_cnt + 3'd1;
+    reg  clk60 = 1'b0;
+    always @(posedge clk) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     reg  ls = 1'b0, enable = 1'b1;
     reg  dp = 1'b1, dm = 1'b0, rcv = 1'b1;    // after skew
     wire b_en, b_lvl, b_se0, b_act;
 
-    usb_rx_fsls_frontend #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
+    wire [7:0] rcv_v, dp_v, dm_v;
+
+    usb_rx_fsls_sampler u_smp (
+        .clk_bit (clk), .rst_n (rst_n), .ld (ld),
+        .rxrcv (rcv), .rxdp (dp), .rxdm (dm),
+        .rcv_v (rcv_v), .dp_v (dp_v), .dm_v (dm_v)
+    );
+
+    usb_rx_fsls_dpll #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
+        .clk60 (clk60), .rst_n (rst_n),
+        .rcv_v (rcv_v), .dp_v (dp_v), .dm_v (dm_v), .ls (ls), .enable (enable),
+        .b_en (b_en), .b_lvl (b_lvl), .b_se0 (b_se0), .b_act (b_act)
+    );
+
+    // reference: the single-clock front end
+    wire r_en, r_lvl, r_se0, r_act;
+    usb_rx_fsls_frontend #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) u_ref (
         .clk (clk), .rst_n (rst_n),
         .rxrcv (rcv), .rxdp (dp), .rxdm (dm), .ls (ls), .enable (enable),
-        .b_en (b_en), .b_lvl (b_lvl), .b_se0 (b_se0), .b_act (b_act)
+        .b_en (r_en), .b_lvl (r_lvl), .b_se0 (r_se0), .b_act (r_act)
     );
 
     integer errors = 0;
@@ -66,10 +103,39 @@ module tb_usb_rx_fsls_frontend;
     integer ck_i = -1;                        // index in the current frame, -1 = waiting for K
     integer strobes = 0, sym_ok = 0;
 
-    always @(posedge clk) begin
-        if (rst_n && b_en) begin
+    reg [31:0] en_hist = 32'hFFFF_FFFF;
+    always @(posedge clk) en_hist <= {en_hist[30:0], enable};
+
+    // reference strobes, matched in order by the DUT's
+    reg [1:0] rq [0:1023];
+    integer   rq_w = 0, rq_r = 0, ref_ok = 0;
+    // Strobe timing: the DUT pipeline is fixed, so its strobe lags the
+    // reference's by 20 .. 27 clk_bit cycles, by the tick phase only (sampler
+    // shift + wait for ld + E4 -> E0 + DPLL input register + output register).
+    // A strobe one sample early or late moves one phase into the previous /
+    // next tick, i.e. the window to 19 .. 26 or 21 .. 28.
+    real      rt [0:1023];
+    real      lag_min = 1.0e9, lag_max = 0.0;
+    reg       ign = 1'b0;             // speed change: compare nothing (mode_quiet)
+    always @(posedge clk)
+        if (rst_n && r_en && !ign) begin rq[rq_w % 1024] = {r_lvl, r_se0}; rt[rq_w % 1024] = $realtime; rq_w = rq_w + 1; end
+
+    always @(posedge clk60) begin
+        if (rst_n && b_en && !ign) begin
+            if (rq_r >= rq_w) begin
+                errors = errors + 1;
+                $display("ERROR @%0t: DUT strobe without a reference strobe", $time);
+            end else begin
+                if (rq[rq_r % 1024] !== {b_lvl, b_se0}) begin
+                    errors = errors + 1;
+                    $display("ERROR @%0t: strobe %0d: DUT lvl/se0 %b%b, reference %b", $time, rq_r, b_lvl, b_se0, rq[rq_r % 1024]);
+                end else ref_ok = ref_ok + 1;
+                if ($realtime - rt[rq_r % 1024] < lag_min) lag_min = $realtime - rt[rq_r % 1024];
+                if ($realtime - rt[rq_r % 1024] > lag_max) lag_max = $realtime - rt[rq_r % 1024];
+                rq_r = rq_r + 1;
+            end
             strobes = strobes + 1;
-            if (b_act !== enable) begin
+            if (b_act !== enable && b_act !== en_hist[31]) begin   // enable now or ~30 cycles ago (latency)
                 errors = errors + 1;
                 $display("ERROR @%0t: b_act = %b, enable = %b", $time, b_act, enable);
             end
@@ -139,12 +205,30 @@ module tb_usb_rx_fsls_frontend;
         end
     endtask
 
+    // After a speed change (ls is quasi-static: it changes only between packets)
+    // the idle line of the old speed reads as K for a moment, and the reference
+    // (ls applied per sample) and the DUT (ls applied per tick, one word later)
+    // strobe that transient differently.  Compare nothing for 3 idle bits, then
+    // re-pair: wait for a reference strobe and let the DUT's copy of it pass
+    // (DUT latency <= 30 clk_bit cycles < 36 < one FS bit).
+    task mode_quiet;
+        begin
+            ign = 1'b1;
+            idle(3);
+            @(posedge clk); while (!r_en) @(posedge clk);
+            repeat (36) @(posedge clk);
+            rq_r = rq_w;              // drop what was in flight when the window opened
+            ign  = 1'b0;
+        end
+    endtask
+
     task run(input l, input real ppm, input integer frames);
         integer p, s0;
         real    tb0;
         begin
             ls     = l;
             bit_ns = (l ? LS_DIV : FS_DIV) * 2.0 * HALF / (1.0 + ppm * 1.0e-6);
+            mode_quiet;
             idle(20);
             // strobe rate on an idle line
             s0 = strobes; tb0 = $realtime;
@@ -179,16 +263,28 @@ module tb_usb_rx_fsls_frontend;
 
         $display("enable -> b_act");
         ls = 1'b0; bit_ns = FS_DIV * 2.0 * HALF;
+        mode_quiet;
         enable = 1'b0;
         idle(5);
         enable = 1'b1;
         idle(5);
 
+        repeat (200) @(posedge clk);
+        if (lag_min < 19.5 * 2.0 * HALF || lag_max > 27.5 * 2.0 * HALF) begin
+            errors = errors + 1;
+            $display("ERROR: DUT strobes %.2f .. %.2f clk_bit cycles after the reference, expected 20 .. 27",
+                     lag_min / (2.0 * HALF), lag_max / (2.0 * HALF));
+        end
+        if (rq_w - rq_r > 1) begin                 // one may be in flight (idle line keeps strobing)
+            errors = errors + 1;
+            $display("ERROR: reference %0d strobes, DUT %0d", rq_w, rq_r);
+        end
         if (cf != nf) begin
             errors = errors + 1;
             $display("ERROR: %0d of %0d frames checked", cf, nf);
         end
-        $display("%0d frames, %0d symbols checked", cf, sym_ok);
+        $display("%0d frames, %0d symbols checked; %0d strobes equal to the reference, lag %.2f .. %.2f ns",
+                 cf, sym_ok, ref_ok, lag_min, lag_max);
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED: %0d error(s)", errors);
         $finish;

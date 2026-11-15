@@ -35,7 +35,7 @@ These blocks exist in RTL. All 22 RTL testbenches (plus 4 for the AFE behavioura
 | SYNC + PID/Data Mux | `usb_tx_sync_mux` | Done, unit-tested (added 2026-11-08) |
 | NRZI Encoder | `usb_nrzi_encoder` | Done, unit-tested (added 2026-11-08) |
 | TX path wrapper (stuffer → NRZI → serializer, underrun discard) | `usb_tx_path` | Done, unit-tested (added 2026-11-08) |
-| RX front ends (HS capture on the recovered clock, FS/LS DPLL) | `usb_rx_hs_frontend`, `usb_rx_fsls_frontend` | Done, unit-tested (added 2026-11-08) |
+| RX front ends (HS capture on the recovered clock, FS/LS DPLL) | `usb_rx_hs_frontend`, `usb_rx_fsls_frontend` | Done, unit-tested (added 2026-11-08). FS/LS replaced 2026-11-14 by `usb_rx_fsls_sampler` + `usb_rx_fsls_dpll` (60 MHz migration, `Plan_60MHz.md` P4) |
 | NRZI Decoder, SYNC Detect, Bit Unstuffer, Deserializer 1:8, EOP + RxError Check | `usb_rx_nrzi_decoder`, `usb_rx_sync_detect`, `usb_rx_bit_unstuffer`, `usb_rx_deserializer`, `usb_rx_eop_check`, wrapper `usb_rx_decoder` | Done, unit-tested (added 2026-11-08) |
 | Elastic Buffer (CDC) | `usb_rx_elastic_buffer` | Done, unit-tested (added 2026-11-08) |
 | RX datapath wrapper | `usb_rx_datapath` | Done; `tb_usb_rx_datapath` (TX → RX loopback) passes |

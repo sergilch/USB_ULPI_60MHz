@@ -5,18 +5,21 @@
 //   iverilog -g2005 -o sim_line_state usb_line_state.v tb_usb_line_state.v
 //   vvp sim_line_state
 //
-// The inputs are the synchronized receiver outputs (as from usb_rx_status_sync),
-// driven on the falling clk_bit edge.
+// The inputs are the receiver samples (clk60 domain, as from usb_rx_datapath)
+// and squelch / disconnect / hs_tx_act (clk_bit domain), all driven on the
+// falling clk_bit edge.  clk60 / ld are generated as in the ULPI testbenches
+// (clk60 rises with a blocking assignment on the edge where ce60 was high).
 //
 // LineState reference, rebuilt from the spec rather than from the DUT's
-// counter: per ce60 tick n the testbench computes the raw state r[n] from the
+// counter: per clk60 tick n the testbench computes the raw state r[n] from the
 // inputs the DUT sees at that edge (FS / LS {D-, D+}; HS squelch ? 00 : 01;
-// chirp squelch ? 00 : rxrcv ? 01 : 10), keeps the tick history, and expects
+// chirp squelch ? 00 : rxrcv ? 01 : 10, squelch as taken on the last ld edge),
+// keeps the tick history, and expects
 //   linestate[n] = r[n]            if r[n] is J / K in FS / LS, or in HS mode,
 //                = r[n]            if r[n-N+1 .. n] are all equal (N = 2 FS SE0 /
 //                                  SE1, 14 LS SE0 / SE1, 2 chirp),
 //                = linestate[n-1]  otherwise.
-// It is checked after every clk_bit edge (so linestate may change on ce60
+// It is checked after every clk_bit edge (so linestate may change on clk60
 // edges only).  Phases:
 //   1. random FS line: J / K bits with SE0 / SE1 skew glitches of 1-12 cycles
 //      at the crossovers, real SE0 (EOP) of 2 bits, SE1 bursts;
@@ -30,16 +33,18 @@
 // 2 ticks late at most and both J changes at most 1 tick late; a 15-cycle FS
 // skew glitch (2 ticks possible) is allowed to show; LS SE0 of 14 ticks shows.
 //
-// HostDisconnect: hs_tx_act windows with disc pulses before, inside, in the
-// tail and after the window; host_mode / OpMode / XcvrSelect gating; result
-// taken over on the first tick after the window closes and held until the next
-// window; cleared when the port leaves HS host mode.
+// HostDisconnect (tick resolution, DISC_TAIL = 4 ticks): hs_tx_act windows with
+// disc pulses before, inside, in the tail and after the window; host_mode /
+// OpMode / XcvrSelect gating; result taken over on the first tick after the
+// window closes and held until the next window; cleared when the port leaves HS
+// host mode.  The reference ORs disc / hs_tx_act per tick as the DUT's island.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module tb_usb_line_state;
     parameter real HALF = 1.0416667;
-    localparam TAIL = 32;
+    localparam TAIL   = 32;           // stimulus: clk_bit cycles of the window tail
+    localparam TAIL_T = TAIL / 8;     // DUT / reference: ticks
 
     integer errors = 0;
     integer seed   = 32'h11E5_7A7E;
@@ -50,6 +55,12 @@ module tb_usb_line_state;
     reg [2:0] ce_cnt = 3'd0;
     wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
+    reg  clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     reg       dp = 1'b0, dm = 1'b0, rcv = 1'b1, sq = 1'b1, disc = 1'b0;
     reg [1:0] xs = 2'b01, om = 2'b00;
@@ -57,8 +68,8 @@ module tb_usb_line_state;
     wire [1:0] ls;
     wire       hd;
 
-    usb_line_state #(.DISC_TAIL(TAIL)) dut (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
+    usb_line_state #(.DISC_TAIL(TAIL_T)) dut (
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld),
         .rxdp_s(dp), .rxdm_s(dm), .rxrcv_s(rcv), .squelch_s(sq), .disc_s(disc),
         .xcvrselect(xs), .opmode(om), .host_mode(host), .hs_tx_act(txa),
         .linestate(ls), .host_disc(hd));
@@ -72,8 +83,9 @@ module tb_usb_line_state;
     reg [1:0] rh [0:15];              // raw per tick, rh[0] newest
     reg [1:0] exp_ls = 2'b00;
     reg [1:0] r;
-    reg       ce_q = 1'b0;
-    always @(negedge clk_bit) ce_q <= (ce_cnt == 3'd7);
+    reg       ce_q = 1'b0, ld_q = 1'b0;
+    always @(negedge clk_bit) begin ce_q <= (ce_cnt == 3'd7); ld_q <= (ce_cnt == 3'd3); end
+    reg       sq_ld = 1'b1;           // squelch as taken by the DUT on ld
     integer i, N;
     reg     same, jk;
     integer nchg = 0;                 // linestate changes seen
@@ -84,9 +96,12 @@ module tb_usb_line_state;
         if (!rst_n) begin
             for (i = 0; i < 16; i = i + 1) rh[i] = 2'b00;
             exp_ls = 2'b00;
+            sq_ld  = 1'b1;
+        end else if (ld_q) begin
+            sq_ld = sq;
         end else if (ce_q) begin
-            if (xs == 2'b00 && om == 2'b10) r = sq ? 2'b00 : (rcv ? 2'b01 : 2'b10);
-            else if (xs == 2'b00)           r = sq ? 2'b00 : 2'b01;
+            if (xs == 2'b00 && om == 2'b10) r = sq_ld ? 2'b00 : (rcv ? 2'b01 : 2'b10);
+            else if (xs == 2'b00)           r = sq_ld ? 2'b00 : 2'b01;
             else                            r = {dm, dp};
             for (i = 15; i > 0; i = i - 1) rh[i] = rh[i-1];
             rh[0] = r;
@@ -118,31 +133,40 @@ module tb_usb_line_state;
     end
 
     // ---------------- HostDisconnect reference ----------------
-    // window: from the first edge with txa until TAIL edges after txa fell;
-    // result = disc seen at any edge of the window (as the DUT samples it);
-    // taken over on the next ce60 edge after the window closed.
+    // per tick: disc / txa ORed over the clk_bit edges up to and including the
+    // ld edge; at the next clk60 edge: first take over a result that was ready
+    // (window closed on an earlier tick), then the window: opened / extended by
+    // a tick with txa, closed TAIL_T ticks after the last one; result = disc in
+    // any tick of the window.
     reg     exp_hd = 1'b0, w_open = 1'b0, w_acc = 1'b0, w_res = 1'b0, w_done = 1'b0;
+    reg     d_a = 1'b0, t_a = 1'b0, d_t = 1'b0, t_t = 1'b0;
     integer w_tail = 0;
     wire    dmode = host && (xs == 2'b00) && (om == 2'b00);
 
     always @(posedge clk_bit) begin
         if (!rst_n) begin
             exp_hd = 0; w_open = 0; w_acc = 0; w_done = 0;
+            d_a = 0; t_a = 0; d_t = 0; t_t = 0;
         end else begin
-            // ce60 edge: take over a result that was ready before this edge
-            if (ce_q) begin
-                if (!dmode)       exp_hd = 0;
-                else if (w_done) begin exp_hd = w_res; w_done = 0; end
+            if (ld_q) begin
+                d_t = d_a | disc; t_t = t_a | txa; d_a = 0; t_a = 0;
+            end else begin
+                d_a = d_a | disc; t_a = t_a | txa;
             end
-            if (!dmode) begin
-                w_open = 0; w_acc = 0; w_done = 0;
-            end else if (txa) begin
-                w_acc  = w_open ? (w_acc | disc) : disc;
-                w_open = 1; w_tail = TAIL;
-            end else if (w_open) begin
-                w_acc  = w_acc | disc;
-                w_tail = w_tail - 1;
-                if (w_tail == 0) begin w_open = 0; w_res = w_acc; w_done = 1; end
+            if (ce_q) begin
+                if (!dmode) begin
+                    exp_hd = 0; w_open = 0; w_acc = 0; w_done = 0;
+                end else begin
+                    if (w_done) begin exp_hd = w_res; w_done = 0; end
+                    if (t_t) begin
+                        w_acc  = w_open ? (w_acc | d_t) : d_t;
+                        w_open = 1; w_tail = TAIL_T;
+                    end else if (w_open) begin
+                        w_acc  = w_acc | d_t;
+                        if (w_tail <= 1) begin w_open = 0; w_res = w_acc; w_done = 1; end
+                        w_tail = w_tail - 1;
+                    end
+                end
             end
         end
         #0.1;
@@ -281,13 +305,14 @@ module tb_usb_line_state;
         // disc in the tail (late detector)
         txa = 1; cyc(80); txa = 0; cyc(TAIL - 4); disc = 1; cyc(2); disc = 0; cyc(40);
         if (hd !== 1'b1) begin errors = errors + 1; $display("ERROR: disconnect in the tail not reported"); end
-        // disc on the last edge of the window only
+        // (the window ends 24..32 clk_bit cycles after hs_tx_act falls, by tick alignment)
+        // disc for one cycle late in the tail
         txa = 1; cyc(80); txa = 0; cyc(TAIL + 20);
-        txa = 1; cyc(80); txa = 0; cyc(TAIL - 1); disc = 1; cyc(1); disc = 0; cyc(40);
-        if (hd !== 1'b1) begin errors = errors + 1; $display("ERROR: disconnect on the last window edge not reported"); end
-        // disc one edge after the window: ignored
-        txa = 1; cyc(80); txa = 0; cyc(TAIL); disc = 1; cyc(1); disc = 0; cyc(40);
-        if (hd !== 1'b0) begin errors = errors + 1; $display("ERROR: disconnect one edge after the window reported"); end
+        txa = 1; cyc(80); txa = 0; cyc(TAIL - 8); disc = 1; cyc(1); disc = 0; cyc(40);
+        if (hd !== 1'b1) begin errors = errors + 1; $display("ERROR: disconnect late in the tail not reported"); end
+        // disc one tick after the latest window end: ignored
+        txa = 1; cyc(80); txa = 0; cyc(TAIL + 8); disc = 1; cyc(1); disc = 0; cyc(40);
+        if (hd !== 1'b0) begin errors = errors + 1; $display("ERROR: disconnect after the window reported"); end
         // disc after the window: ignored; held until the next window
         txa = 1; cyc(80); txa = 0; cyc(TAIL + 10); disc = 1; cyc(20); disc = 0; cyc(20);
         if (hd !== 1'b0) begin errors = errors + 1; $display("ERROR: disconnect outside the window reported"); end

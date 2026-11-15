@@ -55,7 +55,7 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 
 `usb_ulpi_tx_top` is an older, smaller top level: input capture, TX datapath and bus owner only, with no register access.
 
-`usb_rx_decoder8` (`Plan_60MHz.md` P3) is the 60 MHz replacement for `usb_rx_decoder`: the same RX bit chain for up to 8 bits per `clk60` tick, in three pipeline stages, one instance for HS and FS/LS. It is verified standalone against `usb_rx_decoder` and is not wired into `usb_rx_datapath` yet.
+`usb_rx_decoder8` (`Plan_60MHz.md` P3) is the 60 MHz replacement for `usb_rx_decoder`: the same RX bit chain for up to 8 bits per `clk60` tick, in three pipeline stages, one instance for HS and FS/LS. Since P4 it is the FS/LS chain of `usb_rx_datapath`, behind `usb_rx_fsls_sampler` (480 MHz island) and `usb_rx_fsls_dpll` (60 MHz); the HS chain still uses `usb_rx_decoder` on the recovered clock until P5. `usb_rx_fsls_frontend` is no longer used in the design; it stays as the reference model of `tb_usb_rx_fsls_frontend`.
 
 Each module's header comment holds its detailed spec: pipeline position, timing and corner cases.
 
@@ -124,7 +124,7 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | `tb_usb_rx_eop_check.v`       | `usb_rx_eop_check.v`                                 |
 | `tb_usb_rx_decoder8.v`        | the `usb_rx_decoder` chain plus `usb_rx_decoder8.v`: same events as the serial decoder, n bits per tick, exact backpressure |
 | `tb_usb_rx_elastic_buffer.v`  | `usb_rx_elastic_buffer.v`                            |
-| `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_frontend.v`                             |
+| `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_sampler.v` `usb_rx_fsls_dpll.v`, reference `usb_rx_fsls_frontend.v` |
 | `tb_usb_rx_hs_frontend.v`     | `usb_rx_hs_frontend.v`                               |
 | `tb_usb_rx_status_sync.v`     | `usb_rx_status_flt.v` `usb_rx_status_sync.v`         |
 | `tb_usb_line_state.v`         | `usb_line_state.v`                                   |
@@ -178,7 +178,7 @@ Copy the integration testbenches' file lists from their headers.
 - ✅ TX data boundary to the AFE (`usb_afe_tx_if`: retiming, HS / FS / LS driver select, `TX_EN` lead / lag, idle clamp), verified through the AFE models; not wired into the top level yet.
 - ✅ HS receive boundary to the AFE (`usb_afe_rx_if`: RX / CDR enables, isolation, squelch-based CDR lock, squelch-latency compensation), with the lock-time margin measured through the AFE models; not wired into the top level yet.
 - ✅ Clocking: `ce60` / CLKOUT generator (`usb_clk_gen`, glitch-free start / stop; since `Plan_60MHz.md` P1 also the 60 MHz core clock `clk60` and the island strobe `ld`) and the digital PLL lock detector (`usb_pll_lock_det`, REFSEL decode, loss-of-lock and dead-clock detection), verified with a PLL model; not wired into the top level yet.
-- ✅ Receiver status sync and glitch filters (`usb_rx_status_sync`: FS/LS receivers, squelch, disconnect, VBUS / ID debounce) and LineState / HostDisconnect detection (`usb_line_state`: FS / LS skew filter, HS squelch, chirp), verified in an FS / LS loopback through the AFE models; not wired into the top level yet.
+- ✅ Receiver status sync and glitch filters (`usb_rx_status_sync`: squelch, disconnect, VBUS / ID debounce; the FS/LS receivers are sampled by `usb_rx_fsls_sampler` in `usb_rx_datapath`) and LineState / HostDisconnect detection (`usb_line_state`: FS / LS skew filter, HS squelch, chirp), verified in an FS / LS loopback through the AFE models; not wired into the top level yet.
 - ✅ Mode / termination control (`usb_mode_term_ctrl`: pull-up, HS terminations and pull-downs per the USB3320 table with break-before-make switching; OpMode 10 chirp / resume framing; OpMode 01 driver disable), inside `usb_ulpi_phy_top`; attach, HS handshake, suspend / resume and disconnect verified with two PHY ends through the AFE models.
 - ✅ Pad wrapper `usb_ulpi_phy_pads` (BBSUD8F cells), verified for register access at the pins.
 - ⏳ The RX datapath is not wired into `usb_ulpi_phy_top` yet; that happens with the full top level.

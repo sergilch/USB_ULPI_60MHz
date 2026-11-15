@@ -6,7 +6,7 @@
 //            usb_tx_serializer.v usb_tx_path.v usb_rx_nrzi_decoder.v \
 //            usb_rx_sync_detect.v usb_rx_bit_unstuffer.v usb_rx_deserializer.v \
 //            usb_rx_eop_check.v usb_rx_decoder.v usb_rx_elastic_buffer.v \
-//            usb_rx_hs_frontend.v usb_rx_fsls_frontend.v usb_rx_datapath.v \
+//            usb_rx_hs_frontend.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
 //            afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v afe_hs_rx_bm.v \
 //            afe_squelch_bm.v afe_cdr_bm.v tb_afe_hs_chain.v
 //   vvp sim_afe_hs_chain
@@ -69,6 +69,14 @@ module tb_afe_hs_chain;
     wire ce60 = (ce_cnt == 3'd7), ce60_far = (fce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt  <= ce_cnt + 3'd1;
     always @(posedge clk_far) fce_cnt <= fce_cnt + 3'd1;
+    // clk60 / ld for the RX datapath (clk60 rises with a blocking assignment on
+    // the clk_bit edge where ce60 was high, ld = phase 3; Plan_60MHz.md P4)
+    reg  clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     // ---------------- far transmitter ----------------
     reg  [7:0] f_b [0:127];
@@ -151,12 +159,12 @@ module tb_afe_hs_chain;
     wire       s6, v6, e6, r6, b6, s4, v4, e4, r4, b4;
     wire [7:0] d6, d4;
     usb_rx_datapath #(.HS_ZMIN(6)) u_dp6 (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(2'b00), .rx_en(1'b1), .tx_en(1'b0),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(2'b00), .rx_en(1'b1), .tx_en(1'b0),
         .clk_rx(clk_rx), .hs_rxd(hs_rxd), .hs_squelch(squelch), .hs_cdr_lock(1'b1),
         .rxrcv(1'b1), .rxdp(1'b0), .rxdm(1'b0),
         .rx_start(s6), .rx_valid(v6), .rx_data(d6), .rx_end(e6), .rx_error(r6), .rx_busy(b6));
     usb_rx_datapath #(.HS_ZMIN(4)) u_dp4 (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(2'b00), .rx_en(1'b1), .tx_en(1'b0),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(2'b00), .rx_en(1'b1), .tx_en(1'b0),
         .clk_rx(clk_rx), .hs_rxd(hs_rxd), .hs_squelch(squelch), .hs_cdr_lock(1'b1),
         .rxrcv(1'b1), .rxdp(1'b0), .rxdm(1'b0),
         .rx_start(s4), .rx_valid(v4), .rx_data(d4), .rx_end(e4), .rx_error(r4), .rx_busy(b4));

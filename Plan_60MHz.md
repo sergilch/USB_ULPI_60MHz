@@ -1,7 +1,7 @@
 # Plan: move the digital core to a 60 MHz clock
 
-Status: in progress. P1 (clock generator, SDC skeleton, STA baseline) and P2 (ULPI core on `clk60`)
-done 2026-11-14; P0 open (D10 proposed, waiting for the analog team). Progress and results:
+Status: in progress. P1 (clock generator, SDC skeleton, STA baseline), P2 (ULPI core on `clk60`),
+P3 (parallel RX decoder) and P4 (FS/LS receive on `clk60`) done 2026-11-14; P0 open (D10 proposed, waiting for the analog team). Progress and results:
 section 8.
 Related: `WORK_PLAN.md` (D1, D2, 5.2, 9.1, 9.3, risk R1), `AFE_INTEGRATION_PLAN.md` (I12),
 `DOC/afe_interface_spec.md` 7.2 (480 MHz timing estimate on xh018).
@@ -301,8 +301,9 @@ blocks), so that wiring is done once, on the new clock structure.
 | P0 | Open. D10 proposed in `WORK_PLAN.md` (serial CDR data + digital 1:8 SIPO; ULPI I/O reference; boundary convention of 3.4). I12 / Q1 reworded in `AFE_INTEGRATION_PLAN.md`. Needs the analog team's answer. |
 | P1 | ✅ 2026-11-14. `usb_clk_gen`: Johnson ÷8 counter, `clk60`, `phase_j`, `ld`, CLKOUT port renamed `clkout`; `tb_usb_clk_gen` (reference model, reset mid-period, every illegal counter state, 60↔480 loopback). `constraints/usb_phy.sdc` skeleton; `run_sta.sh` (OpenSTA); baseline below. All 39 TBs pass, `run_synth.sh` passes. |
 | P2 | ✅ 2026-11-14, with the deviations of 8.3. `usb_ulpi_phy_top` / `usb_ulpi_phy_if` / `usb_ulpi_core` / `usb_tx_datapath` / `usb_ulpi_tx_top` / `usb_ulpi_phy_pads` take `clk60` + `ld` instead of `ce60`; all ULPI-domain leaves (core, RX path, reg file, trim regs, mode / termination control) on `clk60` with `ce` = 1; the TX serializer stays on `clk_bit` behind the new `usb_tx_ser_bridge` (`usb_tx_path` parameter `SPLIT`). New `tb_usb_tx_path_split`. All 40 TBs pass; the ULPI-level TBs give the same packet / retry counts as before. |
-| P3 | ✅ 2026-11-14, see 8.5. New `usb_rx_decoder8` (3-stage parallel RX bit chain, one instance for HS and FS/LS) + `tb_usb_rx_decoder8` (event-for-event against `usb_rx_decoder`, exact backpressure). Slow corner: 13.7 ns worst path (+2.9 ns slack at 16.7 ns), typ +9.8 ns. Equivalent on the 1000-packet default run and in mutation tests; the exit criterion (≥ 10⁵ packets, 2 seeds × 5·10⁴) was still running at commit time. Not wired in yet (P4 / P5). |
-| P4–P9 | Not started. |
+| P3 | ✅ 2026-11-14, see 8.5. New `usb_rx_decoder8` (3-stage parallel RX bit chain, one instance for HS and FS/LS) + `tb_usb_rx_decoder8` (event-for-event against `usb_rx_decoder`, exact backpressure). Slow corner: 13.7 ns worst path (+2.9 ns slack at 16.7 ns), typ +9.8 ns. Equivalent on the 1000-packet default run and in mutation tests; exit criterion met: 10⁵ packets (seeds 11 and 22, 5·10⁴ each, 0 errors; 4989 two-event ticks incl. 768 END+START). Wired in for FS/LS in P4; HS in P5. |
+| P4 | ✅ 2026-11-14, see 8.6. New `usb_rx_fsls_sampler` (clk_bit island, 54 flops) + `usb_rx_fsls_dpll` (clk60); FS/LS half of `usb_rx_datapath` = sampler → DPLL → `usb_rx_decoder8` → 4-entry event FIFO; output stage and hold-off on clk60; `usb_line_state` on clk60 fed from the sampler; `rxdp` / `rxdm` / `rxrcv` out of `usb_rx_status_sync`. `tb_usb_rx_fsls_frontend` rewritten (sample-exact against the old front end), `tb_usb_rx_datapath`, `tb_usb_afe_fsls`, `tb_usb_afe_chirp` pass with unchanged packet counts; LineState J/K latency 19 cycles (≤ 3 ticks). |
+| P5–P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -389,6 +390,7 @@ Before P2: −16.06 / −4461 / 477 and −12.17 / −989 / 169. By path class i
 
 | # | Risk (new in P2) | Mitigation |
 |---|---|---|
+| K11 | *(new, P4)* `usb_rx_decoder8` needs `ZMIN_HS` ≥ 6 (two events per tick), but the AFE spec recommends `HS_ZMIN` = 4 (`tb_usb_afe_chirp`, AMS). With 4, a squelch glitch can give END, START, END in one tick. | P5: a third event slot (and FIFO write port), or keep ZMIN 6 for the decoder8 and decide the recommendation with the analog team (the A3 SYNC budget). Until P5 the HS chain is the serial decoder, so nothing is affected yet. |
 | K10 | Island → core paths have half a tick (8.3 ns, E4 → E0). The bridge's `acc_q` / `tx_underrun_t` feed the whole combinational ready chain of the stuffer / NRZI encoder: 12.9 ns unsized, of which 6.6 ns is one unbuffered net with fan-out 34 (≈ +0.5 ns slack with a buffer tree). | Interim only: the bridge goes away in P6 (the 60 MHz serializer and the PISO boundary carry data only). Rule for P3–P6: an island register read by the core feeds a clk60 flop or only shallow logic. |
 
 ### 8.5 P3 notes (`usb_rx_decoder8`)
@@ -415,4 +417,49 @@ Before P2: −16.06 / −4461 / 477 and −12.17 / −989 / 169. By path class i
   catches errors in each stage; the three surviving mutants are equivalent under these facts.
 - **Area:** 19.8 k (924 cells, 145 flops) vs 11.6 k for the two serial decoders it replaces; the
   FS/LS elastic buffer it makes unnecessary is removed in P4.
+
+### 8.6 P4 notes (FS/LS receive on `clk60`)
+
+- **`usb_rx_fsls_sampler`** (clk_bit): 2-FF synchronizers, 1:8 shift registers, word register on `ld`
+  (boundary rule; plan 3.2 said "phase 7", superseded by D10(d)). 54 flops, flop → ≤ 1 mux → flop.
+- **`usb_rx_fsls_dpll`** (clk60): the per-sample rule of `usb_rx_fsls_frontend` in closed form.
+  Because half a bit is ≥ 8 samples, a strobe within a tick can only come from the carried count:
+  `strobe[i] = no change in samples 0..i && cnt == half − i`. At most one bit per tick, as
+  `usb_rx_decoder8` requires for FS/LS. The "last J/K level held through SE0" of the old front end is
+  equivalent to comparing with the previous sample (a sample after SE0 is a change anyway), which
+  removes a mux chain. The sampler word gets a clk60 input register first (K10: island → core only
+  into flops), so data reach the decoder 2 ticks after the word. `tb_usb_rx_fsls_frontend` checks
+  every strobe against the old front end (same symbols, in order) and the strobe position: always
+  20–27 clk_bit cycles behind the reference, so a one-sample phase error fails.
+- **`usb_rx_datapath`**: ports `clk60` + `ld` instead of `ce60`; `rxdp` / `rxdm` / `rxrcv` are now
+  the raw AFE outputs (the sampler synchronizes them) and new outputs `ls_dp` / `ls_dm` / `ls_rcv`
+  (newest samples) feed `usb_line_state`. FS/LS chain = sampler → DPLL → `usb_rx_decoder8` (hs = 0) →
+  4-entry event FIFO (two writes, one pop per tick); the FS elastic buffer and `FS_AW` are gone.
+  The HS chain is unchanged on clk_rx; its elastic buffer reads on clk60. The output stage runs
+  every tick. TX hold-off: a 2-flop island ORs `tx_en` per tick; the counter runs on clk60 in
+  ⌈HOLDOFF / 8⌉ ticks (`HOLDOFF` stays in clk_bit cycles). The 480 MHz hold-off counter (−3.5 ns)
+  is gone.
+- **`usb_line_state`** on clk60 (+ `clk_bit` / `ld` for a 5-flop input island: squelch on `ld`,
+  `disc` / `hs_tx_act` ORed per tick). `DISC_TAIL` is in ticks now (4 = the old 32 cycles); the
+  disconnect window ends 24–32 cycles after `hs_tx_act` falls, by tick alignment. Two directed
+  edge-exact cases of `tb_usb_line_state` became "late in the tail" / "after the latest window end";
+  the tick reference covers the rest exactly.
+- **LineState latency** (FS/LS J/K, `tb_usb_afe_fsls`): 14 → 19 clk_bit cycles (word taken on `ld`,
+  read at the next E0); SE0/SE1 117 → 123. The testbench limits were 2 ticks; now 3 ticks (24 cycles),
+  the "2–3 clocks" of ULPI 1.1, and the SE limits + 1 tick.
+- **`usb_rx_status_sync`** keeps squelch / disconnect / VBUS / ID (the squelch / disconnect filters
+  move in P7). Its testbench keeps the 9-bit vectors with the FS/LS bits tied off.
+- `usb_rx_fsls_frontend` is not used by the design any more; it stays as the testbench reference
+  (remove in P9 with the other single-clock leftovers).
+
+STA, slow corner (unsized, as 8.2):
+
+| Top | Before P4 | After P4 | Remaining violations |
+|---|---|---|---|
+| `usb_rx_datapath` | −10.83 / −2143 / 482 | −9.40 / −1628 / 340 | async-reset recovery on clk_rx (−9.4, rst_rx_n fan-out), clk_rx bit chain (−6.2): HS, P5; clk_bit −0.13 (single-gate island, K8); clk60 +2.53 |
+| `usb_line_state` | −3.57 / −33 / 19 | −0.33 / −0.6 / 5 | clk_bit input island accumulators (single gate, K8); clk60 +1.12 |
+| `usb_rx_status_sync` | −6.92 / −456 / 78 | −5.86 / −369 / 78 | squelch / disc filters at 480 MHz (P7) |
+
+Typ corner: `usb_rx_datapath` −2.98, `usb_line_state` +0.84, `usb_rx_status_sync` −1.80. Area:
+`usb_rx_datapath` 37.1 k → 41.2 k (the decoder8 replaces the serial FS decoder + FS elastic buffer).
 

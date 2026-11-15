@@ -6,7 +6,7 @@
 //            usb_tx_serializer.v usb_tx_path.v usb_rx_nrzi_decoder.v \
 //            usb_rx_sync_detect.v usb_rx_bit_unstuffer.v usb_rx_deserializer.v \
 //            usb_rx_eop_check.v usb_rx_decoder.v usb_rx_elastic_buffer.v \
-//            usb_rx_hs_frontend.v usb_rx_fsls_frontend.v usb_rx_datapath.v \
+//            usb_rx_hs_frontend.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
 //            usb_afe_rx_if.v afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v \
 //            afe_hs_rx_bm.v afe_squelch_bm.v afe_cdr_bm.v tb_usb_afe_rx_if.v
 //   vvp sim_afe_rx_if                 (statistics: add -PTB.NPKT=300 or more)
@@ -80,6 +80,14 @@ module tb_usb_afe_rx_if;
     wire ce60 = (ce_cnt == 3'd7), ce60_far = (fce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt  <= ce_cnt + 3'd1;
     always @(posedge clk_far) fce_cnt <= fce_cnt + 3'd1;
+    // clk60 / ld for the RX datapath (clk60 rises with a blocking assignment on
+    // the clk_bit edge where ce60 was high, ld = phase 3; Plan_60MHz.md P4)
+    reg  clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     // ---------------- far transmitter ----------------
     reg  [7:0] f_b [0:127];
@@ -212,7 +220,7 @@ module tb_usb_afe_rx_if;
                 .clk_rx(clk_rx), .hs_rxd_a(hs_rxd_a), .squelch_a(squelch),
                 .hs_rxd(o_rxd[g]), .hs_squelch(o_sq[g]), .hs_cdr_lock(o_lk[g]));
             usb_rx_datapath #(.HS_ZMIN(ZM)) u_dp (
-                .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(speed), .rx_en(rx_en), .tx_en(1'b0),
+                .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(speed), .rx_en(rx_en), .tx_en(1'b0),
                 .clk_rx(clk_rx), .hs_rxd(o_rxd[g]), .hs_squelch(o_sq[g]), .hs_cdr_lock(o_lk[g]),
                 .rxrcv(1'b1), .rxdp(1'b0), .rxdm(1'b0),
                 .rx_start(r_st[g]), .rx_valid(r_vl[g]), .rx_data(r_dt[8*g +: 8]),

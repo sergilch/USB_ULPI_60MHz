@@ -2,22 +2,20 @@
 // usb_rx_status_sync.v
 //
 // "Receiver status sync + glitch filter" of the AFE interface (WORK_PLAN 3.1 /
-// 4.1, AFE_INTEGRATION_PLAN.md phase A5).  Single synchronization point for
-// the static and slow analog status outputs.  Position:
+// 4.1, AFE_INTEGRATION_PLAN.md phase A5).  Synchronization point for the
+// slow analog status outputs.  Position:
 //
-//   AFE: FS/LS receivers (RXDP_A, RXDM_A, RXRCV_A), squelch / disconnect
-//        (SQUELCH_A, DISC_A), VBUS / ID comparators
+//   AFE: squelch / disconnect (SQUELCH_A, DISC_A), VBUS / ID comparators
 //     --> [THIS BLOCK] --> usb_line_state (LineState, HostDisconnect)
-//                      --> usb_rx_datapath FS/LS inputs (rxdp / rxdm / rxrcv)
 //                      --> VbusState / IdGnd of usb_ulpi_phy_top
 //
-// All inputs are asynchronous (analog comparators).  Three groups:
+// The FS/LS receivers (RXDP_A, RXDM_A, RXRCV_A) are no longer synchronized
+// here (Plan_60MHz.md P4): usb_rx_fsls_sampler in usb_rx_datapath takes them,
+// and usb_line_state gets its D+ / D- / rxrcv samples from there.
 //
-//   1. rxdp, rxdm, rxrcv -> rxdp_s, rxdm_s, rxrcv_s: 2-FF synchronizers only,
-//      no filter.  The FS/LS DPLL (usb_rx_fsls_frontend) and the LineState
-//      filter (usb_line_state) need every edge; SE0 / SE1 glitches at D+ / D-
-//      crossovers are removed there, per mode.  usb_rx_fsls_frontend has its
-//      own 2-FF stage; fed from here it only adds 2 cycles of delay.
+// All inputs are asynchronous (analog comparators).  Two groups (numbered as
+// before P4):
+//
 //   2. squelch, disc -> squelch_s, disc_s: 2-FF synchronizer + glitch filter
 //      on clk_bit.  The output takes a new value once the synchronized input has
 //      held it for flt + 1 consecutive cycles (flt = sq_flt for squelch,
@@ -35,8 +33,8 @@
 //      outputs change on ce60 only, so they are ULPI-domain signals (8-cycle
 //      multicycle paths into usb_ulpi_phy_top).
 //
-// Reset values are the isolated values of DOC/afe_interface_spec.md 3.2 /
-// 3.4 / 3.5: rxdp = rxdm = 0, rxrcv = 1, squelch = 1, disc = 0,
+// Reset values are the isolated values of DOC/afe_interface_spec.md 3.4 /
+// 3.5: squelch = 1, disc = 0,
 // a_vbus_vld = sess_vld = 0, sess_end = 1, id_gnd = 0.  The filters start in
 // that state, so a status that is already different at reset release shows up
 // after the normal filter delay (and produces the RXCMD it should).
@@ -57,9 +55,6 @@ module usb_rx_status_sync #(
     input  wire            ce60,
 
     // asynchronous AFE outputs
-    input  wire            rxdp,
-    input  wire            rxdm,
-    input  wire            rxrcv,
     input  wire            squelch,
     input  wire            disc,
     input  wire            a_vbus_vld,
@@ -73,9 +68,6 @@ module usb_rx_status_sync #(
     input  wire [VB_W-1:0] vb_flt,    // VBUS / ID: extra ce60 ticks
 
     // synchronized (clk_bit domain)
-    output wire            rxdp_s,
-    output wire            rxdm_s,
-    output wire            rxrcv_s,
     output wire            squelch_s,
     output wire            disc_s,
     // synchronized + debounced, change on ce60 only
@@ -87,11 +79,10 @@ module usb_rx_status_sync #(
 
     // ---------------- 2-FF synchronizers ----------------
     // reset value = isolated value of each input (bit order as din)
-    localparam [8:0] RST_V = {1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0};
+    localparam [8:3] RST_V = {1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1};
 
-    wire [8:0] din = {id_gnd, sess_end, sess_vld, a_vbus_vld, disc, squelch,
-                      rxrcv, rxdm, rxdp};
-    reg  [8:0] s1, s2;
+    wire [8:3] din = {id_gnd, sess_end, sess_vld, a_vbus_vld, disc, squelch};
+    reg  [8:3] s1, s2;
 
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) begin
@@ -102,10 +93,6 @@ module usb_rx_status_sync #(
             s2 <= s1;
         end
     end
-
-    assign rxdp_s  = s2[0];
-    assign rxdm_s  = s2[1];
-    assign rxrcv_s = s2[2];
 
     // ---------------- squelch / disconnect filters (clk_bit) ----------------
     usb_rx_status_flt #(.W(SQ_W), .RST_V(1'b1)) u_sq (

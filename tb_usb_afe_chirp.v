@@ -7,8 +7,8 @@
 //            usb_tx_serializer.v usb_tx_path.v usb_afe_tx_if.v usb_afe_rx_if.v \
 //            usb_rx_nrzi_decoder.v usb_rx_sync_detect.v usb_rx_bit_unstuffer.v \
 //            usb_rx_deserializer.v usb_rx_eop_check.v usb_rx_decoder.v \
-//            usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_fsls_frontend.v \
-//            usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
+//            usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_fsls_sampler.v \
+//            usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
 //            usb_line_state.v usb_mode_term_ctrl.v afe_line_bm.v afe_term_bm.v \
 //            afe_hs_tx_bm.v afe_fsls_bm.v afe_hs_rx_bm.v afe_squelch_bm.v \
 //            afe_cdr_bm.v tb_usb_afe_chirp.v
@@ -21,7 +21,9 @@
 //   byte feeder -> usb_tx_path (bypass / eop_dis from usb_mode_term_ctrl)
 //     -> usb_afe_tx_if (drv_dis) -> afe_hs_tx_bm + afe_fsls_bm
 //   line -> afe_hs_rx_bm, afe_squelch_bm -> afe_cdr_bm -> usb_afe_rx_if
-//        -> afe_fsls_bm receivers -> usb_rx_status_sync -> usb_line_state
+//        -> afe_fsls_bm receivers -> usb_rx_datapath -> ls_* -> usb_line_state
+//           (usb_rx_status_sync: squelch / disconnect; datapath and line state
+//           on clk60 + ld since Plan_60MHz.md P4)
 //        -> usb_rx_datapath (HS_ZMIN 4, lock_dly 2: the recommended set-up)
 //   The host end runs on a clock 400 ppm faster than the device.
 //   SYNC insertion (usb_tx_sync_mux, tx_sync_dis) is upstream of usb_tx_path:
@@ -446,6 +448,13 @@ module tb_chirp_end #(
     reg [2:0] ce_cnt = 3'd0;
     wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk) ce_cnt <= ce_cnt + 3'd1;
+    // clk60 / ld for the RX datapath and line state (blocking: same region as clk)
+    reg  clk60 = 1'b0;
+    always @(posedge clk) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     // ---------------- registers (Function Control, OTG Control) ----------------
     reg [1:0] xs = 2'b01, om = 2'b00;
@@ -577,16 +586,16 @@ module tb_chirp_end #(
     wire s_dp, s_dm, s_rcv, s_sq, s_disc, s_avv, s_sv, s_se, s_id;
     usb_rx_status_sync u_ss (
         .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
-        .rxdp(rxdp_a), .rxdm(rxdm_a), .rxrcv(rxrcv_a), .squelch(squelch_a), .disc(disc_a),
+        .squelch(squelch_a), .disc(disc_a),
         .a_vbus_vld(1'b1), .sess_vld(1'b1), .sess_end(1'b0), .id_gnd(1'b0),
         .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd0),
-        .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
+        .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_avv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
 
     wire [1:0] ls;
     wire       hd;
     usb_line_state u_ls (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk), .rst_n(rst_n), .clk60(clk60), .ld(ld),
         .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
         .xcvrselect(xs), .opmode(om), .host_mode(hmode), .hs_tx_act(tx_act),
         .linestate(ls), .host_disc(hd));
@@ -594,9 +603,10 @@ module tb_chirp_end #(
     wire       r_start, r_valid, r_end, r_error, r_busy;
     wire [7:0] r_data;
     usb_rx_datapath #(.HS_ZMIN(4)) u_rx (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60), .speed(xs), .rx_en(1'b1), .tx_en(tx_act),
+        .clk_bit(clk), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(xs), .rx_en(1'b1), .tx_en(tx_act),
         .clk_rx(clk_rx), .hs_rxd(hs_rxd), .hs_squelch(hs_sq), .hs_cdr_lock(hs_lock),
-        .rxrcv(s_rcv), .rxdp(s_dp), .rxdm(s_dm),
+        .rxrcv(rxrcv_a), .rxdp(rxdp_a), .rxdm(rxdm_a),
+        .ls_dp(s_dp), .ls_dm(s_dm), .ls_rcv(s_rcv),
         .rx_start(r_start), .rx_valid(r_valid), .rx_data(r_data), .rx_end(r_end),
         .rx_error(r_error), .rx_busy(r_busy));
 

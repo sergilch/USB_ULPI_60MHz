@@ -31,7 +31,7 @@ A working USB 2.0 PHY needs the digital core (ULPI controller, TX / RX datapaths
 |---|---|---|---|
 | core → AFE | `txd`, `tx_en`, `tx_se0`, `tx_speed[1:0]` | `usb_ulpi_phy_top` (from `usb_tx_path`) | Line state per bit on `clk_bit`: J = 1 / K = 0; `tx_se0` = SE0 (FS/LS EOP); `tx_en` = drive the line; `tx_speed` = XcvrSelect (00 HS, 01 FS, 10 LS). HS: one bit per `clk_bit` cycle. FS/LS: bits held for 40 / 320 cycles. |
 | AFE → core | `clk_rx`, `hs_rxd`, `hs_squelch`, `hs_cdr_lock` | `usb_rx_datapath` → `usb_rx_hs_frontend` | HS: recovered clock and retimed data, squelch (1 = no signal), CDR lock. Assumes the CDR free-runs while there is no data (assumption D1). |
-| AFE → core | `rxrcv`, `rxdp`, `rxdm` | `usb_rx_datapath` → `usb_rx_fsls_frontend` | FS/LS: differential receiver and single-ended DP / DM receivers, asynchronous; recovered by a DPLL on `clk_bit` (D2). |
+| AFE → core | `rxrcv`, `rxdp`, `rxdm` | `usb_rx_datapath` → `usb_rx_fsls_sampler` (since `Plan_60MHz.md` P4; was `usb_rx_fsls_frontend`) | FS/LS: differential receiver and single-ended DP / DM receivers, asynchronous; recovered by a DPLL on `clk_bit` (D2). |
 | AFE → core | `linestate[1:0]`, `host_disc`, `a_vbus_vld`, `sess_vld`, `sess_end`, `id_gnd` | `usb_ulpi_phy_top` | Currently top-level inputs; to be derived from receiver / comparator outputs in WORK_PLAN phases 3–4. |
 | core → AFE | `xcvrselect`, `termselect`, `opmode`, `suspendm`, `otg_ctrl` | `usb_ulpi_phy_top` | Raw register fields; the termination / pull / power controls derived from them are not implemented yet (phases 3–6). |
 | clock | `clk_bit` 480 MHz, `ce60` | all | The core needs the PLL's 480 MHz clock; `ce60` and the 60 MHz `CLKOUT` are derived from it (WORK_PLAN 5.2). |

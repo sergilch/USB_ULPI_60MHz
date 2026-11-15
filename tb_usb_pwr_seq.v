@@ -5,7 +5,7 @@
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_pwr_seq usb_pwr_seq.v usb_pll_lock_det.v usb_clk_gen.v \
 //            usb_afe_tx_if.v usb_afe_rx_if.v usb_mode_term_ctrl.v usb_rx_status_flt.v \
-//            usb_rx_status_sync.v afe_pll_bm.v tb_usb_pwr_seq.v
+//            usb_rx_status_sync.v usb_rx_fsls_sampler.v afe_pll_bm.v tb_usb_pwr_seq.v
 //   vvp sim_pwr_seq
 //
 // Setup: supplies (VDD33 -> pwr_good, VDD18A -> pg18a and the reference clock),
@@ -71,7 +71,7 @@ module tb_usb_pwr_seq;
 
     // ---------------- DUT chain ----------------
     wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
-    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire        clk60, ld;           // core clock (not used here) / island strobe
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
@@ -136,11 +136,18 @@ module tb_usb_pwr_seq;
 
     wire s_dp, s_dm, s_rcv, s_sq, s_disc, s_vv, s_sv, s_se, s_id;
     usb_rx_status_sync u_ss (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ce60(ce60),
-        .rxdp(a_dp), .rxdm(a_dm), .rxrcv(a_rcv), .squelch(a_sq), .disc(a_disc),
+        .squelch(a_sq), .disc(a_disc),
         .a_vbus_vld(a_vb), .sess_vld(a_vb), .sess_end(a_se), .id_gnd(a_se),
         .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd4),
-        .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
+        .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_vv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
+    // FS/LS receivers: through the sampler of usb_rx_datapath (Plan_60MHz.md P4),
+    // newest sample of the word as usb_line_state sees it
+    wire [7:0] smp_rcv, smp_dp, smp_dm;
+    usb_rx_fsls_sampler u_smp (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ld(ld),
+        .rxrcv(a_rcv), .rxdp(a_dp), .rxdm(a_dm),
+        .rcv_v(smp_rcv), .dp_v(smp_dp), .dm_v(smp_dm));
+    assign s_dp = smp_dp[7], s_dm = smp_dm[7], s_rcv = smp_rcv[7];
 
     initial begin
         $dumpfile("tb_usb_pwr_seq.vcd");

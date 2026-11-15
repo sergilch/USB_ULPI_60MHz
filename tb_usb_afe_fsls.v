@@ -7,8 +7,8 @@
 //            usb_tx_serializer.v usb_tx_path.v usb_afe_tx_if.v \
 //            usb_rx_nrzi_decoder.v usb_rx_sync_detect.v usb_rx_bit_unstuffer.v \
 //            usb_rx_deserializer.v usb_rx_eop_check.v usb_rx_decoder.v \
-//            usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_fsls_frontend.v \
-//            usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
+//            usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_fsls_sampler.v \
+//            usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
 //            usb_line_state.v afe_line_bm.v afe_term_bm.v afe_fsls_bm.v \
 //            tb_usb_afe_fsls.v
 //   vvp sim_afe_fsls
@@ -16,8 +16,11 @@
 // Set-up: two ends on one DP / DM pair (afe_line_bm)
 //   * Device (the PHY under test), on clk_bit with ce60:
 //       TX: usb_tx_path -> usb_afe_tx_if -> afe_fsls_bm driver
-//       RX: afe_fsls_bm receivers -> usb_rx_status_sync -> usb_line_state
-//                                                      -> usb_rx_datapath
+//       RX: afe_fsls_bm receivers -> usb_rx_datapath (FS/LS sampler, DPLL, ...)
+//                                 -> ls_dp / ls_dm / ls_rcv -> usb_line_state
+//           (Plan_60MHz.md P4: datapath and line state on clk60 + ld, generated
+//           from ce_cnt as in the ULPI testbenches; usb_rx_status_sync for
+//           squelch / disconnect only)
 //       afe_term_bm: 1.5 kOhm pull-up on DP (FS) or DM (LS)
 //       The device receivers see D- through an extra delay (skew, 0 / 2 / 4 ns
 //       per packet), so every J / K crossover makes an SE0 or SE1 glitch.
@@ -40,7 +43,10 @@
 //      neighbours merged.  The sequence of usb_line_state values must equal
 //      that sequence, and each change must come 0 .. LJK cycles (J / K) or
 //      0 .. LSE cycles (SE0 / SE1) after the segment started:
-//        FS: LJK 16, LSE 24 (2-tick SE filter);  LS: LJK 16, LSE 124 (14 ticks).
+//        FS: LJK 24, LSE 32 (2-tick SE filter);  LS: LJK 24, LSE 132 (14 ticks).
+//      LJK = 3 ticks, the "2-3 clocks" of ULPI 1.1; since Plan_60MHz.md P4 the
+//      receiver samples reach usb_line_state through the sampler word (taken on
+//      ld, read on the next clk60 edge), up to ~2.4 ticks; before P4 2 ticks.
 //      So no glitch is ever shown, every real state is, in order and in time;
 //      in particular every packet, also the device's own, ends with SE0 -> J on
 //      LineState (ULPI 1.1 3.8.2.2: the Link times FS / LS EOPs with it).
@@ -69,6 +75,17 @@ module tb_usb_afe_fsls;
     wire ce_far = (cf_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
     always @(posedge clk_far) cf_cnt <= cf_cnt + 3'd1;
+    // clk60 / ld of both ends (blocking: same region as the clk_bit edge)
+    reg  clk60 = 1'b0, clk60_far = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    always @(posedge clk_far) begin
+        if (cf_cnt == 3'd7)      clk60_far = 1'b1;
+        else if (cf_cnt == 3'd3) clk60_far = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3), ld_far = (cf_cnt == 3'd3);
 
     reg [1:0] spd = 2'b01;                       // XcvrSelect, both ends
 
@@ -171,13 +188,13 @@ module tb_usb_afe_fsls;
 
     usb_rx_status_sync u_ss (
         .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
-        .rxdp(d_rxdp), .rxdm(d_rxdm), .rxrcv(d_rxrcv), .squelch(1'b1), .disc(1'b0),
+        .squelch(1'b1), .disc(1'b0),
         .a_vbus_vld(1'b1), .sess_vld(1'b1), .sess_end(1'b0), .id_gnd(1'b0),
         .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd0),
-        .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
+        .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_avv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
     usb_line_state u_ls (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld),
         .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
         .xcvrselect(spd), .opmode(2'b00), .host_mode(1'b0), .hs_tx_act(1'b0),
         .linestate(ls), .host_disc(hdisc));
@@ -185,9 +202,10 @@ module tb_usb_afe_fsls;
     wire       dr_start, dr_valid, dr_end, dr_error, dr_busy;
     wire [7:0] dr_data;
     usb_rx_datapath u_drx (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(spd), .rx_en(1'b1),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(spd), .rx_en(1'b1),
         .tx_en(d_act), .clk_rx(~clk_bit), .hs_rxd(1'b1), .hs_squelch(1'b1), .hs_cdr_lock(1'b0),
-        .rxrcv(s_rcv), .rxdp(s_dp), .rxdm(s_dm),
+        .rxrcv(d_rxrcv), .rxdp(d_rxdp), .rxdm(d_rxdm),
+        .ls_dp(s_dp), .ls_dm(s_dm), .ls_rcv(s_rcv),
         .rx_start(dr_start), .rx_valid(dr_valid), .rx_data(dr_data), .rx_end(dr_end),
         .rx_error(dr_error), .rx_busy(dr_busy));
 
@@ -195,7 +213,7 @@ module tb_usb_afe_fsls;
     wire       hr_start, hr_valid, hr_end, hr_error, hr_busy;
     wire [7:0] hr_data;
     usb_rx_datapath u_hrx (
-        .clk_bit(clk_far), .rst_n(rst_n), .ce60(ce_far), .speed(spd), .rx_en(1'b1),
+        .clk_bit(clk_far), .rst_n(rst_n), .clk60(clk60_far), .ld(ld_far), .speed(spd), .rx_en(1'b1),
         .tx_en(h_act), .clk_rx(~clk_far), .hs_rxd(1'b1), .hs_squelch(1'b1), .hs_cdr_lock(1'b0),
         .rxrcv(h_rxrcv), .rxdp(h_rxdp), .rxdm(h_rxdm),
         .rx_start(hr_start), .rx_valid(hr_valid), .rx_data(hr_data), .rx_end(hr_end),
@@ -378,8 +396,8 @@ module tb_usb_afe_fsls;
         begin
             spd = s;
             G   = (s == 2'b10) ? 100 : 16;
-            LJK = 16;
-            LSE = (s == 2'b10) ? 124 : 24;
+            LJK = 24;                               // 3 ticks (ULPI 1.1: 2-3 clocks)
+            LSE = (s == 2'b10) ? 132 : 32;
             GAP = (s == 2'b10) ? 6000 : 1500;
         end
     endtask

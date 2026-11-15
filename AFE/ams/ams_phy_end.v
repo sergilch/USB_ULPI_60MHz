@@ -19,8 +19,8 @@
 //     -> hs_tx_p/n, hs_tx_en, fs_oe/dat/se0/ls
 //   clk_rx, hs_rxd_a, squelch_a -> usb_afe_rx_if (lock_dly 2) -> usb_rx_datapath
 //     (HS_ZMIN 4); rx_en_hs, cdr_en back to the AFE
-//   rxdp_a, rxdm_a, rxrcv_a, squelch_a, disc_a -> usb_rx_status_sync
-//     -> usb_line_state (ls, hd) and the FS / LS input of usb_rx_datapath
+//   rxdp_a, rxdm_a, rxrcv_a -> usb_rx_datapath (FS/LS sampler) -> ls_* ->
+//   usb_line_state (ls, hd); squelch_a, disc_a -> usb_rx_status_sync -> usb_line_state
 //   receive monitor: rm_pk, rm_n, rm_b[], rm_err, rm_start_n; own errors count
 //
 // Packets: load_pkt(npay) = SYNC (4 bytes 00 00 00 80 at HS, 1 byte 80 at FS /
@@ -29,7 +29,9 @@
 // load_pattern(n, per): OpMode 10 signalling, n bytes of 00h (per = 0, a K)
 //   or alternating runs of per bytes 00h / FFh (chirp K-J pairs).
 //
-// Clock: clk = this end's clk_bit; ce60 generated here (1 in 8).
+// Clock: clk = this end's clk_bit; ce60 generated here (1 in 8), and clk60 / ld
+// for the RX datapath and line state (Plan_60MHz.md P4): clk60 rises with a
+// blocking assignment on the clk edge where ce60 was high, ld = phase 3.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -73,6 +75,12 @@ module ams_phy_end #(
     reg [2:0] ce_cnt = 3'd0;
     wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk) ce_cnt <= ce_cnt + 3'd1;
+    reg  clk60 = 1'b0;
+    always @(posedge clk) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
     // ---------------- registers (Function Control, OTG Control) ----------------
     reg [1:0] xs = 2'b01, om = 2'b00;
@@ -181,16 +189,16 @@ module ams_phy_end #(
     wire s_dp, s_dm, s_rcv, s_sq, s_disc, s_avv, s_sv, s_se, s_id;
     usb_rx_status_sync u_ss (
         .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
-        .rxdp(rxdp_a), .rxdm(rxdm_a), .rxrcv(rxrcv_a), .squelch(squelch_a), .disc(disc_a),
+        .squelch(squelch_a), .disc(disc_a),
         .a_vbus_vld(1'b1), .sess_vld(1'b1), .sess_end(1'b0), .id_gnd(1'b0),
         .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd0),
-        .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
+        .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_avv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
 
     wire [1:0] ls;
     wire       hd;
     usb_line_state u_ls (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk), .rst_n(rst_n), .clk60(clk60), .ld(ld),
         .rxdp_s(s_dp), .rxdm_s(s_dm), .rxrcv_s(s_rcv), .squelch_s(s_sq), .disc_s(s_disc),
         .xcvrselect(xs), .opmode(om), .host_mode(hmode), .hs_tx_act(tx_act),
         .linestate(ls), .host_disc(hd));
@@ -198,9 +206,10 @@ module ams_phy_end #(
     wire       r_start, r_valid, r_end, r_error, r_busy;
     wire [7:0] r_data;
     usb_rx_datapath #(.HS_ZMIN(4)) u_rx (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60), .speed(xs), .rx_en(1'b1), .tx_en(tx_act),
+        .clk_bit(clk), .rst_n(rst_n), .clk60(clk60), .ld(ld), .speed(xs), .rx_en(1'b1), .tx_en(tx_act),
         .clk_rx(clk_rx), .hs_rxd(hs_rxd), .hs_squelch(hs_sq), .hs_cdr_lock(hs_lock),
-        .rxrcv(s_rcv), .rxdp(s_dp), .rxdm(s_dm),
+        .rxrcv(rxrcv_a), .rxdp(rxdp_a), .rxdm(rxdm_a),
+        .ls_dp(s_dp), .ls_dm(s_dm), .ls_rcv(s_rcv),
         .rx_start(r_start), .rx_valid(r_valid), .rx_data(r_data), .rx_end(r_end),
         .rx_error(r_error), .rx_busy(r_busy));
 

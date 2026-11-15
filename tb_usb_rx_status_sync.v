@@ -13,7 +13,8 @@
 // Reference (history-based, independent of the counter in the DUT): let in[k]
 // be an input as sampled at rising edge k (the first flop; its reset value
 // counts as an input of ISO).
-//   * rxdp / rxdm / rxrcv: out after edge t = in[t-1].
+//   * rxdp / rxdm / rxrcv: moved to usb_rx_fsls_sampler (Plan_60MHz.md P4);
+//     bits 0..2 of the vectors are kept, their outputs tied to the reset values.
 //   * squelch / disc (filter length L, clk_bit): out after edge t flips to
 //     !out iff in[t-2-L .. t-2] all equal !out (the filter sees the second
 //     flop, L + 1 samples).
@@ -48,13 +49,14 @@ module tb_usb_rx_status_sync;
     reg  [3:0] sq_flt = 4'd0, disc_flt = 4'd0;
     reg [15:0] vb_flt = 16'd0;
     wire [8:0] out;
+    assign out[2:0] = ISO[2:0];        // group 1 no longer in the DUT
 
     usb_rx_status_sync dut (
         .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
-        .rxdp(in[0]), .rxdm(in[1]), .rxrcv(in[2]), .squelch(in[3]), .disc(in[4]),
+        .squelch(in[3]), .disc(in[4]),
         .a_vbus_vld(in[5]), .sess_vld(in[6]), .sess_end(in[7]), .id_gnd(in[8]),
         .sq_flt(sq_flt), .disc_flt(disc_flt), .vb_flt(vb_flt),
-        .rxdp_s(out[0]), .rxdm_s(out[1]), .rxrcv_s(out[2]), .squelch_s(out[3]),
+        .squelch_s(out[3]),
         .disc_s(out[4]), .a_vbus_vld_s(out[5]), .sess_vld_s(out[6]),
         .sess_end_s(out[7]), .id_gnd_s(out[8]));
 
@@ -100,7 +102,7 @@ module tb_usb_rx_status_sync;
             // in_prev = input sampled at this edge's predecessor = in[t-1]
             for (b = 0; b < 9; b = b + 1) hist[b] = {hist[b][HN-2:0], in_prev[b]};
             // group 1: second flop = what the first took at the previous edge
-            for (b = 0; b < 3; b = b + 1) exp_o[b] = hist[b][0];
+            for (b = 0; b < 3; b = b + 1) exp_o[b] = ISO[b];   // group 1 moved out (P4), tied off
             // group 2: the filter sees the second flop before this edge = hist[1]
             for (b = 3; b < 5; b = b + 1) begin
                 L = (b == 3) ? sq_flt : disc_flt;
