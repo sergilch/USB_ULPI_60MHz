@@ -131,13 +131,13 @@ module tb_usb_pwr_seq;
     wire a_se   = afe_ok ? 1'b0 : 1'bx;
     wire rx_en_hs, cdr_en, hs_rxd, hs_squelch, hs_cdr_lock;
     wire clk_rx = clk_bit & (cdr_en === 1'b1);
-    usb_afe_rx_if u_rx (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .speed(2'b00), .rx_en(afe_en_c),
+    usb_afe_rx_if u_rx (.clk60(clk60), .rst_n(core_rst_n_c), .speed(2'b00), .rx_en(afe_en_c),
         .iso_en(iso_en_c), .lock_dly(3'd2), .sq_comp(3'd0), .rx_en_hs(rx_en_hs), .cdr_en(cdr_en),
         .clk_rx(clk_rx), .hs_rxd_a(a_rxd), .squelch_a(a_sq),
         .hs_rxd(hs_rxd), .hs_squelch(hs_squelch), .hs_cdr_lock(hs_cdr_lock));
 
     wire pu_dp, pu_dm, hst, pd_dp, pd_dm, tbusy, byp, sdis, edis, ddis, hostm;
-    usb_mode_term_ctrl u_mode (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .ce60(ce60),
+    usb_mode_term_ctrl u_mode (.clk_bit(clk60), .rst_n(core_rst_n_c), .ce60(1'b1),
         .xcvrselect(2'b01), .termselect(1'b1), .opmode(2'b00), .dp_pulldown(1'b0), .dm_pulldown(1'b0),
         .iso_en(iso_en_c), .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hst),
         .dp_pulldown_en(pd_dp), .dm_pulldown_en(pd_dm), .term_busy(tbusy), .tx_bypass(byp),

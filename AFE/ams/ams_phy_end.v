@@ -30,9 +30,12 @@
 // load_pattern(n, per): OpMode 10 signalling, n bytes of 00h (per = 0, a K)
 //   or alternating runs of per bytes 00h / FFh (chirp K-J pairs).
 //
-// Clock: clk = this end's clk_bit; ce60 generated here (1 in 8), and clk60 / ld
-// for the RX datapath and line state (Plan_60MHz.md P4): clk60 rises with a
-// blocking assignment on the clk edge where ce60 was high, ld = phase 3.
+// Clock: clk = this end's clk_bit; clk60 / ld generated here (CLAUDE.md TB
+// convention): clk60 rises with a blocking assignment on the clk edge where
+// the testbench tick ce60 (1 in 8) is high, ld = phase 3.  Every DUT block
+// except the clk_bit islands runs on clk60 (Plan_60MHz.md P2-P8); ce60 only
+// times the byte feeder and the receive monitor, which therefore behave like
+// clk60 processes.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -95,7 +98,7 @@ module ams_phy_end #(
 
     wire t_busy, byp, sdis, edis, ddis, hmode;
     usb_mode_term_ctrl u_mode (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk60), .rst_n(rst_n), .ce60(1'b1),        // clk60 domain, ce = 1 (as in usb_ulpi_phy_top)
         .xcvrselect(xs), .termselect(ts), .opmode(om), .dp_pulldown(dpd), .dm_pulldown(dmd),
         .iso_en(1'b0),
         .dp_pullup_en(dp_pullup_en), .dm_pullup_en(dm_pullup_en), .hs_term_en(hs_term_en),
@@ -197,7 +200,7 @@ module ams_phy_end #(
     // ---------------- receive side ----------------
     wire hs_rxd, hs_sq, hs_lock;
     usb_afe_rx_if u_afe_rx (
-        .clk_bit(clk), .rst_n(rst_n), .speed(xs), .rx_en(1'b1), .iso_en(1'b0),
+        .clk60(clk60), .rst_n(rst_n), .speed(xs), .rx_en(1'b1), .iso_en(1'b0),
         .lock_dly(3'd2), .sq_comp(3'd0), .rx_en_hs(rx_en_hs), .cdr_en(cdr_en),
         .clk_rx(clk_rx), .hs_rxd_a(hs_rxd_a), .squelch_a(squelch_a),
         .hs_rxd(hs_rxd), .hs_squelch(hs_sq), .hs_cdr_lock(hs_lock));

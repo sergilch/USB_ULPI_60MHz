@@ -12,7 +12,7 @@
 // read on clk60 whenever a word is there.  So the occupancy stays small (the
 // synchronizer latency plus the ppm drift over one packet) and the FIFO drains
 // between packets; it needs no pre-fill.  (Before P5 it carried decoder events
-// from clk_rx to the clk_bit / ce60 domain.)
+// from clk_rx to the former clk_bit / ce60 core.)
 //
 // ASYNC = 1: write and read clocks are unrelated.  Gray-coded pointers, 2-FF
 //   synchronizers in both directions.  The flags are conservative: w_full /

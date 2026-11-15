@@ -9,7 +9,7 @@
 //                     <--rx_en_hs, cdr_en--
 //
 // Function
-//   * Enables (clk_bit, registered): rx_en_hs (RX_EN: HS receiver + squelch
+//   * Enables (clk60, registered): rx_en_hs (RX_EN: HS receiver + squelch
 //     detector) and cdr_en (CDR_EN) are on in HS mode (speed = 00) while rx_en
 //     is set and iso_en is not.  In FS / LS mode, in low-power mode and while
 //     isolated both are off; the CDR then stops clk_rx (the HS chain of
@@ -44,17 +44,21 @@
 //     idle-line noise in front of SYNC (false SYNCs with HS_ZMIN = 4) and costs
 //     EOP margin (sq_comp = 3 fails with a 6 ns squelch hold time).
 //
-// Configuration (lock_dly, sq_comp): static, from the clk_bit domain (vendor
-//   register, WORK_PLAN 6.4); used on clk_rx without synchronization, so change
-//   them only while HS reception is off (rx_en_hs = 0).  speed, rx_en, iso_en
-//   are clk_bit-domain inputs; iso_en also gates the asynchronous AFE inputs.
+// Configuration (lock_dly, sq_comp): static, from the clk60 domain (vendor
+//   register usb_afe_trim_regs, WORK_PLAN 6.4); used on clk_rx without
+//   synchronization, so change them only while HS reception is off
+//   (rx_en_hs = 0).  speed, rx_en, iso_en are clk60-domain inputs (core
+//   registers, usb_pwr_seq iso_en_c / afe_en_c); iso_en also gates the
+//   asynchronous AFE inputs.
 //
 // Outputs to usb_rx_datapath (all registered on clk_rx):
 //   hs_rxd      CDR data, 1 = J, delayed 3 + sq_comp clk_rx cycles
 //   hs_squelch  1 = no signal (synchronized, delayed 3 cycles)
 //   hs_cdr_lock 1 = data valid (lock_dly cycles after hs_squelch fell)
 //
-// Clocks / resets: clk_bit (enables), clk_rx (data).  rst_n asynchronous; its
+// Clocks / resets: clk60 (enables; Plan_60MHz.md P8, was clk_bit), clk_rx
+//   (data).  The enables are AFE pins (static levels for the analog), so they
+//   leave from clk60 flops like the other mode pins.  rst_n asynchronous; its
 //   release is synchronized to clk_rx here.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
@@ -63,10 +67,10 @@ module usb_afe_rx_if #(
     parameter DLY_W  = 3,                    // lock_dly width
     parameter COMP_W = 3                     // sq_comp width
 ) (
-    input  wire              clk_bit,
+    input  wire              clk60,
     input  wire              rst_n,
 
-    // mode / control (clk_bit domain)
+    // mode / control (clk60 domain)
     input  wire [1:0]        speed,          // XcvrSelect: 00 HS
     input  wire              rx_en,          // reception allowed (not low power)
     input  wire              iso_en,
@@ -88,8 +92,8 @@ module usb_afe_rx_if #(
 
     localparam NST = (1 << COMP_W) + 2;      // data stages: delay 3 .. 3 + 2^COMP_W - 1
 
-    // ---------------- enables (clk_bit) ----------------
-    always @(posedge clk_bit or negedge rst_n) begin
+    // ---------------- enables (clk60) ----------------
+    always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n) begin
             rx_en_hs <= 1'b0;
             cdr_en   <= 1'b0;

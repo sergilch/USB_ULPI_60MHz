@@ -47,7 +47,10 @@
 //   combinational from vnd_addr (the fixed ULPI read timing needs the value in
 //   the turnaround tick).  Reads have no side effect.
 //
-// Clocking: clk_bit with the tick enable ce (ce60).  rst_n: the core reset.
+// Clocking: one clock with the tick enable ce; port names kept from the
+//   single-clock design: clk_bit = clk60 and ce = 1 in usb_ulpi_phy_top
+//   (Plan_60MHz.md P2), clk_bit with ce60 only in the standalone testbench.
+//   rst_n: the core reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 

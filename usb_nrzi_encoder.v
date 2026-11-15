@@ -26,8 +26,9 @@
 //   stuffing and NRZI": chirp, test patterns).  Must be static during a packet.
 //   lvl is still reset to J after each last word.
 //
-// Clocking: one clock `clk` with a clock enable `ce` (clk_bit with ce = ce60 in
-//   the PHY).  out_data is an 8-cycle multicycle path in that case.
+// Clocking: one clock `clk` with a clock enable `ce`: clk60 with ce = 1 in the
+//   PHY (Plan_60MHz.md P6); clk_bit with ce = ce60 only in the bit-serial
+//   reference chain of the testbenches.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 

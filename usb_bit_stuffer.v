@@ -25,9 +25,10 @@
 //
 // Clocking: one clock `clk` with a clock enable `ce`; all state changes and
 //   all handshakes happen only on edges with ce = 1.
-//     * clk60 domain       : clk = clk60,    ce = 1'b1
-//     * clk_bit domain     : clk = clk_bit,  ce = ce60 (same strobe that
-//       drives usb_tx_serializer, so out_ready = serializer in_ready).
+//     * clk60 domain       : clk = clk60,    ce = 1'b1 (the PHY since
+//       Plan_60MHz.md P6)
+//     * clk_bit domain     : clk = clk_bit,  ce = ce60 (only the bit-serial
+//       reference chain with usb_tx_serializer in the testbenches).
 //
 // Implementation: every input byte expands combinationally to 8..10 bits
 //   (worst case: two stuffs in one byte) which are appended to a 25-bit

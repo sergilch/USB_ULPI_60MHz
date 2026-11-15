@@ -30,7 +30,7 @@
 //   particular a peripheral keeps its pull-up through XcvrSelect 00 with
 //   TermSelect 1, so a two-step register update can't make it look detached.
 //
-// Switching order: the outputs are registered and change on ce60 only.  When an
+// Switching order: the outputs are registered and change on ticks (ce60) only.  When an
 //   update turns some enables off and others on (FS -> HS: pull-up off, 45 Ohm
 //   on; HS -> FS suspend: the reverse), the ones going off switch first, and no
 //   enable goes on earlier than BBM_TK ticks after the last one went off (break
@@ -57,7 +57,10 @@
 //   OpMode 11 (optional in ULPI: no automatic SYNC / EOP, NRZI and stuffing
 //   kept) is not supported and transmits like OpMode 00.
 //
-// Clocking: clk_bit with ce60; active-low asynchronous reset.
+// Clocking: one clock with the tick enable ce60; port names kept from the
+//   single-clock design: clk_bit = clk60 and ce60 = 1 in usb_ulpi_phy_top and
+//   the AFE-level testbenches (Plan_60MHz.md P2 / P8), clk_bit with ce60 only
+//   in the standalone testbench.  Active-low asynchronous reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 

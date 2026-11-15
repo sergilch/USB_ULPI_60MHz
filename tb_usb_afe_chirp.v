@@ -465,7 +465,7 @@ module tb_chirp_end #(
 
     wire pu_dp, pu_dm, hs_term, pd_dp, pd_dm, t_busy, byp, sdis, edis, ddis, hmode;
     usb_mode_term_ctrl u_mode (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk60), .rst_n(rst_n), .ce60(1'b1),        // clk60 domain, ce = 1 (as in usb_ulpi_phy_top)
         .xcvrselect(xs), .termselect(ts), .opmode(om), .dp_pulldown(dpd), .dm_pulldown(dmd),
         .iso_en(1'b0),
         .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hs_term),
@@ -591,7 +591,7 @@ module tb_chirp_end #(
     // ---------------- receive side ----------------
     wire hs_rxd, hs_sq, hs_lock;
     usb_afe_rx_if u_afe_rx (
-        .clk_bit(clk), .rst_n(rst_n), .speed(xs), .rx_en(1'b1), .iso_en(1'b0),
+        .clk60(clk60), .rst_n(rst_n), .speed(xs), .rx_en(1'b1), .iso_en(1'b0),
         .lock_dly(3'd2), .sq_comp(3'd0), .rx_en_hs(rx_en_hs), .cdr_en(cdr_en),
         .clk_rx(clk_rx), .hs_rxd_a(cdr_d), .squelch_a(squelch_a),
         .hs_rxd(hs_rxd), .hs_squelch(hs_sq), .hs_cdr_lock(hs_lock));

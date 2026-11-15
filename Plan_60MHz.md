@@ -1,8 +1,9 @@
 # Plan: move the digital core to a 60 MHz clock
 
 Status: in progress. P1 (clock generator, SDC skeleton, STA baseline), P2 (ULPI core on `clk60`),
-P3 (parallel RX decoder), P4 (FS/LS receive on `clk60`) done 2026-11-14, P5 (HS receive), P6 (TX)
-and P7 (lock detector, power sequencer, pads, status sync) done 2026-11-15; P0 open (D10 proposed,
+P3 (parallel RX decoder), P4 (FS/LS receive on `clk60`) done 2026-11-14, P5 (HS receive), P6 (TX),
+P7 (lock detector, power sequencer, pads, status sync) and P8 (AMS and docs) done 2026-11-15; P9
+(cleanup, sign-off STA) open; P0 open (D10 proposed,
 waiting for the analog team). Progress and results:
 section 8.
 Related: `WORK_PLAN.md` (D1, D2, 5.2, 9.1, 9.3, risk R1), `AFE_INTEGRATION_PLAN.md` (I12),
@@ -308,7 +309,8 @@ blocks), so that wiring is done once, on the new clock structure.
 | P5 | ✅ 2026-11-15, see 8.7. New `usb_rx_hs_sipo` (`clk_rx` island: `usb_rx_hs_frontend` unchanged, 1:8 SIPO, Johnson word clock `clk_rxw`, write gate) + word FIFO (`usb_rx_elastic_buffer` W 16 / AW 3, `clk_rxw` → `clk60`); one `usb_rx_decoder8` for HS and FS/LS, generalized to `ZMIN_HS` 4..8 (two SYNCs / four events per tick, K11 closed); 8-entry event FIFO with four write ports and a direct output path. Serial HS decoder and HS event buffer removed from the datapath. A3 sweep (`tb_usb_afe_rx_if`) and `tb_afe_hs_chain`, `tb_usb_afe_chirp`, AMS shadow: output identical to before P5. HS RX latency +2 ticks (K12). |
 | P6 | ✅ 2026-11-15, see 8.8. New `usb_tx_serializer8` (clk60, 8 line bits per tick, HS EOP splice, FS/LS tick bit timer), `usb_afe_tx_if8` (clk60: driver select, 40-bit lead window, lag dilation, pin vectors) and `usb_tx_piso` (clk_bit: 8:1 shift loaded on `ld`, idle clamp, 68 flops). `usb_tx_path` is clk60 only (`SPLIT` and `usb_tx_ser_bridge` removed); the ULPI tops lose `clk_bit` / `ld` and output `txd_v` / `tx_en_v` / `tx_se0_v`. New `tb_usb_tx_vec`: bit-exact against the bit-serial chain, pins LAT = 9 cycles later. All 42 TBs pass with unchanged packet checks; the bit-serial `usb_tx_serializer` / `usb_afe_tx_if` stay as reference models. |
 | P7 | ✅ 2026-11-15, see 8.9. `usb_pll_lock_det` on `clk60` (count = ticks × 8 + position of the window-end flag change in an 8-sample `clk_bit` word, 17-flop island; heartbeat `clk60` / 16); `usb_pwr_seq` core-side copies on `clk60` (`core_rst_n_c`, `iso_en_c`, `dir_hold_c`, `afe_en_c`; `clk_en_b` stays on `clk_bit`); `usb_ulpi_phy_pads` exports the `clk_bit` island reset `bit_rst_n`; `usb_rx_status_sync` outputs on `clk60` with squelch / disconnect filters in ticks (the squelch / disconnect island moved in from `usb_line_state`). `tb_usb_pll_lock_det` (every window count exact against a bit-rate counter), `tb_usb_pwr_seq`, `tb_usb_rx_status_sync` (rewritten, tick reference), `tb_ams_pwr_shadow` pass; all 42 TBs pass. |
-| P8–P9 | Not started. |
+| P8 | ✅ 2026-11-15, see 8.10. Last `clk_bit` register outside the islands moved: `usb_afe_rx_if`'s `rx_en_hs` / `cdr_en` on `clk60` (port `clk60` replaces `clk_bit`). `ams_phy_end.v` and the AFE-level TBs run `usb_mode_term_ctrl` on `clk60` with `ce60` = 1 as in `usb_ulpi_phy_top`; `ce60` is no longer used by any RTL instance. Docs: `CLAUDE.md` (clock rule: `clk_bit` islands, `clk60` core, `clk_rx` / `clk_rxw`), README, module headers, `DOC/afe_interface_spec.md` 2 / 3.2 / 4.1 / 4.2 / 7.2 (consolidated STA), `WORK_PLAN.md` D1 / D10 / 5.2 / 9.1 / 9.3 / conventions, `AFE_INTEGRATION_PLAN.md` I12 / R1 / 6.2 row. All 42 TBs pass; `run_ams_tests.sh`: static check OK, Spectre runs SKIP (no `xrun`). |
+| P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -623,6 +625,7 @@ or replaced by a mux-free structure (K8 options).
   `tb_ams_link_shadow`: output identical.
 - **Not in P7:** `usb_afe_rx_if` (its `rx_en_hs` / `cdr_en` registers, 4.3) is still
   `clk_bit` + `ce60`; it is not in the P7 list of section 6 and moves with the wiring (P8 / 8.1).
+  *Done in P8 (8.10).*
 
 STA (unsized, as 8.2):
 
@@ -635,3 +638,53 @@ STA (unsized, as 8.2):
 
 Flops at 480 MHz: lock detector 57 → 17 (75 in total), status sync 96 → 7 (93), line state
 5 → 2, power sequencer 9 → 2; pads + 2 (`bit_rst_n`).
+
+### 8.10 P8 notes (AMS and docs)
+
+- **`usb_afe_rx_if`:** its only `clk_bit` logic, the `RX_EN` / `CDR_EN` registers (no `ce60` in
+  them, despite the P7 note), now runs on `clk60`; the port `clk_bit` is renamed `clk60`. Its inputs
+  (`speed`, `rx_en`, `iso_en`) were already `clk60` signals since P2 / P7, so this removes a
+  `clk60` → `clk_bit` crossing without a synchronizer. The pins are static AFE enables: they now
+  change on E0 instead of the next `clk_bit` edge (≤ 1 tick later). Squelch / lock / data delay
+  stay on `clk_rx`, unchanged. `tb_usb_afe_rx_if` checks the enables on `clk60`.
+- **A3 sweep after the change:** the lock-time sweep of `tb_usb_afe_rx_if` gives different loss
+  counts, not because of the DUT: the CDR starts a few `clk_bit` cycles later after each reset
+  and speed change, and the shared `$random` stream (the lock-time injection draws on every CDR
+  clock) shifts for every later packet. Margins (largest L without loss): DUT 0 / 2 / 3 / 4 / 5
+  unchanged (4 / 6 / 6 / 2 / 4), DUT 1 (`HS_ZMIN` 4, `LOCK_DLY` 0) 5 → 4, which is the value in
+  spec 4.2 (the 30-packet default run is a statistical sample; the spec numbers are from 300
+  packets). The recommended setting keeps the required 6.
+- **AFE-level benches:** `ams_phy_end.v` and `tb_usb_afe_chirp` instantiate `usb_mode_term_ctrl`
+  with `clk_bit` = `clk60` and `ce60` = 1, as `usb_ulpi_phy_top` does; the TB's `ce60` tick only
+  times the byte feeder and receive monitor (zero-skew `clk60` processes by the TB convention).
+  `tb_usb_pwr_seq` likewise. Outputs of `tb_usb_afe_chirp`, `tb_ams_link_shadow` and
+  `tb_usb_pwr_seq` are identical to P7, line for line. No change was needed in the AMS tops
+  (`tb_ams_link.vams`, `tb_ams_pwr.vams`) or the control files (`amscf_*.scs`): the digital port
+  changes are all inside `ams_phy_end.v` / the `.vh` sequences; `run_ams_tests.sh` passes the
+  static netlist check (ports of all 22 instances) and skips Spectre (no `xrun`).
+- **`ce60`:** no RTL instance uses it any more (only `usb_clk_gen` still outputs it). It remains
+  the tick of the standalone leaf testbenches (`usb_mode_term_ctrl`, `usb_afe_trim_regs`, the
+  ULPI leaves) and drives the bit-serial reference models; removing the `ce` ports and moving the
+  reference models to TB-only files is P9. `run_sta.sh` still times those leaves alone as
+  `clk_bit` + `ce` at 480 MHz, so their standalone violations (`usb_mode_term_ctrl` −2.74,
+  `usb_afe_trim_regs` −3.06 at slow) do not exist in the tops.
+- **Docs:** `CLAUDE.md` (clock convention: which blocks are on `clk_bit`, `clk60`, `clk_rx` /
+  `clk_rxw`, `ref_clk`; STA note on the standalone leaves), `README.md` clock paragraph, the
+  headers of `usb_afe_rx_if`, `usb_mode_term_ctrl`, `usb_afe_trim_regs`, `usb_bit_stuffer`,
+  `usb_nrzi_encoder`, `usb_tx_sync_mux`, `usb_rx_elastic_buffer` and `ams_phy_end.v`;
+  `DOC/afe_interface_spec.md` 2 (`clk60` row, `clk_bit` consumers, CLKOUT reference), 3.2 (enables
+  from `clk60`), 4.1 (termination switching on `clk60`), 4.2 (HS RX structure since P5), 7.2
+  (consolidated OpenSTA table, option (c) taken); `WORK_PLAN.md` D1, D10, 5.2, 9.1, 9.3 and the
+  module conventions; `AFE_INTEGRATION_PLAN.md` I12, R1 and the `usb_afe_rx_if` row.
+
+STA (unsized, as 8.2; the full table per top is in `DOC/afe_interface_spec.md` 7.2):
+
+| Top | Before P8, slow | After P8, slow | typ / fast | Remaining violations |
+|---|---|---|---|---|
+| `usb_afe_rx_if` | −1.82 / −42 / 40 (8.2) | −1.82 / −42 / 40 | +0.29 / +0.60 | `clk_rx` only (reset recovery fan-out −1.82, delay-line mux −0.96); the enables on `clk60` meet |
+
+Slow-corner state of the whole design after P1–P8: every `clk60` path except the register-read
+path of `usb_ulpi_phy_top` (−1.44, K9) and one unbuffered net in `usb_ulpi_tx_top` (−1.49) meets;
+the `clk_bit` islands miss by ≤ 0.46 ns (flop + one or two gates, K8); the `clk_rx` islands miss by
+≤ 2.3 ns on unbuffered reset / strobe nets with no logic. Typ and fast close everywhere. All of
+it is the class that sizing and buffering address, so P9 needs a sized flow before sign-off.

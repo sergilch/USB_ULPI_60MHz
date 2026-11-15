@@ -27,7 +27,7 @@
 //        DUT 0 is the current RTL default, DUT 2 the recommended setting.
 //
 // Checks
-//   * DUT pins, every clk_rx / clk_bit edge, against a reference model:
+//   * DUT pins, every clk_rx / clk60 edge, against a reference model:
 //     hs_rxd = input delayed by 3 + sq_comp, hs_squelch / hs_cdr_lock from the
 //     squelch synchronizer and lock_dly, isolation values, rx_en_hs / cdr_en
 //     per speed / rx_en / iso_en.
@@ -226,7 +226,7 @@ module tb_usb_afe_rx_if;
             localparam [2:0]  DL = (g == 2) ? 2 : (g == 3) ? 4 : 0;
             localparam integer ZM = (g == 0 || g == 5) ? 6 : 4;
             usb_afe_rx_if u_if (
-                .clk_bit(clk_bit), .rst_n(rst_n), .speed(speed), .rx_en(rx_en), .iso_en(iso_en),
+                .clk60(clk60), .rst_n(rst_n), .speed(speed), .rx_en(rx_en), .iso_en(iso_en),
                 .lock_dly(DL), .sq_comp(KC),
                 .rx_en_hs(rx_en_hs_w[g]), .cdr_en(cdr_en_w[g]),
                 .clk_rx(clk_rx), .hs_rxd_a(hs_rxd_a), .squelch_a(squelch),
@@ -253,9 +253,9 @@ module tb_usb_afe_rx_if;
         end
     endtask
 
-    // clk_bit side: enables
+    // clk60 side: enables (registered on clk60 since Plan_60MHz.md P8)
     reg e_en = 1'b0;
-    always @(posedge clk_bit) begin
+    always @(posedge clk60) begin
         if (rst_n) for (k = 0; k < NI; k = k + 1) begin
             perr("rx_en_hs", k, rx_en_hs_w[k], e_en);
             perr("cdr_en", k, cdr_en_w[k], e_en);

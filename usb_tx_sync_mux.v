@@ -46,8 +46,8 @@
 //   tick before the first output byte.
 //
 // Clocking: one clock `clk` with a clock enable `ce`; all state changes and all
-//   handshakes happen only on edges with ce = 1 (clk_bit with ce = ce60 in the
-//   PHY, or clk60 with ce = 1).
+//   handshakes happen only on edges with ce = 1 (clk60 with ce = 1 in the PHY;
+//   clk_bit with ce = ce60 in the older standalone tests).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
