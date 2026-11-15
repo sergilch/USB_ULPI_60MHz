@@ -345,10 +345,11 @@ Answers are needed in this form: value, corner, and the simulation it comes from
 | Q12 | Can the TX accept 2 or 4 bits in parallel? (I12) | TX timing fallback |
 | Q13 | 1.8 V supplies: internal LDO from 3.3 V or external? POR source? | Power sequence |
 | Q14 | Schedule for the missing analog blocks (squelch, FS/LS transceiver, terminations, VBUS / ID, bias, LDO / POR, oscillator). | A5–A7 planning |
+| Q15 | Delays of the BBSUD8F ULPI pads (input, output incl. the CLK pad) per corner, or a timing model; insertion delay and jitter of `CLK_BIT_A` at the digital clock root. (`Plan_60MHz.md` P9-O2 / O4) | SDC placeholders, CLKOUT lead `CKO_LEAD` |
 
 ## 9. Still open in A0
 
-- Answers to Q1–Q14, then version 1.0 of this document (milestone AM1).
+- Answers to Q1–Q15, then version 1.0 of this document (milestone AM1).
 - Update the `DOC/Diagramm/afe_interface` diagram with the final pin names (after the answers, to avoid redrawing twice).
 - Real STA of the 480 MHz paths (section 7.2).
 - ~~False-SYNC check for `HS_ZMIN` = 4~~: done in A1 with `tb_afe_hs_chain` and in A3 with `tb_usb_afe_rx_if` (300 packets per point, section 4.2): no undetected errors, lower loss than `HS_ZMIN` = 6; with `LOCK_DLY` 2 the lock-time margin grows from 4 to 6 bits. Changing the PHY's `HS_ZMIN` to 4 is recommended, decision pending.
