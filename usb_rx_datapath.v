@@ -29,7 +29,7 @@
 //   A slower far end gives ticks without bits, a faster one (<= 1000 ppm) makes
 //   the FIFO hold up to about one more word per 1000; 8 words leave margin.
 // FS/LS: at most one DPLL bit per tick.
-// usb_rx_decoder8 is the bit chain of usb_rx_decoder (NRZI decoder -> SYNC
+// usb_rx_decoder8 is the bit chain of ref_rx_decoder (NRZI decoder -> SYNC
 //   detect -> bit unstuffer -> deserializer 1:8 -> EOP / RxError check) for up
 //   to 8 bits per tick.  It can write up to four events per tick (two with
 //   HS_ZMIN >= 6), so an 8-entry FIFO (buf_afull = fewer than 4 entries left
@@ -303,7 +303,7 @@ module usb_rx_datapath #(
     // every event is taken in its tick (the FIFO head does not wait); a START
     // while a packet is open closes it with an error and is dropped (cannot
     // happen: usb_rx_decoder8 ends a packet before the next SYNC, as
-    // usb_rx_eop_check does)
+    // ref_rx_eop_check does)
     wire       dir   = !f_valid && d_w0;                     // ev0 shown directly
     assign     f_pop = f_valid;
 

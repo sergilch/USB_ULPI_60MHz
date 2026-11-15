@@ -3,7 +3,8 @@
 Status: in progress. P1 (clock generator, SDC skeleton, STA baseline), P2 (ULPI core on `clk60`),
 P3 (parallel RX decoder), P4 (FS/LS receive on `clk60`) done 2026-11-14, P5 (HS receive), P6 (TX),
 P7 (lock detector, power sequencer, pads, status sync) and P8 (AMS and docs) done 2026-11-15; P9
-(cleanup, sign-off STA) open; P0 open (D10 proposed,
+(cleanup, sign-off STA) partly done 2026-11-15 (cleanup, full SDC, sized STA; the slow corner does
+not close yet, 8.11); P0 open (D10 proposed,
 waiting for the analog team). Progress and results:
 section 8.
 Related: `WORK_PLAN.md` (D1, D2, 5.2, 9.1, 9.3, risk R1), `AFE_INTEGRATION_PLAN.md` (I12),
@@ -310,7 +311,7 @@ blocks), so that wiring is done once, on the new clock structure.
 | P6 | ✅ 2026-11-15, see 8.8. New `usb_tx_serializer8` (clk60, 8 line bits per tick, HS EOP splice, FS/LS tick bit timer), `usb_afe_tx_if8` (clk60: driver select, 40-bit lead window, lag dilation, pin vectors) and `usb_tx_piso` (clk_bit: 8:1 shift loaded on `ld`, idle clamp, 68 flops). `usb_tx_path` is clk60 only (`SPLIT` and `usb_tx_ser_bridge` removed); the ULPI tops lose `clk_bit` / `ld` and output `txd_v` / `tx_en_v` / `tx_se0_v`. New `tb_usb_tx_vec`: bit-exact against the bit-serial chain, pins LAT = 9 cycles later. All 42 TBs pass with unchanged packet checks; the bit-serial `usb_tx_serializer` / `usb_afe_tx_if` stay as reference models. |
 | P7 | ✅ 2026-11-15, see 8.9. `usb_pll_lock_det` on `clk60` (count = ticks × 8 + position of the window-end flag change in an 8-sample `clk_bit` word, 17-flop island; heartbeat `clk60` / 16); `usb_pwr_seq` core-side copies on `clk60` (`core_rst_n_c`, `iso_en_c`, `dir_hold_c`, `afe_en_c`; `clk_en_b` stays on `clk_bit`); `usb_ulpi_phy_pads` exports the `clk_bit` island reset `bit_rst_n`; `usb_rx_status_sync` outputs on `clk60` with squelch / disconnect filters in ticks (the squelch / disconnect island moved in from `usb_line_state`). `tb_usb_pll_lock_det` (every window count exact against a bit-rate counter), `tb_usb_pwr_seq`, `tb_usb_rx_status_sync` (rewritten, tick reference), `tb_ams_pwr_shadow` pass; all 42 TBs pass. |
 | P8 | ✅ 2026-11-15, see 8.10. Last `clk_bit` register outside the islands moved: `usb_afe_rx_if`'s `rx_en_hs` / `cdr_en` on `clk60` (port `clk60` replaces `clk_bit`). `ams_phy_end.v` and the AFE-level TBs run `usb_mode_term_ctrl` on `clk60` with `ce60` = 1 as in `usb_ulpi_phy_top`; `ce60` is no longer used by any RTL instance. Docs: `CLAUDE.md` (clock rule: `clk_bit` islands, `clk60` core, `clk_rx` / `clk_rxw`), README, module headers, `DOC/afe_interface_spec.md` 2 / 3.2 / 4.1 / 4.2 / 7.2 (consolidated STA), `WORK_PLAN.md` D1 / D10 / 5.2 / 9.1 / 9.3 / conventions, `AFE_INTEGRATION_PLAN.md` I12 / R1 / 6.2 row. All 42 TBs pass; `run_ams_tests.sh`: static check OK, Spectre runs SKIP (no `xrun`). |
-| P9 | Not started. |
+| P9 | ◐ 2026-11-15, see 8.11. Done: `ce` ports removed where unused (only the six leaves whose TBs exercise gaps keep `ce`; `ce60` removed from `usb_clk_gen`); the serial reference models moved to TB-only `ref_*.v` with their TBs `tb_ref_*.v`; full SDC (ULPI I/O with placeholder pad / ULPI 1.1 numbers, AFE pins, `clk_rx` ↔ `clk60` max-delay, `clk_rx` reset multicycle); `run_sta.sh` sized by default, registers per clock reported; `clk_rx` reset release split into a fast and a multicycle copy (new `tb_usb_rx_hs_reset`); 480 MHz islands restructured to one gate per flop where function-preserving. typ / fast: no setup or hold violation on any top. Open: slow-corner setup (WNS −0.07 … −0.45 on the islands, library floor of one gate at 480 MHz; −1.90 on the ULPI input path, K2). All 43 TBs pass. |
 
 ### 8.1 P1 notes
 
@@ -688,3 +689,67 @@ path of `usb_ulpi_phy_top` (−1.44, K9) and one unbuffered net in `usb_ulpi_tx_
 the `clk_bit` islands miss by ≤ 0.46 ns (flop + one or two gates, K8); the `clk_rx` islands miss by
 ≤ 2.3 ns on unbuffered reset / strobe nets with no logic. Typ and fast close everywhere. All of
 it is the class that sizing and buffering address, so P9 needs a sized flow before sign-off.
+
+### 8.11 P9 notes (cleanup, SDC, sized STA)
+
+- **Cleanup:** `ce` removed from `usb_mode_term_ctrl`, `usb_afe_trim_regs`, `usb_nrzi_encoder`,
+  `usb_ulpi_burst_mux`, `usb_ulpi_reg_access`, `usb_ulpi_rx_path`, `usb_ulpi_rxcmd_gen`,
+  `usb_ulpi_rx_handler`; `ce60` removed from `usb_clk_gen` (TBs decode `phase_j == 4'b0111`).
+  `ce` stays only where a TB exercises gaps (`usb_bit_stuffer`, `usb_tx_holding`,
+  `usb_tx_sync_mux`, `usb_ulpi_bus_owner`, `usb_ulpi_input_capture`, `usb_ulpi_reg_file`). The
+  bit-serial models are `ref_tx_serializer`, `ref_afe_tx_if`, `ref_rx_decoder` (+ `ref_rx_*`
+  leaves) and `ref_rx_fsls_frontend`, not read by synthesis. Planning-doc history keeps the old
+  names.
+- **SDC:** ULPI I/O against a virtual `ulpi_clk` aligned to the CLKOUT pin (setup 6.0 / hold 0.0 /
+  output delay 9.0 ns from ULPI 1.1 output-clock mode; pad and CLKOUT-flop delays are
+  placeholders); AFE TX outputs to `clk_bit`; `hs_rxd_a` input delay from the CDR; asynchronous
+  AFE inputs false; `clk_rx` / `clk_rxw` ↔ `clk60` max-delay one word period, hold false.
+- **Sized STA:** `run_sta.sh` maps with ABC `buffer -p; upsize; dnsize` on the full library
+  (`SIZE=0`: the old X1 map). That removes the unbuffered `clk60` fan-out (K9 closed: the
+  register-read path meets). Flop → flop-pin nets (reset trees, load strobes) are not buffered by
+  ABC, hence the RTL changes below.
+- **`clk_rx` reset release (option 1):** each `clk_rx` island (`usb_rx_hs_sipo`,
+  `usb_afe_rx_if`) releases from two synchronizer copies on the same edge. The fast copy
+  `rst_rx_n` resets only flops whose D can differ from the reset value at the first edge after the
+  release (single-cycle recovery). The multicycle copies `rst_rx_m_n` / `rst_rx_m2_n` reset the
+  rest, whose D equals their reset value there (2-cycle recovery in the SDC). Pure data flops have
+  no reset. `tb_usb_rx_hs_reset` runs each island twice, the second copy with the multicycle reset
+  released one edge late: identical outputs over 400 random asynchronous resets; mutants that move
+  a fast-group flop to the late copy fail. Equal copies need `(* keep *)` on separate `always`
+  blocks; `keep` on the `reg` does not stop Yosys from merging them.
+- **One gate per 480 MHz flop (option 3), function-preserving:** `usb_afe_rx_if`: lock counter →
+  OR window (one gate per stage), data capture `dq` and `sq2` replicated (fan-out ≤ 3), registered
+  delay-line select; `usb_rx_hs_sipo`: `ld_rx` as four copies + an inverted one loaded from a
+  pre-decode without a gate, "active bit in the word" accumulated bit by bit instead of an 8-input
+  OR; `usb_clk_gen`: phase decodes registered one edge ahead. A3 sweep, chirp, AMS shadows
+  unchanged. Not taken: the one-gate rewrite of the per-tick OR accumulators
+  (`usb_rx_status_sync` disconnect, `usb_line_state` `hs_tx_act`, `usb_rx_datapath` `tx_en`)
+  shifts their window by one `clk_bit` and would still miss.
+- **Library floor (K8):** at the slow corner an X1 flop has 0.84–0.97 ns clock-to-Q and ≈ 0.7 ns
+  setup, leaving ≈ 0.4 ns for one gate of the 2.03 ns budget; the smallest mux is ≈ 0.6 ns, and
+  larger flops are slower. Every remaining island violation is one such gate, or the zero-gate
+  half-cycle path `hi` → falling-edge `clkout` (−0.45). Further closure needs physical
+  optimization (useful skew, per-path cell choice) or a different CLKOUT launch (K2).
+
+Sized STA, WNS in ns (slow / typ / fast), registers per clock:
+
+| Top | Slow | Typ | Fast | Registers per clock | Slow-corner remainder |
+|---|---|---|---|---|---|
+| `usb_ulpi_phy_top` | −1.90 | +0.23 | +0.80 | `clk60` 503 | 2 endpoints, `ulpi_stp` input → core with the placeholder I/O budget (K2) |
+| `usb_rx_datapath` | −0.39 | +0.83 | +1.15 | `clk_bit` 56, `clk60` 278, `clk_rx` 58, `clk_rxw` 148 | SIPO word-load mux (was −2.32); `clk_bit` tx_en OR −0.31 |
+| `usb_rx_decoder8` | +6.49 | +11.53 | +12.85 | `clk60` 152 | — |
+| `usb_ulpi_tx_top` | −0.21 | +1.01 | +1.35 | `clk60` 182 | one path |
+| `usb_afe_tx_if8` | +3.26 | +10.10 | +11.78 | `clk60` 205 | — |
+| `usb_tx_piso` | −0.40 | +0.79 | +1.15 | `clk_bit` 68 | clamp force term (two gates), shift mux |
+| `usb_afe_rx_if` | −0.23 | +0.92 | +1.13 | `clk60` 1, `clk_rx` 54 | delay-line mux (was −1.82) |
+| `usb_clk_gen` | −0.45 | +0.26 | +0.47 | `clk_bit` 12 | `hi` → `clkout` half cycle (was −0.71) |
+| `usb_pll_lock_det` | −0.07 | +0.98 | +1.27 | `clk_bit` 17, `clk60` 37, `ref_clk` 21 | sample-word mux |
+| `usb_rx_status_sync` | −0.33 | +0.85 | +1.19 | `clk_bit` 7, `clk60` 86 | disconnect OR |
+| `usb_line_state` | −0.32 | +0.86 | +1.18 | `clk_bit` 2, `clk60` 17 | `hs_tx_act` OR |
+| `usb_mode_term_ctrl` | +12.40 | +14.50 | +15.08 | `clk60` 9 | — |
+| `usb_pwr_seq` | +0.55 | +1.29 | +1.50 | `clk_bit` 2, `clk60` 8, `ref_clk` 40 | — |
+| `usb_afe_trim_regs` | +12.32 | +14.52 | +14.98 | `clk60` 117 | — |
+
+No hold or removal violation at any corner. Ideal clocks, no parasitics, placeholder pad / CDR
+delays: estimates, not sign-off.
+

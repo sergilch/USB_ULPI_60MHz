@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_rx_bit_unstuffer.v
+// ref_rx_bit_unstuffer.v
 //
 // "Bit Unstuffer" of the USB 2.0 PHY RX path (HS / FS / LS).  Position:
 //
@@ -9,7 +9,7 @@
 // Rule (USB 2.0, 7.1.9): the transmitter inserts a 0 after six consecutive 1s.
 //   The receiver drops that 0; a 1 in its place is a bit-stuff violation.
 //   * The run counter is loaded with 1 on the final 1 of SYNC (o_sync from
-//     usb_rx_sync_detect), matching usb_bit_stuffer on the TX side, where SYNC
+//     ref_rx_sync_detect), matching usb_bit_stuffer on the TX side, where SYNC
 //     passes through the stuffer as ordinary data.
 //   * Only bits inside a packet (i_pkt, i_act, no SE0) are processed; all other
 //     bits clear the counter and are not data.
@@ -18,7 +18,7 @@
 //     how the EOP check recognises the HS EOP.  FS / LS: a violation is an
 //     error (RxError).
 //
-// Interface: the stream of usb_rx_sync_detect, registered, with
+// Interface: the stream of ref_rx_sync_detect, registered, with
 //   o_dat  : this bit is a data bit (i.e. not SYNC, not a stuff bit, not a
 //            violation, not SE0, inside a packet); o_bit is its value;
 //   o_serr : this bit is a bit-stuff violation (a 1 after six 1s);
@@ -28,7 +28,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_bit_unstuffer (
+module ref_rx_bit_unstuffer (
     input  wire clk,
     input  wire rst_n,
 

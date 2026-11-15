@@ -15,7 +15,7 @@
 // Checked all the time
 //   * clkout (CLKOUT): every high phase exactly 4 clk_bit cycles, every low phase
 //     4 + 8k cycles (complete periods only, stops low), each rising edge half a
-//     cycle before a clk_bit edge with ce60 = 1; ce60 exactly every 8 cycles;
+//     cycle before a clk_bit edge in phase 7 (the old ce60); phase 7 every 8 cycles;
 //     no rising edge unless clk_en was 1 at the decision point; clk_on = 0 only
 //     while clkout is low (safe point to stop the PLL).
 //   * clk60_a (afe_pll_bm clk60_out, CLK60_A of afe_pll.va): clk_bit / 8,
@@ -69,7 +69,7 @@ module tb_usb_pll_lock_det;
     // ---------------- DUTs + PLL ----------------
     reg        rst_n = 1'b0, pll_en = 1'b0, clk_susp = 1'b0, lol_clr = 1'b0;
     reg  [1:0] refsel = 2'b01;
-    wire       clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire       clk_bit, pll_lock, lol, refsel_err, clkout, clk_on;
     wire        clk60, ld;           // core clock / island strobe (usb_clk_gen)
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
@@ -85,7 +85,7 @@ module tb_usb_pll_lock_det;
         .pll_lock(pll_lock), .lol(lol), .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
-                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
+                      .clkout(clkout), .clk_on(clk_on));
 
     // ---------------- 60 MHz PLL output (clk60_a) ----------------
     // sampled on falling clk_bit edges (mid-cycle); a gap > 3 ns is a restart
@@ -122,6 +122,8 @@ module tb_usb_pll_lock_det;
     // =====================================================================
     // CLKOUT monitor (on clk_bit)
     // =====================================================================
+    // tick of the old ce60 output: phase 7 (usb_clk_gen header)
+    wire    ce60 = (phase_j == 4'b0111);
     integer hi_cnt = 0, lo_cnt = 0, ce_gap = 0, ck_err = 0, n_pulse = 0;
     reg     c60_q = 1'b0, rose = 1'b0;
     reg     en_h1 = 1'b0, en_h2 = 1'b0;          // clk_en at the last two edges

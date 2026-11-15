@@ -9,7 +9,7 @@
 //   * phase = (n + 4) mod 8 (reset state = phase 4), decoded from phase_j;
 //   * clk60 = 1 for phase 0..3, so every clk60 pulse is 4 high + 4 low clk_bit
 //     cycles and the first rising edge comes 4 edges after the release;
-//   * ld = (phase == 3), ce60 = (phase == 7);
+//   * ld = (phase == 3) (the ce60 output, phase == 7, was removed in P9);
 //   * during reset (also asserted in the middle of a period) all outputs are
 //     0 and phase_j = 0000 (phase 4).
 // Self-correction: the Johnson counter is set to each of its 8 illegal states
@@ -23,7 +23,7 @@
 // register on ld and back into a clk60 register.  In simulation and hardware
 // alike this must give exactly one clk60 tick of latency each way, i.e. the
 // copy back is always the counter value of the previous tick.  A copy taken on
-// E0 instead (ce60) is shown for contrast: simulation returns it one tick
+// E0 instead (phase 7, the old ce60) is shown for contrast: simulation returns it one tick
 // earlier than the hardware would (zero-cycle race), the case the rule avoids.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
@@ -35,12 +35,12 @@ module tb_usb_clk_gen;
     reg  clk_bit = 1'b0;
     reg  rst_n   = 1'b0;
     reg  clk_en  = 1'b0;
-    wire clk60, ld, ce60, clkout, clk_on;
+    wire clk60, ld, clkout, clk_on;
     wire [3:0] phase_j;
     reg  [2:0] phase;                   // binary decode of the Johnson phase
 
     usb_clk_gen dut (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
-                     .clk60(clk60), .phase_j(phase_j), .ld(ld), .ce60(ce60),
+                     .clk60(clk60), .phase_j(phase_j), .ld(ld),
                      .clkout(clkout), .clk_on(clk_on));
 
     always #(TB / 2.0) clk_bit = ~clk_bit;
@@ -70,7 +70,7 @@ module tb_usb_clk_gen;
     endtask
 
     //-------------------------------------------------------------------------
-    // per-cycle reference check of clk60 / phase / ld / ce60
+    // per-cycle reference check of clk60 / phase / ld
     //-------------------------------------------------------------------------
     reg en_q;                           // clk_en as seen at the previous edge
     reg [2:0] ph_exp;
@@ -94,7 +94,7 @@ module tb_usb_clk_gen;
         #0.2;
         checks = checks + 1;
         if (!rst_n) begin
-            if (clk60 !== 1'b0 || phase !== 3'd4 || ld !== 1'b0 || ce60 !== 1'b0 ||
+            if (clk60 !== 1'b0 || phase !== 3'd4 || ld !== 1'b0 ||
                 clkout !== 1'b0 || clk_on !== 1'b0)
                 err("outputs not 0 / phase not 4 during reset");
         end else if (!skip) begin
@@ -102,7 +102,6 @@ module tb_usb_clk_gen;
             if (phase !== ph_exp)                                err("phase");
             if (clk60 !== (ph_exp <= 3'd3))                      err("clk60");
             if (ld    !== (ph_exp == 3'd3))                      err("ld");
-            if (ce60  !== (ph_exp == 3'd7))                      err("ce60");
             // clk_on / clkout period decision: clk_en at the edge into phase 7
             if (ph_exp == 3'd7) exp_on = en_q;
             if (clk_on !== exp_on)                               err("clk_on");
@@ -114,7 +113,7 @@ module tb_usb_clk_gen;
     // asynchronous reset: everything drops at once, also mid-period
     always @(negedge rst_n) begin
         #0.1;
-        if (clk60 !== 1'b0 || ld !== 1'b0 || ce60 !== 1'b0 || clkout !== 1'b0 ||
+        if (clk60 !== 1'b0 || ld !== 1'b0 || clkout !== 1'b0 ||
             clk_on !== 1'b0 || phase !== 3'd4)
             err("asynchronous reset");
     end
@@ -180,7 +179,7 @@ module tb_usb_clk_gen;
     end
     always @(posedge clk_bit) begin
         if (ld)   isl    <= c60;        // core -> island on E4 (the rule)
-        if (ce60) isl_e0 <= c60;        // core -> island on E0
+        if (phase_j == 4'b0111) isl_e0 <= c60;   // core -> island on E0 (old ce60 tick)
     end
     always @(posedge clk60) begin
         #0.5;

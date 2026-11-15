@@ -6,7 +6,7 @@
 // tb_ams_pwr_shadow.v (Icarus: afe_pll_bm, LDOs as delays).  The including
 // module provides
 //   reg  vin_on, pwr_good, susp_req, clk_susp, wake     stimulus
-//   wire por_n, pg18a, clk_bit, ref_clk, clkout, ce60, clk_on, pll_lock, lol,
+//   wire por_n, pg18a, clk_bit, ref_clk, clkout, clk_on, pll_lock, lol,
 //        bias_en, ldo_en, pll_en, iso_en, core_rst_n_c, iso_en_c, afe_en_c,
 //        dir_hold_c, clk_en_b, pll_err, state[3:0]     from the DUT chain
 //   `AMS_V18A                                          VDD18A in volts

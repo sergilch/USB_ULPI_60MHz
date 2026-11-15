@@ -98,7 +98,7 @@ module ams_phy_end #(
 
     wire t_busy, byp, sdis, edis, ddis, hmode;
     usb_mode_term_ctrl u_mode (
-        .clk_bit(clk60), .rst_n(rst_n), .ce60(1'b1),        // clk60 domain, ce = 1 (as in usb_ulpi_phy_top)
+        .clk60(clk60), .rst_n(rst_n),
         .xcvrselect(xs), .termselect(ts), .opmode(om), .dp_pulldown(dpd), .dm_pulldown(dmd),
         .iso_en(1'b0),
         .dp_pullup_en(dp_pullup_en), .dm_pullup_en(dm_pullup_en), .hs_term_en(hs_term_en),

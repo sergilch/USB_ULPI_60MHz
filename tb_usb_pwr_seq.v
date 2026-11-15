@@ -71,7 +71,7 @@ module tb_usb_pwr_seq;
     end
 
     // ---------------- DUT chain ----------------
-    wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire clk_bit, pll_lock, lol, refsel_err, clkout, clk_on;
     wire        clk60, ld;           // core clock (TX vectors) / island strobe
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
@@ -85,7 +85,7 @@ module tb_usb_pwr_seq;
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
-                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
+                      .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq #(.BIAS_CYC(BIAS_CYC), .LOCK_TO(LOCK_TO), .OFF_CYC(OFF_CYC)) dut (
         .ref_clk(ref_clk), .clk_bit(clk_bit), .clk60(clk60), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),
@@ -137,7 +137,7 @@ module tb_usb_pwr_seq;
         .hs_rxd(hs_rxd), .hs_squelch(hs_squelch), .hs_cdr_lock(hs_cdr_lock));
 
     wire pu_dp, pu_dm, hst, pd_dp, pd_dm, tbusy, byp, sdis, edis, ddis, hostm;
-    usb_mode_term_ctrl u_mode (.clk_bit(clk60), .rst_n(core_rst_n_c), .ce60(1'b1),
+    usb_mode_term_ctrl u_mode (.clk60(clk60), .rst_n(core_rst_n_c),
         .xcvrselect(2'b01), .termselect(1'b1), .opmode(2'b00), .dp_pulldown(1'b0), .dm_pulldown(1'b0),
         .iso_en(iso_en_c), .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hst),
         .dp_pulldown_en(pd_dp), .dm_pulldown_en(pd_dm), .term_busy(tbusy), .tx_bypass(byp),

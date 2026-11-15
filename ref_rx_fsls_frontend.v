@@ -1,11 +1,11 @@
 //-----------------------------------------------------------------------------
-// usb_rx_fsls_frontend.v
+// ref_rx_fsls_frontend.v
 //
 // FS / LS part of the RX front end of the USB 2.0 PHY: receiver status sync
 // and digital clock / data recovery (DPLL).  Position:
 //
 //   AFE: FS/LS differential + single-ended receivers --rxrcv, rxdp, rxdm-->
-//        [THIS BLOCK] --> FS/LS RX bit chain (usb_rx_decoder, FS/LS)
+//        [THIS BLOCK] --> FS/LS RX bit chain (ref_rx_decoder, FS/LS)
 //
 // Assumption (work plan, decision D2): FS / LS data is not recovered by the HS
 // CDR.  The receiver outputs are oversampled on clk_bit (480 MHz): FS_DIV = 40
@@ -35,7 +35,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_fsls_frontend #(
+module ref_rx_fsls_frontend #(
     parameter FS_DIV = 40,
     parameter LS_DIV = 320,
     parameter DIV_W  = 9

@@ -16,7 +16,7 @@
 //   registers (Function Control / OTG Control, written by the Link model here)
 //     -> usb_mode_term_ctrl -> afe_term_bm (pull-up, 45 Ohm, pull-downs)
 //   byte feeder -> usb_tx_path (bypass / eop_dis from usb_mode_term_ctrl)
-//     -> usb_afe_tx_if (drv_dis) -> afe_hs_tx_bm + afe_fsls_bm
+//     -> usb_afe_tx_if8 + usb_tx_piso (drv_dis) -> afe_hs_tx_bm + afe_fsls_bm
 //   line -> afe_hs_rx_bm, afe_squelch_bm -> afe_cdr_bm -> usb_afe_rx_if
 //        -> afe_fsls_bm receivers -> usb_rx_datapath -> ls_* -> usb_line_state
 //           (usb_rx_status_sync: squelch / disconnect; datapath and line state
@@ -465,7 +465,7 @@ module tb_chirp_end #(
 
     wire pu_dp, pu_dm, hs_term, pd_dp, pd_dm, t_busy, byp, sdis, edis, ddis, hmode;
     usb_mode_term_ctrl u_mode (
-        .clk_bit(clk60), .rst_n(rst_n), .ce60(1'b1),        // clk60 domain, ce = 1 (as in usb_ulpi_phy_top)
+        .clk60(clk60), .rst_n(rst_n),
         .xcvrselect(xs), .termselect(ts), .opmode(om), .dp_pulldown(dpd), .dm_pulldown(dmd),
         .iso_en(1'b0),
         .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hs_term),

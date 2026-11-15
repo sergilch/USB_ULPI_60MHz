@@ -5,7 +5,7 @@
 //                     -> [3] deserialize 1:8 + EOP / RxError check
 //                     -> up to 4 events per tick (to the event FIFO)
 //
-// The clk60 replacement for usb_rx_decoder (one bit per clock).  One instance
+// The clk60 replacement for ref_rx_decoder (one bit per clock).  One instance
 // serves HS (0..8 bits per tick from the HS SIPO / word FIFO) and FS / LS (0 or 1
 // DPLL bit per tick), selected by hs.
 //
@@ -15,13 +15,13 @@
 //   s_lvl[i]  line level, J = 1 / K = 0;
 //   s_se0[i]  SE0 (FS / LS only);
 //   s_act[i]  receiver active for this bit.
-//   These are b_lvl / b_se0 / b_act of usb_rx_decoder, one slot per b_en bit.
+//   These are b_lvl / b_se0 / b_act of ref_rx_decoder, one slot per b_en bit.
 //   FS / LS (hs = 0): at most one bit per tick (s_en[7:1] = 0); with more,
 //   a tick could hold three events.  Both are errors (reported in simulation).
 //
-// Function: exactly that of usb_rx_decoder (usb_rx_nrzi_decoder ->
-//   usb_rx_sync_detect -> usb_rx_bit_unstuffer -> usb_rx_deserializer ->
-//   usb_rx_eop_check, see their headers for the rules), for the bits of a tick
+// Function: exactly that of ref_rx_decoder (ref_rx_nrzi_decoder ->
+//   ref_rx_sync_detect -> ref_rx_bit_unstuffer -> ref_rx_deserializer ->
+//   ref_rx_eop_check, see their headers for the rules), for the bits of a tick
 //   at once.  tb_usb_rx_decoder8 compares both, event for event.
 //   hs = 1: HS EOP / error rules and ZMIN_HS; hs = 0: FS / LS rules, ZMIN_FS.
 //   hs must be static during a packet (it changes with XcvrSelect only).
@@ -59,13 +59,13 @@
 //   event.)
 //
 // Output: up to four events per tick, in order ev0, ev1, ev2, ev3 (ev<k>_wr is
-//   a thermometer code), with the event word of usb_rx_eop_check:
+//   a thermometer code), with the event word of ref_rx_eop_check:
 //   {type[1:0], data[7:0]}, type 01 START, 00 BYTE, 10 END (data[0] = error).
 //   Typical pairs: BYTE + END (receiver lost right after a byte), END + START
 //   (HS: receiver lost, then a new SYNC within the tick); three or four events
 //   only with ZMIN_HS < 6 and squelch / lock glitches of a few bits.
-//   busy = a packet is open in stage 3 (as usb_rx_eop_check); ovf = number of
-//   bytes / packets dropped in the tick (0..2; usb_rx_eop_check pulses once per
+//   busy = a packet is open in stage 3 (as ref_rx_eop_check); ovf = number of
+//   bytes / packets dropped in the tick (0..2; ref_rx_eop_check pulses once per
 //   drop).
 //
 // Buffer room: buf_afull = the event FIFO cannot take 4 more events, counting
@@ -73,7 +73,7 @@
 //   of a tick plus the END that a packet left open reserves, or four events
 //   that leave no packet open.  It is used by stage 3 in the tick in which it
 //   assembles the bits (two ticks after they arrived); the rules of
-//   usb_rx_eop_check then apply unchanged: no START without room (packet
+//   ref_rx_eop_check then apply unchanged: no START without room (packet
 //   skipped), a BYTE that does not fit is dropped and the END gets the error;
 //   the END of an open packet is always written (its entry is reserved).
 //

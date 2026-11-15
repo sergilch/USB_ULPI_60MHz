@@ -18,7 +18,7 @@
 //   Output: words of the stuffed bit stream for the Serializer, ready/valid.
 //           All words carry 8 valid bits (LSB first) except the last one
 //           (out_last = 1), which carries out_nbits = 1..8 bits.  This is
-//           exactly the input format of usb_tx_serializer (in_nbits / in_last),
+//           exactly the input format of ref_tx_serializer (in_nbits / in_last),
 //           the NRZI encoder in between only has to pass nbits / last through.
 //   stuff_dis: 1 = pass bits unmodified (OpMode "disable bit stuffing and
 //           NRZI", chirp / test modes).  Must be static during a packet.
@@ -28,7 +28,7 @@
 //     * clk60 domain       : clk = clk60,    ce = 1'b1 (the PHY since
 //       Plan_60MHz.md P6)
 //     * clk_bit domain     : clk = clk_bit,  ce = ce60 (only the bit-serial
-//       reference chain with usb_tx_serializer in the testbenches).
+//       reference chain with ref_tx_serializer in the testbenches).
 //
 // Implementation: every input byte expands combinationally to 8..10 bits
 //   (worst case: two stuffs in one byte) which are appended to a 25-bit

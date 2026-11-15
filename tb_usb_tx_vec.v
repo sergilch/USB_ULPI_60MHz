@@ -2,13 +2,13 @@
 // tb_usb_tx_vec.v - 60 MHz TX chain against the bit-serial reference
 //                   (Plan_60MHz.md P6)
 //
-//   iverilog -g2005 -o sim_tx_vec usb_tx_serializer.v usb_tx_serializer8.v \
-//            usb_afe_tx_if.v usb_afe_tx_if8.v usb_tx_piso.v tb_usb_tx_vec.v
+//   iverilog -g2005 -o sim_tx_vec ref_tx_serializer.v usb_tx_serializer8.v \
+//            ref_afe_tx_if.v usb_afe_tx_if8.v usb_tx_piso.v tb_usb_tx_vec.v
 //   vvp sim_tx_vec [+seed=n]
 //
 // One random word stream (HS / FS / LS / FS-rate packets, last words with
 // 0..8 bits, eop_dis, gaps that cause underruns) drives
-//   reference: usb_tx_serializer (clk_bit, ce60) -> usb_afe_tx_if (clk_bit)
+//   reference: ref_tx_serializer (clk_bit, ce60) -> ref_afe_tx_if (clk_bit)
 //   DUT:       usb_tx_serializer8 (clk60) -> usb_afe_tx_if8 (clk60)
 //              -> usb_tx_piso (clk_bit, load on ld)
 // Checked
@@ -73,7 +73,7 @@ module tb_usb_tx_vec;
     // ---------------- reference serializer ----------------
     wire       r_txd, r_en, r_se0, r_busy, r_done, r_under;
     wire [1:0] r_spd;
-    usb_tx_serializer u_ref (
+    ref_tx_serializer u_ref (
         .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(speed), .eop_dis(eop_dis),
         .in_valid(s_valid), .in_ready(r_ready), .in_data(s_data), .in_nbits(s_nbits), .in_last(s_last),
         .txd(r_txd), .tx_en(r_en), .tx_se0(r_se0), .tx_speed(r_spd),
@@ -95,7 +95,7 @@ module tb_usb_tx_vec;
     reg        lead_first = 1'b0;
     reg        drv_dis = 1'b0, iso_en = 1'b0;
     wire       r_p, r_n, r_hen, r_oe, r_dat, r_se0p, r_ls, r_act;
-    usb_afe_tx_if u_ref_if (
+    ref_afe_tx_if u_ref_if (
         .clk_bit(clk_bit), .rst_n(rst_n),
         .txd(r_txd), .tx_en(r_en), .tx_se0(r_se0), .tx_speed(r_spd),
         .tx_lead(tx_lead), .tx_lag(tx_lag), .drv_dis(1'b0), .iso_en(1'b0), .lead_first(lead_first),
@@ -256,7 +256,7 @@ module tb_usb_tx_vec;
             end
             if (F) n_cl_cyc = n_cl_cyc + 1;
             // tx_active is high a cycle before every driven enable (dropped bits
-            // are not driven; the old usb_afe_tx_if does not cover them either)
+            // are not driven; the old ref_afe_tx_if does not cover them either)
             if ((rn[2] | rn[3]) && !F && !d_act) begin
                 n_act_err = n_act_err + 1; err("tx_active low while a driver enable is due");
             end

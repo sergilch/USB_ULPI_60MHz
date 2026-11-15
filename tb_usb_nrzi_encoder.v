@@ -16,8 +16,8 @@
 //     FS SYNC 80 -> 2A (KJKJ...KK, J = 1), then PID D2h -> 1Bh (starts from K);
 //   * pass-through: out_valid = in_valid, in_ready = out_ready, out_nbits and
 //     out_last unchanged, in every cycle;
-//   * ce: the line level only advances on ce ticks (valid / ready are held
-//     high between ticks, so a level update on a non-ce edge corrupts the data).
+//   * clk60: the DUT runs on the TB clock clk60 (one tick per 8 clk edges, ce);
+//     valid / ready are held high between ticks, so a level update outside a tick corrupts the data.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -34,6 +34,14 @@ module tb_usb_nrzi_encoder;
         else        ce_cnt <= ce_cnt + 3'd1;
     end
 
+    // DUT clock clk60 (CLAUDE.md TB convention: blocking, rises on the clk edge
+    // where the tick is high, so TB processes on ticks act like clk60 processes)
+    reg clk60 = 1'b0;
+    always @(posedge clk) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+
     // ---------------- DUT ----------------
     reg        bypass_en = 1'b0;
     reg        in_valid  = 1'b0;
@@ -47,9 +55,8 @@ module tb_usb_nrzi_encoder;
     reg        out_ready = 1'b1;
 
     usb_nrzi_encoder dut (
-        .clk       (clk),
+        .clk       (clk60),
         .rst_n     (rst_n),
-        .ce        (ce),
         .bypass_en (bypass_en),
         .in_valid  (in_valid),
         .in_ready  (in_ready),

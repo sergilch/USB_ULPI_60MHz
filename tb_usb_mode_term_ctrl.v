@@ -14,7 +14,7 @@
 //      states: the settled outputs equal the decode in the module header
 //      (re-written here as a case table per role).
 //   3. On every clk_bit edge:
-//        - outputs change only on ce60 edges (or one edge after iso_en rises);
+//        - outputs change only on clk60 edges (the TB tick ce60; iso_en included);
 //        - the 1.5 kOhm pull-ups and the 45 Ohm terminations are never on
 //          together, and no enable goes on in the same tick as another goes
 //          off or within BBM_TK ticks after any "off";
@@ -38,12 +38,20 @@ module tb_usb_mode_term_ctrl;
     wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
 
+    // DUT clock clk60 (CLAUDE.md TB convention: blocking, rises on the clk_bit edge
+    // where the tick is high, so TB processes on ticks act like clk60 processes)
+    reg clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+
     reg  [1:0] xs = 2'b01, om = 2'b00;
     reg        ts = 1'b0, dpd = 1'b1, dmd = 1'b1, iso = 1'b0;
     wire       pu_dp, pu_dm, hst, pd_dp, pd_dm, busy, byp, sdis, edis, ddis, host;
 
     usb_mode_term_ctrl #(.BBM_TK(BBM)) dut (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
+        .clk60(clk60), .rst_n(rst_n),
         .xcvrselect(xs), .termselect(ts), .opmode(om), .dp_pulldown(dpd), .dm_pulldown(dmd),
         .iso_en(iso),
         .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hst),
@@ -88,7 +96,7 @@ module tb_usb_mode_term_ctrl;
         #0.1;
         if (o !== o_q) begin
             if (!ce_q && !(iso && o == 5'b00000) && rst_n) begin
-                errors = errors + 1; $display("ERROR @%0t: outputs changed outside a ce60 edge", $time);
+                errors = errors + 1; $display("ERROR @%0t: outputs changed outside a clk60 edge", $time);
             end
             if ((o_q & ~o) != 0) last_off_tk = tk;
             if ((o & ~o_q) != 0) begin

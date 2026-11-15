@@ -1,10 +1,12 @@
 #-----------------------------------------------------------------------------
-# usb_phy.sdc - timing constraints skeleton (Plan_60MHz.md P1, 3.1 / 3.4; WORK_PLAN 9.1)
+# usb_phy.sdc - timing constraints (Plan_60MHz.md P1 / P9, 3.1 / 3.4; WORK_PLAN 9.1)
 #
-# Status: skeleton.  Clocks, generated clocks, the clk60 <-> clk_bit boundary
-# rule and the asynchronous groups are in; ULPI I/O constraints, AFE pin
-# constraints, the Gray-FIFO max-delay and the false paths through the 2-FF
-# synchronizers follow with the modules that need them (P5, P8, WORK_PLAN 9.1).
+# Status (P9): clocks, generated clocks, the clk60 <-> clk_bit boundary rule,
+# the clock-domain crossings (asynchronous groups, Gray-FIFO max-delay), the
+# ULPI I/O constraints relative to the CLK pin, the AFE pin constraints and
+# the exceptions of the boundary rule.  Values marked "placeholder" have no
+# source yet (pad delays: the pad model carries no timing; CDR output timing:
+# Q1 / Q2 of DOC/afe_interface_spec.md) and must be replaced for sign-off.
 #
 # Written to work on any top level of the repository (run_sta.sh reads it for
 # each one): a clock is only created if its port / net exists in the design.
@@ -34,12 +36,13 @@
 #     clk_bit -> clk60   setup 4 clk_bit cycles (-start), hold moved back 3
 #   These multicycles are only correct while every crossing follows the rule.
 #
-# Legacy ce60 paths (single clk_bit domain, removed by Plan_60MHz.md P2..P9)
-#   Paths between ce60-enabled flops really have 8 clk_bit cycles, but they
-#   are not constrained as multicycle here: they are timed as single-cycle
-#   480 MHz paths, which is pessimistic.  This is deliberate: the baseline
-#   shows what the 480 MHz single-clock design asks for, and the violations
-#   on those paths go away as the modules move to clk60.
+#   Exception: the PISO clamp flop cq (usb_tx_piso) samples the clk60 levels
+#   drv_dis / iso_en on every clk_bit edge (a level control, registered once),
+#   so clk60 -> cq is a single-cycle clk_bit path, not 4 / 3 (see below).
+#
+# Since Plan_60MHz.md P9 no ce60-enabled logic is left (the tick enable is
+# gone from usb_clk_gen and from every leaf that only ran with ce = 1; the
+# leaves that keep a ce port for their stall tests get ce = 1 in the design).
 #-----------------------------------------------------------------------------
 
 set T_BIT   2.0833
@@ -107,27 +110,153 @@ if {$has_60 && $has_bit} {
     set_multicycle_path -hold  -start 3 -from [get_clocks clk_bit] -to [get_clocks clk60]
 }
 
-# asynchronous clocks (all crossings go through synchronizers / the RX FIFO)
+# ---------------------------------------------------------------------------
+# Clock-domain crossings
+#   ref_clk: asynchronous to everything (2-FF synchronizers only).
+#   clk_rx / clk_rxw <-> clk_bit: no paths (cut).
+#   clk_rx / clk_rxw <-> clk60: the HS word FIFO (Gray pointers through 2-FF
+#     synchronizers, memory read after the synchronized write pointer) and
+#     2-FF synchronizers.  Not cut: every such path is bounded by one clk_rxw
+#     period (set_max_delay, ideal clocks, so it is a datapath bound), which
+#     keeps the Gray-bus skew below one write-clock period and the memory read
+#     inside the two synchronizer cycles; hold is not meaningful there.
+set T_RXW [expr {8.0 * $T_RX}]
 set sync_grp {}
-foreach c {clk_bit clk60 clkout} {
+foreach c {clk_bit clk60 clkout ulpi_clk} {
     if {[llength [get_clocks -quiet $c]]} { lappend sync_grp $c }
 }
-set groups {}
-if {[llength $sync_grp]} { lappend groups -group $sync_grp }
-if {$has_rx && $has_rxw} { lappend groups -group {clk_rx clk_rxw} } \
-elseif {$has_rx}         { lappend groups -group {clk_rx} }
-if {$has_ref}            { lappend groups -group {ref_clk} }
-if {[llength $groups] > 2} {
-    set_clock_groups -name usb_async -asynchronous {*}$groups
+set rx_grp {}
+foreach c {clk_rx clk_rxw} {
+    if {[llength [get_clocks -quiet $c]]} { lappend rx_grp $c }
 }
+if {$has_ref && ([llength $sync_grp] || [llength $rx_grp])} {
+    set_clock_groups -name usb_async_ref -asynchronous -group {ref_clk} \
+        -group [concat $sync_grp $rx_grp]
+}
+if {[llength $rx_grp]} {
+    foreach c {clk_bit clkout ulpi_clk} {
+        if {[llength [get_clocks -quiet $c]]} {
+            set_false_path -from [get_clocks $rx_grp] -to [get_clocks $c]
+            set_false_path -from [get_clocks $c] -to [get_clocks $rx_grp]
+        }
+    }
+    if {$has_60} {
+        set_max_delay $T_RXW -from [get_clocks $rx_grp] -to [get_clocks clk60]
+        set_max_delay $T_RXW -from [get_clocks clk60] -to [get_clocks $rx_grp]
+        set_false_path -hold -from [get_clocks $rx_grp] -to [get_clocks clk60]
+        set_false_path -hold -from [get_clocks clk60] -to [get_clocks $rx_grp]
+    }
+}
+
+# ---------------------------------------------------------------------------
+# clk_rx island reset release (usb_afe_rx_if, usb_rx_hs_sipo; Plan_60MHz.md P9)
+#   Each island's clk_rx reset synchronizer has two second-stage copies that
+#   release on the same edge.  rst_rx_n resets the few flops whose D input can
+#   differ from their reset value at the first clk_rx edge after the release
+#   (single-cycle recovery, as by default).  rst_rx_m_n (usb_afe_rx_if: and
+#   its equal copy rst_rx_m2_n, fan-out) resets only flops whose
+#   D equals their reset value at that edge (module headers), so a release
+#   that lands one edge late cannot change them: recovery / removal as a
+#   2-cycle path from that flop.  The fan-out of rst_rx_m_n (up to ~25) at
+#   480 MHz does not fit one cycle even with an ideal buffer tree.
+foreach n [get_nets -quiet -hierarchical {rst_rx_m_n *.rst_rx_m_n rst_rx_m2_n *.rst_rx_m2_n}] {
+    set drv [get_pins -quiet -of_objects $n -filter "direction == output"]
+    if {[llength $drv]} {
+        set c [get_cells -of_objects $drv]
+        set_multicycle_path -setup 2 -from $c
+        set_multicycle_path -hold  1 -from $c
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Boundary-rule exception: PISO clamp flop (usb_tx_piso cq, Plan_60MHz.md 8.9)
+#   drv_dis / iso_en are clk60 levels, sampled by cq on every clk_bit edge:
+#   single cycle (undo the 4 / 3 boundary multicycle for this endpoint).  Only
+#   matters in a top level that has both clk60 logic and the PISO.
+if {$has_60 && $has_bit} {
+    foreach n [get_nets -quiet -hierarchical {*u_piso.cq cq}] {
+        set drv [get_pins -quiet -of_objects $n -filter "direction == output"]
+        if {[llength $drv]} {
+            set c [get_cells -of_objects $drv]
+            set_multicycle_path -setup -end 1 -from [get_clocks clk60] -to $c
+            set_multicycle_path -hold  -end 0 -from [get_clocks clk60] -to $c
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# ULPI I/O (output-clock mode, ULPI 1.1 Table 5: the PHY drives CLK)
+#   At the PHY pins: Link -> PHY setup 6.0 ns / hold 0.0 ns before / after
+#   the CLK edge; PHY -> Link output delay <= 9.0 ns after the CLK edge; the
+#   PHY outputs must not change before the CLK edge (the Link's 0.0 ns hold).
+#   The CLK pin edge c_k lies delta = CKO_FF + PAD_OUT - T_BIT/2 after the
+#   clk60 edge E0_k (CLKOUT is a falling-edge clk_bit flop, half a clk_bit
+#   period before E0; usb_clk_gen).  The virtual clock ulpi_clk models the
+#   CLK pin edge.  The core launches ULPI outputs on E0_k for the Link to
+#   sample on c_(k+1), and samples ULPI inputs launched on c_k at E0_(k+1);
+#   the multicycles below pick those edges for either sign of delta.
+#   Placeholders: PAD_IN / PAD_OUT (BBSUD8F, no timing model here) and CKO_FF
+#   (CLKOUT flop clock-to-Q, slow-corner X1 value).  No board delay.
+set ULPI_TSU  6.0
+set ULPI_TH   0.0
+set ULPI_TCO  9.0
+set PAD_IN    1.0
+set PAD_OUT   3.0
+set CKO_FF    0.8
+set ulpi_in  [get_ports -quiet {ulpi_data_in* ulpi_stp}]
+set ulpi_out [get_ports -quiet {ulpi_data_out* ulpi_data_oe ulpi_dir ulpi_nxt}]
+if {$has_60 && ([llength $ulpi_in] || [llength $ulpi_out])} {
+    set delta [expr {$CKO_FF + $PAD_OUT - $T_BIT / 2.0}]
+    set r [expr {fmod($delta + 10.0 * $T_60, $T_60)}]
+    create_clock -name ulpi_clk -period $T_60 -waveform [list $r [expr {$r + $T_60 / 2.0}]]
+    if {[llength $ulpi_in]} {
+        # data at the PHY pin: >= c_k + TH, <= c_(k+1) - TSU; the input pad adds PAD_IN
+        set_input_delay -clock ulpi_clk -max [expr {$T_60 - $ULPI_TSU + $PAD_IN}] $ulpi_in
+        set_input_delay -clock ulpi_clk -min [expr {$ULPI_TH + $PAD_IN}] $ulpi_in
+        if {$delta < 0} {
+            set_multicycle_path -setup 2 -from [get_clocks ulpi_clk] -to [get_clocks clk60]
+            set_multicycle_path -hold  1 -from [get_clocks ulpi_clk] -to [get_clocks clk60]
+        }
+    }
+    if {[llength $ulpi_out]} {
+        # at the PHY pin: <= c_k + TCO for the Link edge c_(k+1), and not before c_k
+        set_output_delay -clock ulpi_clk -max [expr {$T_60 - $ULPI_TCO + $PAD_OUT}] $ulpi_out
+        set_output_delay -clock ulpi_clk -min [expr {$PAD_OUT - $ULPI_TH}] $ulpi_out
+        if {$delta >= 0} {
+            set_multicycle_path -setup 2 -from [get_clocks clk60] -to [get_clocks ulpi_clk]
+            set_multicycle_path -hold  1 -from [get_clocks clk60] -to [get_clocks ulpi_clk]
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# AFE pins (DOC/afe_interface_spec.md 3, 4.1, 4.2)
+#   TX pins: each is a usb_tx_piso flop (at most one gate, spec 4.1); the AFE
+#     input is taken as a capture point one clk_bit period later
+#     (AFE_TX_SU placeholder = 0: flop -> pin within the cycle).
+#   hs_rxd_a: CDR retimed data, launched by the CDR on the rising clk_rx edge;
+#     CDR_CO_MAX / CDR_CO_MIN placeholders (Q1 / Q2) until the CDR has numbers.
+#   Asynchronous AFE status inputs (squelch, disconnect, FS/LS receivers, VBUS /
+#     ID) go to 2-FF synchronizers or the FS/LS sampler: false paths.
+set AFE_TX_SU  0.0
+set CDR_CO_MAX 0.5
+set CDR_CO_MIN 0.1
+set afe_tx [get_ports -quiet {hs_tx_p hs_tx_n hs_tx_en fs_oe fs_dat fs_se0 fs_ls}]
+if {$has_bit && [llength $afe_tx]} {
+    set_output_delay -clock clk_bit -max $AFE_TX_SU $afe_tx
+    set_output_delay -clock clk_bit -min 0.0 $afe_tx
+}
+set cdr_in [get_ports -quiet {hs_rxd_a}]
+if {$has_rx && [llength $cdr_in]} {
+    set_input_delay -clock clk_rx -max $CDR_CO_MAX $cdr_in
+    set_input_delay -clock clk_rx -min $CDR_CO_MIN $cdr_in
+}
+set afe_async [get_ports -quiet {squelch_a squelch disc rxdp rxdm rxrcv a_vbus_vld sess_vld sess_end id_gnd}]
+if {[llength $afe_async]} { set_false_path -from $afe_async }
 
 # Ideal clocks before CTS; a margin for jitter and skew.
 foreach c [all_clocks] { set_clock_uncertainty 0.05 $c }
 
-# TODO (WORK_PLAN 9.1 / Plan_60MHz.md P8):
-#   * ULPI DATA / DIR / NXT / STP relative to clkout incl. BBSUD8F pad delays
-#     (ULPI 1.1: 5 ns setup / 0 ns hold at the PHY);
-#   * AFE pins (DOC/afe_interface_spec.md 4.1 / 4.2);
-#   * set_max_delay -datapath_only on the RX word-FIFO Gray pointers (clk_rxw <->
-#     clk60, now cut by the asynchronous groups);
-#   * false paths into the first flop of each 2-FF synchronizer.
+# Open for sign-off (WORK_PLAN 9.1): real pad / CDR numbers for the
+# placeholders above; propagated clocks, CTS skew and the clk60 / clk_bit
+# phase after CTS (Plan_60MHz.md K3); the full-chip top with the pads.

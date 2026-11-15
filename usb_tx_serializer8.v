@@ -6,7 +6,7 @@
 //        -> txd_v / tx_en_v / tx_se0_v (8 bits per tick) -> usb_afe_tx_if8
 //        -> usb_tx_piso (480 MHz, the only bit-rate part) -> AFE pins
 //
-// Replaces the bit-serial usb_tx_serializer (kept as the reference model of
+// Replaces the bit-serial ref_tx_serializer (kept as the reference model of
 // tb_usb_tx_vec).  Instead of one line bit per clk_bit cycle it produces, on
 // every clk60 edge, the 8 line bits of the next tick as vectors: bit 0 is sent
 // first.  Each vector covers the same 8 bit times as the old serializer
@@ -19,7 +19,7 @@
 // Clock: clk60 only (all inputs / outputs clk60 domain).  Reset rst_n,
 //   asynchronous.
 //
-// Input words: as usb_tx_serializer.  in_data is NRZI-encoded (J = 1), LSB
+// Input words: as ref_tx_serializer.  in_data is NRZI-encoded (J = 1), LSB
 //   first; words have 8 valid bits except the last one (in_last = 1,
 //   in_nbits = 0..8, > 8 clamped to 8; 0 = EOP only).  A word is taken on a
 //   clk60 edge with in_valid && in_ready.

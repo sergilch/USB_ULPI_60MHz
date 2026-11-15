@@ -16,8 +16,8 @@
 //       mix needs metastability, so RTL simulation cannot show it);
 //       writing bit 6 of 3Dh pulses lol_clr for one tick
 //   [5] random lockstep run against a reference model (writes, UPDATE, RDACT,
-//       reads in the read tick), ce one tick in 8
-//   Continuous: outputs change only on ce edges.
+//       reads in the read tick), DUT on clk60 (TB tick ce = one clk edge in 8)
+//   Continuous: outputs change only on clk60 edges (ce ticks).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -31,6 +31,14 @@ module tb_usb_afe_trim_regs;
     reg [2:0] cc = 3'd0;
     wire ce = (cc == 3'd7);
     always @(posedge clk) cc <= cc + 3'd1;
+
+    // DUT clock clk60 (CLAUDE.md TB convention: blocking, rises on the clk edge
+    // where the tick is high, so TB processes on ticks act like clk60 processes)
+    reg clk60 = 1'b0;
+    always @(posedge clk) begin
+        if (cc == 3'd7)      clk60 = 1'b1;
+        else if (cc == 3'd3) clk60 = 1'b0;
+    end
 
     reg        wr = 1'b0;
     reg  [3:0] addr = 4'd0;
@@ -46,7 +54,7 @@ module tb_usb_afe_trim_regs;
     wire       lpbk;
 
     usb_afe_trim_regs dut (
-        .clk_bit(clk), .rst_n(rst_n), .ce(ce),
+        .clk60(clk60), .rst_n(rst_n),
         .vnd_wr(wr), .vnd_addr(addr), .vnd_wdata(wdata), .vnd_rdata(rdata),
         .pwr_state(pst), .pll_err(perr), .pll_lock(plock), .lol(plol), .lol_clr(lol_clr),
         .trim_tx_amp(tx_amp), .trim_hs_term(hs_term), .trim_tx_lead(tx_lead), .trim_tx_lag(tx_lag),
@@ -73,7 +81,7 @@ module tb_usb_afe_trim_regs;
         ce_q = ce;
         #0.1;
         if (rst_n && o_all !== o_q && !ce_q) begin
-            errors = errors + 1; $display("ERROR @%0t: outputs changed outside a ce edge", $time);
+            errors = errors + 1; $display("ERROR @%0t: outputs changed outside a clk60 edge", $time);
         end
         o_q = o_all;
     end

@@ -5,7 +5,7 @@
 // (Plan_60MHz.md P6).  It turns the clk60 vectors of usb_tx_serializer8 /
 // usb_tx_path (txd_v / tx_en_v / tx_se0_v, bit 0 first) back into txd / tx_en /
 // tx_se0 on clk_bit with exactly the timing of the old bit-serial serializer
-// (usb_tx_serializer with ce60 on the clk60 edges): vector bit i of tick T
+// (ref_tx_serializer with ce60 on the clk60 edges): vector bit i of tick T
 // (registered on the clk60 edge 8T) appears after clk_bit edge 8T + 2 + i.  So
 // line checkers written for the single-clock design keep their cycle numbers.
 // The hardware PISO (usb_tx_piso) puts the pins LAT = 9 cycles later; this

@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_nrzi_decoder.v - self-checking testbench for usb_rx_nrzi_decoder
+// tb_ref_rx_nrzi_decoder.v - self-checking testbench for ref_rx_nrzi_decoder
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxnrzi usb_rx_nrzi_decoder.v tb_usb_rx_nrzi_decoder.v
+//   iverilog -g2005 -o sim_rxnrzi ref_rx_nrzi_decoder.v tb_ref_rx_nrzi_decoder.v
 //   vvp sim_rxnrzi
 //
 // Packets are NRZI-encoded in the testbench (0 = change, 1 = no change,
@@ -16,7 +16,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_rx_nrzi_decoder;
+module tb_ref_rx_nrzi_decoder;
 
     reg clk = 1'b0;
     always #5 clk = ~clk;
@@ -25,7 +25,7 @@ module tb_usb_rx_nrzi_decoder;
     reg  i_en = 1'b0, i_lvl = 1'b1, i_se0 = 1'b0, i_act = 1'b0;
     wire o_en, o_bit, o_se0, o_act;
 
-    usb_rx_nrzi_decoder dut (
+    ref_rx_nrzi_decoder dut (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_lvl (i_lvl), .i_se0 (i_se0), .i_act (i_act),
         .o_en (o_en), .o_bit (o_bit), .o_se0 (o_se0), .o_act (o_act)
@@ -140,8 +140,8 @@ module tb_usb_rx_nrzi_decoder;
     integer p, k;
 
     initial begin
-        $dumpfile("tb_usb_rx_nrzi_decoder.vcd");
-        $dumpvars(0, tb_usb_rx_nrzi_decoder);
+        $dumpfile("tb_ref_rx_nrzi_decoder.vcd");
+        $dumpvars(0, tb_ref_rx_nrzi_decoder);
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         @(negedge clk) rst_n = 1'b1;

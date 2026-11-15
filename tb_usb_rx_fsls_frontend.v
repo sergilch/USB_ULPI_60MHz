@@ -5,11 +5,11 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_rxfsfe usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v \
-//            usb_rx_fsls_frontend.v tb_usb_rx_fsls_frontend.v
+//            ref_rx_fsls_frontend.v tb_usb_rx_fsls_frontend.v
 //   vvp sim_rxfsfe
 //
 // DUT: usb_rx_fsls_sampler (clk_bit island, word on ld) -> usb_rx_fsls_dpll
-// (clk60).  Reference: the single-clock usb_rx_fsls_frontend on the same pins;
+// (clk60).  Reference: the single-clock ref_rx_fsls_frontend on the same pins;
 // the DUT must strobe the same symbols in the same order (same samples, same
 // DPLL rule), at most one per tick.
 //
@@ -71,7 +71,7 @@ module tb_usb_rx_fsls_frontend;
 
     // reference: the single-clock front end
     wire r_en, r_lvl, r_se0, r_act;
-    usb_rx_fsls_frontend #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) u_ref (
+    ref_rx_fsls_frontend #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) u_ref (
         .clk (clk), .rst_n (rst_n),
         .rxrcv (rcv), .rxdp (dp), .rxdm (dm), .ls (ls), .enable (enable),
         .b_en (r_en), .b_lvl (r_lvl), .b_se0 (r_se0), .b_act (r_act)

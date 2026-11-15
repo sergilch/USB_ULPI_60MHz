@@ -151,9 +151,8 @@ module usb_ulpi_phy_top #(
     assign cfg_speed  = xcvrselect;
 
     usb_mode_term_ctrl u_mode (
-        .clk_bit        (clk60),
+        .clk60          (clk60),
         .rst_n          (rst_n),
-        .ce60           (1'b1),
         .xcvrselect     (xcvrselect),
         .termselect     (termselect),
         .opmode         (opmode),
@@ -256,9 +255,8 @@ module usb_ulpi_phy_top #(
     );
 
     usb_afe_trim_regs u_trim (
-        .clk_bit   (clk60),
+        .clk60     (clk60),
         .rst_n     (rst_n),
-        .ce        (1'b1),
         .vnd_wr    (vnd_wr),
         .vnd_addr  (vnd_addr),
         .vnd_wdata (vnd_wdata),

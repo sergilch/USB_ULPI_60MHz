@@ -5,18 +5,18 @@
 //        --> b_en / b_lvl / b_se0 / b_act (at most one bit per tick)
 //        --> usb_rx_decoder8 (hs = 0, slot 0)
 //
-// The DPLL of usb_rx_fsls_frontend, for the 8 samples of a tick at once.  Per
+// The DPLL of ref_rx_fsls_frontend, for the 8 samples of a tick at once.  Per
 // sample (bit 0 = oldest):
 //   symbol = SE0 (both single-ended receivers low), or J / K from rxrcv
 //     (FS: J = rxrcv 1, LS: J = rxrcv 0; rxrcv is ignored during SE0);
 //   change = SE0 starts / ends, or the J/K level differs from the previous
-//     sample's (usb_rx_fsls_frontend compares with the last J/K level, held
+//     sample's (ref_rx_fsls_frontend compares with the last J/K level, held
 //     through SE0; that only matters for a sample right after SE0, which is a
 //     change anyway, so both rules are the same);
 //   a bit-time counter (in samples) restarts at 1 on a change, wraps from
 //   DIV - 1 to 0, and the bit is strobed on a sample without a change where
 //   the counter is DIV / 2 (middle of the bit).
-// Same rule, same sample: the strobed bits are those of usb_rx_fsls_frontend on
+// Same rule, same sample: the strobed bits are those of ref_rx_fsls_frontend on
 // the same sample stream (tb_usb_rx_fsls_frontend compares both).
 //
 // Closed form.  DIV / 2 >= 8 (FS_DIV >= 16), so a strobe can only come from the

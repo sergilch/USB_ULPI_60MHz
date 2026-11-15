@@ -59,14 +59,14 @@
 //     read data is the first byte after the turnaround (ULPI 1.1 3.8.3.1) and never
 //     comes after an RXCMD, which the Link could not tell apart from it (both NXT = 0).
 //
-// Clocking: one clock with tick enable ce (1 on clk60, ce60 on clk_bit).
+// Clocking: clk60; the tick enable ce of the single-clock design was removed in
+//   Plan_60MHz.md P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_ulpi_reg_access (
     input  wire        clk,
     input  wire        rst_n,         // async assert, sync release
-    input  wire        ce,
 
     // from usb_ulpi_input_capture
     input  wire        cmd_regw,
@@ -124,9 +124,9 @@ module usb_ulpi_reg_access (
     wire cmd_eff    = (cmd_regw || cmd_regr) && !tx_busy;
     wire take_cmd0  = (st == S_IDLE) && nxt_seen && cmd_eff;
     wire take_byte0 = ((st == S_AB) || (st == S_WD)) && nxt_seen && lnk_valid && !lnk_stp;
-    wire take_cmd   = ce && take_cmd0;
-    wire take_byte  = ce && take_byte0;
-    wire stp_evt    = ce && (st == S_WSTP) && lnk_valid && lnk_stp;
+    wire take_cmd   = take_cmd0;
+    wire take_byte  = take_byte0;
+    wire stp_evt    = (st == S_WSTP) && lnk_valid && lnk_stp;
 
     // the read itself (tick N+1): immediate read when its command is taken, extended
     // read when its address byte is taken
@@ -139,7 +139,7 @@ module usb_ulpi_reg_access (
     assign busy      = (st != S_IDLE);
 
     assign reg_wr    = stp_evt;
-    assign reg_rd    = ce && rd_now0;
+    assign reg_rd    = rd_now0;
     assign reg_ext   = rd_now0 ? rd_ext0 : ext_q;
     assign reg_addr  = rd_ext0 ? lnk_data : (rd_imm0 ? {2'b00, cmd_addr} : addr_q);
     assign reg_wdata = data_q;
@@ -224,7 +224,7 @@ module usb_ulpi_reg_access (
             data_q  <= 8'd0;
             rdata_q <= 8'd0;
             rd_ack_q <= 1'b0;
-        end else if (ce) begin
+        end else begin
             st  <= st_n;
             rem <= rem_n;
             rd_ack_q <= last_rd;

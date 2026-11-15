@@ -26,7 +26,7 @@ module tb_usb_rx_hs_frontend;
     wire b_en, b_lvl, b_se0, b_act;
 
     usb_rx_hs_frontend dut (
-        .clk_rx (clk_rx), .rst_n (rst_n),
+        .clk_rx (clk_rx), .rst_n (rst_n), .rst_m_n (rst_n),
         .rxd (rxd), .squelch (squelch), .cdr_lock (cdr_lock), .enable (enable),
         .b_en (b_en), .b_lvl (b_lvl), .b_se0 (b_se0), .b_act (b_act)
     );

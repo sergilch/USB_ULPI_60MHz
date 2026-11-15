@@ -22,14 +22,14 @@
 // This block is a stand-in for the priority logic of the Output Arbiter and is meant
 // to be replaced / absorbed by it later.
 //
-// Clocking: one clock with tick enable ce (1 on clk60, ce60 on clk_bit).
+// Clocking: clk60; the tick enable ce of the single-clock design was removed in
+//   Plan_60MHz.md P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_ulpi_burst_mux (
     input  wire        clk,
     input  wire        rst_n,
-    input  wire        ce,
 
     // register read data burst
     input  wire        rd_valid,
@@ -66,7 +66,7 @@ module usb_ulpi_burst_mux (
         if (!rst_n) begin
             ext_mid <= 1'b0;
             gap     <= 1'b0;
-        end else if (ce) begin
+        end else begin
             gap <= rd_ready;
             if (ext_ready)
                 ext_mid <= 1'b1;

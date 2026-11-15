@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_eop_check.v - self-checking testbench for usb_rx_eop_check
+// tb_ref_rx_eop_check.v - self-checking testbench for ref_rx_eop_check
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxeop usb_rx_eop_check.v tb_usb_rx_eop_check.v
+//   iverilog -g2005 -o sim_rxeop ref_rx_eop_check.v tb_ref_rx_eop_check.v
 //   vvp sim_rxeop
 //
 // Two instances, HS = 1 and HS = 0 (FS/LS), get the same stream of bit-level
@@ -29,7 +29,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_rx_eop_check;
+module tb_ref_rx_eop_check;
 
     reg clk = 1'b0;
     always #5 clk = ~clk;
@@ -43,7 +43,7 @@ module tb_usb_rx_eop_check;
     wire       h_wr, h_busy, h_ovf, f_wr, f_busy, f_ovf;
     wire [9:0] h_ev, f_ev;
 
-    usb_rx_eop_check #(.HS(1)) dut_hs (
+    ref_rx_eop_check #(.HS(1)) dut_hs (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_byte_en (i_byte_en), .i_byte (i_byte), .i_nres (i_nres),
         .i_serr (i_serr), .i_se0 (i_se0), .i_act (i_act), .i_sync (i_sync),
@@ -51,7 +51,7 @@ module tb_usb_rx_eop_check;
         .ev_wr (h_wr), .ev_data (h_ev), .busy (h_busy), .ovf (h_ovf)
     );
 
-    usb_rx_eop_check #(.HS(0)) dut_fs (
+    ref_rx_eop_check #(.HS(0)) dut_fs (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_byte_en (i_byte_en), .i_byte (i_byte), .i_nres (i_nres),
         .i_serr (i_serr), .i_se0 (i_se0), .i_act (i_act), .i_sync (i_sync),
@@ -235,8 +235,8 @@ module tb_usb_rx_eop_check;
     integer p;
 
     initial begin
-        $dumpfile("tb_usb_rx_eop_check.vcd");
-        $dumpvars(0, tb_usb_rx_eop_check);
+        $dumpfile("tb_ref_rx_eop_check.vcd");
+        $dumpvars(0, tb_ref_rx_eop_check);
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         @(negedge clk) rst_n = 1'b1;

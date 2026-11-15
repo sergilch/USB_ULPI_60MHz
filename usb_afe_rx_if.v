@@ -19,8 +19,10 @@
 //     (squelch_a -> 1, hs_rxd_a -> 1, spec 3.2) before anything samples them.
 //   * Squelch synchronizer (2 FF on clk_rx) and lock: hs_cdr_lock rises
 //     lock_dly bit times after the synchronized squelch falls and drops with
-//     it (the CDR has no lock detector, spec 4.2).  Both outputs are registered
-//     together, so they change on the same clk_rx edge.
+//     it (the CDR has no lock detector, spec 4.2); an OR window over the
+//     synchronized squelch, one gate per stage (Plan_60MHz.md P9).  Both
+//     outputs are registered together, so they change on the same clk_rx
+//     edge.
 //   * Squelch latency compensation: the data is delayed by 3 + sq_comp bit
 //     times, the squelch / lock outputs by 3 (synchronizer + output register).
 //     usb_rx_hs_frontend aligns its data with its own squelch synchronizer, so
@@ -59,7 +61,19 @@
 // Clocks / resets: clk60 (enables; Plan_60MHz.md P8, was clk_bit), clk_rx
 //   (data).  The enables are AFE pins (static levels for the analog), so they
 //   leave from clk60 flops like the other mode pins.  rst_n asynchronous; its
-//   release is synchronized to clk_rx here.
+//   release is synchronized to clk_rx here, as two copies released on the
+//   same edge (Plan_60MHz.md P9): rst_rx_n resets sq1 and the delay-line
+//   select decode selr, the flops whose D can differ from their reset value at
+//   the first edge after the release; rst_rx_m_n resets sq2, the lock window
+//   z, hs_squelch, hs_cdr_lock, its copy rst_rx_m2_n the select sel and the
+//   delay line (fan-out), whose D
+//   inputs equal their reset values at that edge, and has a 2-cycle recovery
+//   in constraints/usb_phy.sdc (a release one edge late changes nothing;
+//   tb_usb_rx_hs_reset).  The data capture dq and the static lock-length
+//   decode a have no reset.
+//   480 MHz at the slow corner: every clk_rx flop has at most one gate in
+//   front of it, and sources with a large fan-out (dq, sq2) are replicated
+//   (keep processes, fan-out <= 3).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -90,7 +104,7 @@ module usb_afe_rx_if #(
     output reg               hs_cdr_lock
 );
 
-    localparam NST = (1 << COMP_W) + 2;      // data stages: delay 3 .. 3 + 2^COMP_W - 1
+    localparam NST = (1 << COMP_W) + 1;      // delay-line stages behind the capture flop dq
 
     // ---------------- enables (clk60) ----------------
     always @(posedge clk60 or negedge rst_n) begin
@@ -104,58 +118,131 @@ module usb_afe_rx_if #(
     end
 
     // ---------------- clk_rx reset synchronizer ----------------
-    reg rr1, rst_rx_n;
+    // Two copies of the second stage, released on the same edge (header):
+    // rst_rx_n for sq1 / selr; rst_rx_m_n and rst_rx_m2_n (multicycle recovery,
+    // two copies for the fan-out) for the rest.
+    reg rr1, rst_rx_n, rst_rx_m_n, rst_rx_m2_n;
     always @(posedge clk_rx or negedge rst_n) begin
-        if (!rst_n) begin
-            rr1      <= 1'b0;
-            rst_rx_n <= 1'b0;
-        end else begin
-            rr1      <= 1'b1;
-            rst_rx_n <= rr1;
-        end
+        if (!rst_n) rr1 <= 1'b0;
+        else        rr1 <= 1'b1;
+    end
+    // keep on the processes: the two equal flops must not be merged
+    (* keep *) always @(posedge clk_rx or negedge rst_n) begin
+        if (!rst_n) rst_rx_n <= 1'b0;
+        else        rst_rx_n <= rr1;
+    end
+    (* keep *) always @(posedge clk_rx or negedge rst_n) begin
+        if (!rst_n) rst_rx_m_n <= 1'b0;
+        else        rst_rx_m_n <= rr1;
+    end
+    // second multicycle copy for the delay line and its select (fan-out)
+    (* keep *) always @(posedge clk_rx or negedge rst_n) begin
+        if (!rst_n) rst_rx_m2_n <= 1'b0;
+        else        rst_rx_m2_n <= rr1;
     end
 
     // ---------------- squelch, lock (clk_rx) ----------------
+    // Lock (Plan_60MHz.md P9, was a saturating counter + compare, 3-4 gates):
+    // hs_cdr_lock = no squelch in the current and the last lock_dly samples
+    // of sq2, i.e. the same function.  z[1] = OR of sq2 over the last
+    // lock_dly samples, built by an OR chain whose length is set by the static
+    // decode a[i] = (i < lock_dly): z[i] <= sq2 | (z[i+1] & a[i]), one gate per
+    // stage; hs_cdr_lock <= ~(sq2 | (z[1] & a[0])), one gate.
+    localparam LMAX = (1 << DLY_W) - 1;            // largest lock_dly
     wire             sq_in = squelch_a | iso_en;   // isolated value 1
-    reg              sq1, sq2;
-    reg [DLY_W-1:0]  lk_cnt;                       // cycles since sq2 fell, saturating
+    // sq2 has NSQ equal copies (fan-out <= 3 each: z, hs_squelch, hs_cdr_lock)
+    localparam NSQ = (LMAX + 4) / 3;
+    reg              sq1;
+    reg [NSQ-1:0]    sq2;
+    wire [LMAX+1:0]  sq2_s;                        // sq2 copy per consumer
+    reg [LMAX:1]     z;                            // OR windows of sq2
+    reg [LMAX-1:0]   a;                            // static: a[i] = (i < lock_dly)
 
+    // fast group: sq1
     always @(posedge clk_rx or negedge rst_rx_n) begin
-        if (!rst_rx_n) begin
-            sq1         <= 1'b1;
-            sq2         <= 1'b1;
-            lk_cnt      <= {DLY_W{1'b0}};
+        if (!rst_rx_n) sq1 <= 1'b1;
+        else           sq1 <= sq_in;
+    end
+
+    integer i;
+    always @(posedge clk_rx)
+        for (i = 0; i < LMAX; i = i + 1) a[i] <= (i < lock_dly);
+
+    // one process per sq2 copy, with keep: the equal copies must not be merged
+    genvar g;
+    generate for (g = 0; g < NSQ; g = g + 1) begin : g_sq2
+        (* keep *) always @(posedge clk_rx or negedge rst_rx_m_n) begin
+            if (!rst_rx_m_n) sq2[g] <= 1'b1;
+            else             sq2[g] <= sq1;
+        end
+    end endgenerate
+    generate for (g = 0; g <= LMAX + 1; g = g + 1) begin : g_sq2s
+        assign sq2_s[g] = sq2[g / 3];
+    end endgenerate
+
+    // at the first edge after the release: sq2 <- sq1 = 1, z <- 1 (sq2 = 1),
+    // hs_squelch <- sq2 = 1, hs_cdr_lock <- 0: all equal to their reset values
+    always @(posedge clk_rx or negedge rst_rx_m_n) begin
+        if (!rst_rx_m_n) begin
+            z           <= {LMAX{1'b1}};
             hs_squelch  <= 1'b1;
             hs_cdr_lock <= 1'b0;
         end else begin
-            sq1 <= sq_in;
-            sq2 <= sq1;
-            if (sq2)
-                lk_cnt <= {DLY_W{1'b0}};
-            else if (lk_cnt != {DLY_W{1'b1}})
-                lk_cnt <= lk_cnt + 1'b1;
-            hs_squelch  <= sq2;
-            hs_cdr_lock <= ~sq2 & (lk_cnt >= lock_dly);
+            for (i = 1; i < LMAX; i = i + 1) z[i] <= sq2_s[i] | (z[i+1] & a[i]);
+            z[LMAX]     <= sq2_s[LMAX];
+            hs_squelch  <= sq2_s[0];
+            hs_cdr_lock <= ~(sq2_s[LMAX+1] | (z[1] & a[0]));
         end
     end
 
     // ---------------- data delay line (clk_rx) ----------------
-    // Stage 2 + sq_comp loads the input (one-hot select, static), every stage
-    // below shifts down, stage 0 is the output: delay = 3 + sq_comp cycles.
-    // One mux per stage between flops.
+    // The input is captured in dq (isolation OR only, no mux in front: the CDR
+    // output timing is the AFE's), stage 1 + sq_comp loads dq (one-hot select,
+    // static), every stage below shifts down, stage 0 is the output: delay =
+    // 1 + (1 + sq_comp) + 1 = 3 + sq_comp cycles, as before P9.  One mux per
+    // stage between flops.  dq is NDQ equal copies (fan-out <= 3 each, 480 MHz at
+    // the slow corner), no reset (data; dl ignores it while sel = 0).
+    // Reset (Plan_60MHz.md P9): dl is on the
+    // multicycle reset (all ones = J), as sel (reset 0, D = selr, which is
+    // on the fast reset with reset value 0): sel = 0 (every stage shifts in J)
+    // during the reset whenever clk_rx runs and on the first two edges after
+    // the release, so every dl stage and sel have D = their reset value at the
+    // release edge.  Those J bits are masked (hs_squelch stays 1 for
+    // >= 3 edges after the release).
     wire           d_in = hs_rxd_a | iso_en;     // isolated value 1 (J)
-    wire [COMP_W:0] ent = {1'b0, sq_comp} + 2'd2;   // entry stage
+    wire [COMP_W:0] ent = {1'b0, sq_comp} + 2'd1;   // entry stage
+    localparam NDQ = (NST + 2) / 3;           // dq copies, fan-out <= 3 each
+    reg  [NDQ-1:0] dq;
+    reg  [NST-1:0] selr;                     // static decode, fast reset 0
     reg  [NST-1:0] sel;
     reg  [NST-1:0] dl;
+    wire [NST-1:0] dq_s;                     // dq copy of each stage
 
+    // one process per copy, with keep: the equal copies must not be merged
+    generate for (g = 0; g < NDQ; g = g + 1) begin : g_dqc
+        (* keep *) always @(posedge clk_rx) dq[g] <= d_in;
+    end endgenerate
+    generate for (g = 0; g < NST; g = g + 1) begin : g_dq
+        assign dq_s[g] = dq[g / 3];
+    end endgenerate
+
+    // selr: D is the static decode only (no clk_rx path in front), reset 0
+    // until the release; sel <= selr, no gate.  At the release edge sel loads
+    // selr = 0 (its reset value), so sel = 0 on the release edge and the one
+    // after it.
     always @(posedge clk_rx or negedge rst_rx_n) begin
-        if (!rst_rx_n) begin
-            sel <= {NST{1'b0}};
-            dl  <= {NST{1'b1}};
-        end else begin
-            sel <= {{(NST-1){1'b0}}, 1'b1} << ent;
-            dl  <= (sel & {NST{d_in}}) | (~sel & {1'b1, dl[NST-1:1]});
-        end
+        if (!rst_rx_n) selr <= {NST{1'b0}};
+        else           selr <= {{(NST-1){1'b0}}, 1'b1} << ent;
+    end
+
+    always @(posedge clk_rx or negedge rst_rx_m2_n) begin
+        if (!rst_rx_m2_n) sel <= {NST{1'b0}};
+        else             sel <= selr;
+    end
+
+    always @(posedge clk_rx or negedge rst_rx_m2_n) begin
+        if (!rst_rx_m2_n) dl <= {NST{1'b1}};
+        else             dl <= (sel & dq_s) | (~sel & {1'b1, dl[NST-1:1]});
     end
 
     assign hs_rxd = dl[0];

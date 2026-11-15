@@ -1,9 +1,9 @@
 //-----------------------------------------------------------------------------
-// usb_tx_serializer.v
+// ref_tx_serializer.v
 //
 // REFERENCE MODEL since Plan_60MHz.md P6: usb_tx_path uses usb_tx_serializer8
 // (clk60, 8 line bits per tick), bit-exact against this module in
-// tb_usb_tx_vec.  Kept with its own unit test tb_usb_tx_serializer.
+// tb_usb_tx_vec.  Kept with its own unit test tb_ref_tx_serializer.
 //
 // "Serializer 8:1 + EOP Gen" of the USB 2.0 PHY TX path (HS 480 / FS 12 /
 // LS 1.5 Mbps).  Position in the datapath:
@@ -50,7 +50,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_tx_serializer #(
+module ref_tx_serializer #(
     parameter FS_DIV = 40,    // clk_bit cycles per FS bit (480 MHz / 12 MHz)
     parameter LS_DIV = 320,   // clk_bit cycles per LS bit (480 MHz / 1.5 MHz)
     parameter DIV_W  = 9      // width of the bit-time counter (>= clog2(LS_DIV))

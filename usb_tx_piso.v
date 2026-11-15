@@ -17,7 +17,7 @@
 //   usb_afe_tx_if8 after the clk60 edge E0) is on the pin after edge E5 + i.
 //
 // Idle clamp (drv_dis: OpMode 01 non-driving; iso_en: isolation), as the old
-//   usb_afe_tx_if: drv_dis | iso_en is registered once (cq) and forces every
+//   single-clock usb_afe_tx_if (now ref_afe_tx_if): drv_dis | iso_en is registered once (cq) and forces every
 //   pin to its idle value on the following edge (the second edge after the
 //   input).  The force term cq | kq has its own flop fq (same value), so each
 //   pin flop has one gate in front of it (480 MHz at the slow corner).  The rest of the interrupted packet is dropped: the pins stay idle

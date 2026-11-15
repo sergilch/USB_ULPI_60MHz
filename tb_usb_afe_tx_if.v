@@ -19,7 +19,7 @@
 //   1. Pins, cycle-exact, every clk_bit cycle (also during reset): a reference
 //      model built from the serial copy of the serializer vectors
 //      (tx_vec2ser_bm, old bit-serial timing; history ring) gives the pins of
-//      the old single-clock usb_afe_tx_if: data delayed by tx_lead + 3,
+//      the old single-clock ref_afe_tx_if: data delayed by tx_lead + 3,
 //      hs_tx_en 3 cycles after tx_en (so tx_lead before the data) until
 //      tx_lead + 3 + tx_lag after it, J during the lead, EOP level held during
 //      the lag, FS/LS driver controls, driver select by speed.  The DUT pins

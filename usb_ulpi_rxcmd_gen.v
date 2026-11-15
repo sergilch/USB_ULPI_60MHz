@@ -28,14 +28,14 @@
 // sent_rxev (RxEvent field of the shadow register) tells the RX Data Handler that the
 // RxActive / RxError announcement has reached the Link.
 //
-// Clocking: one clock with tick enable ce (1 on clk60, ce60 on clk_bit).
+// Clocking: clk60; the tick enable ce of the single-clock design was removed in
+//   Plan_60MHz.md P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_ulpi_rxcmd_gen (
     input  wire        clk,
     input  wire        rst_n,         // async assert, sync release
-    input  wire        ce,
 
     // status inputs (synchronous to the tick clock)
     input  wire [1:0]  linestate,
@@ -53,7 +53,7 @@ module usb_ulpi_rxcmd_gen (
     input  wire [4:0]  ie_fall,
 
     // arbiter
-    input  wire        cmd_taken,     // the RXCMD is consumed in this tick (includes ce)
+    input  wire        cmd_taken,     // the RXCMD is consumed in this tick
     output wire [7:0]  cmd_now,
     output wire        rxcmd_req,
     output wire [1:0]  sent_rxev
@@ -94,7 +94,7 @@ module usb_ulpi_rxcmd_gen (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             last_r <= 8'h00;
-        else if (ce && cmd_taken)
+        else if (cmd_taken)
             last_r <= cmd_now;
     end
 

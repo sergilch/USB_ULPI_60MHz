@@ -1,15 +1,15 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_decoder8.v - usb_rx_decoder8 against the serial usb_rx_decoder
+// tb_usb_rx_decoder8.v - usb_rx_decoder8 against the serial ref_rx_decoder
 //                        (Plan_60MHz.md P3)
 //
-//   iverilog -g2005 -o sim_rx_decoder8 usb_rx_nrzi_decoder.v usb_rx_sync_detect.v \
-//            usb_rx_bit_unstuffer.v usb_rx_deserializer.v usb_rx_eop_check.v \
-//            usb_rx_decoder.v usb_rx_decoder8.v tb_usb_rx_decoder8.v
+//   iverilog -g2005 -o sim_rx_decoder8 ref_rx_nrzi_decoder.v ref_rx_sync_detect.v \
+//            ref_rx_bit_unstuffer.v ref_rx_deserializer.v ref_rx_eop_check.v \
+//            ref_rx_decoder.v usb_rx_decoder8.v tb_usb_rx_decoder8.v
 //   vvp sim_rx_decoder8
 //   (more packets / other seed: iverilog ... -Ptb_usb_rx_decoder8.NPKT=100000,
 //    vvp sim_rx_decoder8 +seed=7; HS SYNC length: -Ptb_usb_rx_decoder8.ZMIN_HS=4)
 //
-// One stream of received bits {lvl, se0, act} goes into serial usb_rx_decoder
+// One stream of received bits {lvl, se0, act} goes into serial ref_rx_decoder
 // references (HS = 1 / ZMIN_HS and HS = 0 / ZMIN 4), one bit per clock, and into
 // usb_rx_decoder8, n bits per tick.  Each tick of the DUT is 8 clocks of the
 // references: its n bits, then 8 - n clocks without a bit.  The event
@@ -61,10 +61,10 @@ module tb_usb_rx_decoder8;
     wire       rh_wr, rf_wr, rh_ovf, rf_ovf;
     wire [9:0] rh_d, rf_d;
 
-    usb_rx_decoder #(.HS(1), .ZMIN(ZMIN_HS)) u_rh (.clk(clk_s), .rst_n(rst_n),
+    ref_rx_decoder #(.HS(1), .ZMIN(ZMIN_HS)) u_rh (.clk(clk_s), .rst_n(rst_n),
         .b_en(s_en), .b_lvl(s_lvl), .b_se0(s_se0), .b_act(s_act), .buf_afull(s_afull),
         .ev_wr(rh_wr), .ev_data(rh_d), .busy(), .ovf(rh_ovf));
-    usb_rx_decoder #(.HS(0), .ZMIN(4)) u_rf (.clk(clk_s), .rst_n(rst_n),
+    ref_rx_decoder #(.HS(0), .ZMIN(4)) u_rf (.clk(clk_s), .rst_n(rst_n),
         .b_en(s_en), .b_lvl(s_lvl), .b_se0(s_se0), .b_act(s_act), .buf_afull(s_afull),
         .ev_wr(rf_wr), .ev_data(rf_d), .busy(), .ovf(rf_ovf));
 

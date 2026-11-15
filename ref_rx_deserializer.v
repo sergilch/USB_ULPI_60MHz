@@ -1,16 +1,16 @@
 //-----------------------------------------------------------------------------
-// usb_rx_deserializer.v
+// ref_rx_deserializer.v
 //
 // "Deserializer 1:8" of the USB 2.0 PHY RX path (HS / FS / LS).  Position:
 //
 //   RX front end -> NRZI Decoder -> SYNC detect -> Bit Unstuffer -> [THIS BLOCK]
 //                                                               -> EOP / RxError check
 //
-// Collects the data bits of a packet (i_dat from usb_rx_bit_unstuffer) into
+// Collects the data bits of a packet (i_dat from ref_rx_bit_unstuffer) into
 // bytes, LSB first.  Byte alignment comes from SYNC: the bit counter is cleared
 // on the final 1 of SYNC (i_sync), so the first byte is the PID.
 //
-// Interface: the stream of usb_rx_bit_unstuffer, registered, with
+// Interface: the stream of ref_rx_bit_unstuffer, registered, with
 //   o_byte_en / o_byte : a byte is complete with this bit;
 //   o_nres             : data bits held after this bit (0..7) - the EOP check
 //                        uses it on the EOP bit to see whether the packet ended
@@ -21,7 +21,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_deserializer (
+module ref_rx_deserializer (
     input  wire       clk,
     input  wire       rst_n,
 

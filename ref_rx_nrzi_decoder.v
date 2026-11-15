@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_rx_nrzi_decoder.v
+// ref_rx_nrzi_decoder.v
 //
 // "NRZI Decoder" of the USB 2.0 PHY RX path (HS / FS / LS).  Position:
 //
@@ -27,7 +27,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_nrzi_decoder (
+module ref_rx_nrzi_decoder (
     input  wire clk,
     input  wire rst_n,
 

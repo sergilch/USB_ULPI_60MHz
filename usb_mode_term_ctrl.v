@@ -9,7 +9,7 @@
 //     --> [THIS BLOCK] --> pull-up / termination / pull-down enables (AFE pins,
 //                          DOC/afe_interface_spec.md 3.5)
 //                      --> TX framing controls (usb_tx_datapath / usb_tx_path)
-//                      --> drv_dis (usb_afe_tx_if), host_mode (usb_line_state)
+//                      --> drv_dis (usb_afe_tx_if8 / usb_tx_piso), host_mode (usb_line_state)
 //
 // Termination decode (USB3320 Table 5-1, ULPI 1.1 Table 41).  host = DpPulldown
 // and DmPulldown both set (a downstream port has both 15 kOhm pull-downs on):
@@ -30,7 +30,7 @@
 //   particular a peripheral keeps its pull-up through XcvrSelect 00 with
 //   TermSelect 1, so a two-step register update can't make it look detached.
 //
-// Switching order: the outputs are registered and change on ticks (ce60) only.  When an
+// Switching order: the outputs are registered and change on clk60 edges.  When an
 //   update turns some enables off and others on (FS -> HS: pull-up off, 45 Ohm
 //   on; HS -> FS suspend: the reverse), the ones going off switch first, and no
 //   enable goes on earlier than BBM_TK ticks after the last one went off (break
@@ -53,23 +53,20 @@
 //                 the resume K "because DpPulldown and DmPulldown are set";
 //                 chirps, a peripheral's remote-wakeup K and HS test J / K end
 //                 without EOP.
-//   drv_dis     = OpMode 01 (non-driving): drivers off (usb_afe_tx_if clamp).
+//   drv_dis     = OpMode 01 (non-driving): drivers off (usb_tx_piso clamp).
 //   OpMode 11 (optional in ULPI: no automatic SYNC / EOP, NRZI and stuffing
 //   kept) is not supported and transmits like OpMode 00.
 //
-// Clocking: one clock with the tick enable ce60; port names kept from the
-//   single-clock design: clk_bit = clk60 and ce60 = 1 in usb_ulpi_phy_top and
-//   the AFE-level testbenches (Plan_60MHz.md P2 / P8), clk_bit with ce60 only
-//   in the standalone testbench.  Active-low asynchronous reset.
+// Clocking: clk60 (Plan_60MHz.md P2; the clk_bit / ce60 ports of the
+//   single-clock design were replaced in P9).  Active-low asynchronous reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_mode_term_ctrl #(
     parameter BBM_TK = 2              // ticks between "off" and "on" (1..15)
 ) (
-    input  wire       clk_bit,
+    input  wire       clk60,
     input  wire       rst_n,
-    input  wire       ce60,
 
     // register file (quasi-static)
     input  wire [1:0] xcvrselect,
@@ -113,14 +110,14 @@ module usb_mode_term_ctrl #(
 
     wire [4:0] off_bits = cur & ~tgt;
 
-    always @(posedge clk_bit or negedge rst_n) begin
+    always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n) begin
             cur <= 5'b00000;
             gap <= 4'd0;
         end else if (iso_en) begin
             cur <= 5'b00000;
             gap <= 4'd0;
-        end else if (ce60) begin
+        end else begin
             if (off_bits != 5'b00000) begin
                 cur <= cur & tgt;                       // break
                 gap <= BBM_TK - 1;

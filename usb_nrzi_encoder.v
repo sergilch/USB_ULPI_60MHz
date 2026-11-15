@@ -9,7 +9,7 @@
 //   1 as no change.  Line level J = 1, K = 0.  Every packet starts from the
 //   idle level J, so the first 0 of SYNC goes out as K.
 //
-// Interface: the word format of usb_bit_stuffer (output) and usb_tx_serializer
+// Interface: the word format of usb_bit_stuffer (output) and ref_tx_serializer
 //   (input).  Bits are LSB first; every word carries 8 valid bits except the
 //   last word of the packet (in_last = 1), which carries in_nbits = 1..8 bits.
 //   in_nbits / in_last are passed through unchanged; bits above in_nbits in
@@ -18,7 +18,7 @@
 //   The block is a combinational pass-through in the handshake:
 //     out_valid = in_valid, in_ready = out_ready, out_data = NRZI(in_data).
 //   The only state is the line level after the last transferred bit (lvl).  It
-//   advances on every transfer (ce && in_valid && out_ready) and returns to J
+//   advances on every transfer (in_valid && out_ready) and returns to J
 //   after the last word of a packet.  There is no combinational path from
 //   out_ready to out_valid.
 //
@@ -26,16 +26,14 @@
 //   stuffing and NRZI": chirp, test patterns).  Must be static during a packet.
 //   lvl is still reset to J after each last word.
 //
-// Clocking: one clock `clk` with a clock enable `ce`: clk60 with ce = 1 in the
-//   PHY (Plan_60MHz.md P6); clk_bit with ce = ce60 only in the bit-serial
-//   reference chain of the testbenches.
+// Clocking: one clock `clk` (clk60 in the PHY, Plan_60MHz.md P6); the clock
+//   enable ce was removed in P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_nrzi_encoder (
     input  wire        clk,
     input  wire        rst_n,        // async assert, sync release
-    input  wire        ce,           // clock enable (tick)
 
     input  wire        bypass_en,    // 1 = no NRZI
 
@@ -77,7 +75,7 @@ module usb_nrzi_encoder (
     assign out_nbits = in_nbits;
     assign out_last  = in_last;
 
-    wire xfer = ce && in_valid && out_ready;
+    wire xfer = in_valid && out_ready;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)

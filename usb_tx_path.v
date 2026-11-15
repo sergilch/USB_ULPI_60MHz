@@ -42,7 +42,7 @@
 //   tick (txd_v / tx_en_v / tx_se0_v, bit 0 first) for usb_afe_tx_if8 and
 //   usb_tx_piso, the only 480 MHz stage.  tx_done / tx_underrun are one-tick
 //   pulses.  The input side behaves tick for tick as the old bit-serial path
-//   (usb_tx_serializer, kept as a reference model; tb_usb_tx_vec).
+//   (ref_tx_serializer, kept as a reference model; tb_usb_tx_vec).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -111,7 +111,6 @@ module usb_tx_path #(
     usb_nrzi_encoder u_nrzi (
         .clk       (clk),
         .rst_n     (rst_n),
-        .ce        (1'b1),
         .bypass_en (bypass_en),
         .in_valid  (s_valid),
         .in_ready  (s_ready),

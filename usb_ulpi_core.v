@@ -187,7 +187,6 @@ module usb_ulpi_core #(
     usb_ulpi_reg_access u_reg (
         .clk            (clk60),
         .rst_n          (rst_n),
-        .ce             (1'b1),
         .cmd_regw       (cmd_regw && cmd_ok),
         .cmd_regr       (cmd_regr && cmd_ok),
         .cmd_ext        (cmd_ext),
@@ -219,7 +218,6 @@ module usb_ulpi_core #(
     usb_ulpi_burst_mux u_mux (
         .clk         (clk60),
         .rst_n       (rst_n),
-        .ce          (1'b1),
         .rd_valid    (rg_burst_valid),
         .rd_data     (rg_burst_data),
         .rd_ready    (rg_burst_ready),

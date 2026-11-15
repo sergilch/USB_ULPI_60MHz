@@ -34,7 +34,8 @@
 //   * A new rx_start while the previous packet has not been closed yet is ignored and
 //     reported on `overrun` (one tick); rx_start after rx_abort is accepted.
 //
-// Clocking: one clock with tick enable ce (1 on clk60, ce60 on clk_bit).
+// Clocking: clk60; the tick enable ce of the single-clock design was removed in
+//   Plan_60MHz.md P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -43,7 +44,6 @@ module usb_ulpi_rx_handler #(
 ) (
     input  wire        clk,
     input  wire        rst_n,          // async assert, sync release
-    input  wire        ce,
 
     // from the RX datapath
     input  wire        rx_start,
@@ -63,7 +63,7 @@ module usb_ulpi_rx_handler #(
     // toward the arbiter
     output wire        rxd_valid,
     output wire [7:0]  rxd_data,
-    input  wire        rxd_ready,      // the byte is taken in this tick (includes ce)
+    input  wire        rxd_ready,      // the byte is taken in this tick
 
     output reg         overrun
 );
@@ -158,7 +158,7 @@ module usb_ulpi_rx_handler #(
             endp    <= 1'b0;
             drop    <= 1'b0;
             overrun <= 1'b0;
-        end else if (ce) begin
+        end else begin
             rd_p    <= rd_n;
             wr_p    <= wr_n;
             cnt     <= cnt_n + (push ? 1'b1 : 1'b0);

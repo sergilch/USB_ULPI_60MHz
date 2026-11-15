@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_deserializer.v - self-checking testbench for usb_rx_deserializer
+// tb_ref_rx_deserializer.v - self-checking testbench for ref_rx_deserializer
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxdes usb_rx_deserializer.v tb_usb_rx_deserializer.v
+//   iverilog -g2005 -o sim_rxdes ref_rx_deserializer.v tb_ref_rx_deserializer.v
 //   vvp sim_rxdes
 //
 // Packets of random bytes are sent bit by bit (LSB first) after a SYNC strobe,
@@ -16,7 +16,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_rx_deserializer;
+module tb_ref_rx_deserializer;
 
     reg clk = 1'b0;
     always #5 clk = ~clk;
@@ -27,7 +27,7 @@ module tb_usb_rx_deserializer;
     wire [7:0] o_byte;
     wire [2:0] o_nres;
 
-    usb_rx_deserializer dut (
+    ref_rx_deserializer dut (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_dat (i_dat), .i_bit (i_bit), .i_serr (i_serr),
         .i_se0 (i_se0), .i_act (i_act), .i_sync (i_sync),
@@ -139,8 +139,8 @@ module tb_usb_rx_deserializer;
     integer p;
 
     initial begin
-        $dumpfile("tb_usb_rx_deserializer.vcd");
-        $dumpvars(0, tb_usb_rx_deserializer);
+        $dumpfile("tb_ref_rx_deserializer.vcd");
+        $dumpvars(0, tb_ref_rx_deserializer);
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         @(negedge clk) rst_n = 1'b1;

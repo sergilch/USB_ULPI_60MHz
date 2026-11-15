@@ -12,7 +12,7 @@
 //
 // Set-up: two ends on one DP / DM pair (afe_line_bm)
 //   * Device (the PHY under test), on clk_bit with ce60:
-//       TX: usb_tx_path -> usb_afe_tx_if -> afe_fsls_bm driver
+//       TX: usb_tx_path -> usb_afe_tx_if8 + usb_tx_piso -> afe_fsls_bm driver
 //       RX: afe_fsls_bm receivers -> usb_rx_datapath (FS/LS sampler, DPLL, ...)
 //                                 -> ls_dp / ls_dm / ls_rcv -> usb_line_state
 //           (Plan_60MHz.md P4: datapath and line state on clk60 + ld, generated
@@ -22,7 +22,7 @@
 //       The device receivers see D- through an extra delay (skew, 0 / 2 / 4 ns
 //       per packet), so every J / K crossover makes an SE0 or SE1 glitch.
 //   * Host, on clk_far (ppm offset against clk_bit, +1500 / -1500 ppm):
-//       usb_tx_path -> usb_afe_tx_if -> afe_fsls_bm; its receivers feed a
+//       usb_tx_path -> usb_afe_tx_if8 + usb_tx_piso -> afe_fsls_bm; its receivers feed a
 //       second usb_rx_datapath (the host's receiver); afe_term_bm: 15 kOhm
 //       pull-downs on DP and DM.
 //
@@ -30,7 +30,7 @@
 //   1. Packets, both directions: the receiving end's usb_rx_datapath delivers
 //      exactly the packet sent (rx_start, PID + payload, rx_end without
 //      rx_error); the sending end's own receiver delivers nothing (local
-//      transmitter hold-off on usb_afe_tx_if tx_active); framing (one event per
+//      transmitter hold-off on usb_afe_tx_if8 tx_active); framing (one event per
 //      tick, nothing outside a packet).
 //   2. LineState against the line, independent of the receiver models: a
 //      classifier samples the wire voltages the device receivers see (DP and

@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_rx_eop_check.v
+// ref_rx_eop_check.v
 //
 // "EOP Detect + RxError Check" of the USB 2.0 PHY RX path (HS / FS / LS).
 // Position:
@@ -7,7 +7,7 @@
 //   RX front end -> NRZI Decoder -> SYNC detect -> Bit Unstuffer -> Deserializer
 //                -> [THIS BLOCK] -> Elastic Buffer (CDC) -> RX output stage
 //
-// Packet framing.  The block turns the bit stream of usb_rx_deserializer into
+// Packet framing.  The block turns the bit stream of ref_rx_deserializer into
 // packet events and writes them into the elastic buffer:
 //
 //   START          on the final 1 of SYNC
@@ -30,7 +30,7 @@
 //     * EOP = SE0 bit.  The packet must end on a byte boundary (0 residual
 //       bits), otherwise END with error.
 //     * Bit-stuff violation: END with error at once; the rest of the packet is
-//       ignored (usb_rx_sync_detect does not look for a new SYNC before the
+//       ignored (ref_rx_sync_detect does not look for a new SYNC before the
 //       SE0 of the EOP).
 //     * Receiver disabled inside a packet: END with error.
 //
@@ -48,7 +48,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_eop_check #(
+module ref_rx_eop_check #(
     parameter HS = 1                  // 1: HS rules, 0: FS / LS rules
 ) (
     input  wire       clk,

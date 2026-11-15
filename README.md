@@ -55,7 +55,7 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 
 `usb_ulpi_tx_top` is an older, smaller top level: input capture, TX datapath and bus owner only, with no register access.
 
-`usb_rx_datapath` (since `Plan_60MHz.md` P4 / P5) runs on `clk60`: HS through `usb_rx_hs_sipo` (480 MHz island on the CDR clock: `usb_rx_hs_frontend`, 1:8 SIPO, word clock) and a word FIFO, FS/LS through `usb_rx_fsls_sampler` (480 MHz island) and `usb_rx_fsls_dpll`, both into one `usb_rx_decoder8` (the RX bit chain for up to 8 bits per tick, three pipeline stages, up to four events per tick) and an event FIFO. The serial `usb_rx_decoder` chain and `usb_rx_fsls_frontend` are no longer used in the design; they stay as the reference models of `tb_usb_rx_decoder8` and `tb_usb_rx_fsls_frontend`.
+`usb_rx_datapath` (since `Plan_60MHz.md` P4 / P5) runs on `clk60`: HS through `usb_rx_hs_sipo` (480 MHz island on the CDR clock: `usb_rx_hs_frontend`, 1:8 SIPO, word clock) and a word FIFO, FS/LS through `usb_rx_fsls_sampler` (480 MHz island) and `usb_rx_fsls_dpll`, both into one `usb_rx_decoder8` (the RX bit chain for up to 8 bits per tick, three pipeline stages, up to four events per tick) and an event FIFO. The serial `ref_rx_decoder` chain and `ref_rx_fsls_frontend` are no longer used in the design; they stay as the reference models of `tb_usb_rx_decoder8` and `tb_usb_rx_fsls_frontend`.
 
 Each module's header comment holds its detailed spec: pipeline position, timing and corner cases.
 
@@ -107,26 +107,27 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | Testbench                     | Sources                                              |
 |-------------------------------|------------------------------------------------------|
 | `tb_usb_bit_stuffer.v`        | `usb_bit_stuffer.v`                                  |
-| `tb_usb_tx_serializer.v`      | `usb_tx_serializer.v` (bit-serial reference model)  |
+| `tb_ref_tx_serializer.v`      | `ref_tx_serializer.v` (bit-serial reference model)  |
 | `tb_usb_tx_sync_mux.v`        | `usb_tx_sync_mux.v`                                  |
 | `tb_usb_nrzi_encoder.v`       | `usb_nrzi_encoder.v`                                 |
 | `tb_usb_tx_path.v`            | `usb_bit_stuffer.v` `usb_nrzi_encoder.v` `usb_tx_serializer8.v` `usb_tx_path.v` `tx_vec2ser_bm.v` |
-| `tb_usb_tx_vec.v`             | `usb_tx_serializer8.v` `usb_afe_tx_if8.v` `usb_tx_piso.v` against the bit-serial `usb_tx_serializer.v` + `usb_afe_tx_if.v`: vectors bit for bit, pins cycle for cycle (LAT = 9), random speed / lead / lag / clamp, underruns |
+| `tb_usb_tx_vec.v`             | `usb_tx_serializer8.v` `usb_afe_tx_if8.v` `usb_tx_piso.v` against the bit-serial `ref_tx_serializer.v` + `ref_afe_tx_if.v`: vectors bit for bit, pins cycle for cycle (LAT = 9), random speed / lead / lag / clamp, underruns |
 | `tb_usb_clk_gen.v`            | `usb_clk_gen.v`                                      |
 | `tb_usb_tx_holding.v`         | `usb_ulpi_input_capture.v` `usb_tx_holding.v`        |
 | `tb_usb_ulpi_input_capture.v` | `usb_ulpi_input_capture.v`                           |
 | `tb_usb_ulpi_bus_owner.v`     | `usb_ulpi_bus_owner.v`                               |
 | `tb_usb_ulpi_reg_file.v`      | `usb_ulpi_reg_file.v`                                |
-| `tb_usb_rx_nrzi_decoder.v`    | `usb_rx_nrzi_decoder.v`                              |
-| `tb_usb_rx_sync_detect.v`     | `usb_rx_sync_detect.v`                               |
-| `tb_usb_rx_bit_unstuffer.v`   | `usb_rx_bit_unstuffer.v`                             |
-| `tb_usb_rx_deserializer.v`    | `usb_rx_deserializer.v`                              |
-| `tb_usb_rx_eop_check.v`       | `usb_rx_eop_check.v`                                 |
-| `tb_usb_rx_decoder8.v`        | the `usb_rx_decoder` chain plus `usb_rx_decoder8.v`: same events as the serial decoder, n bits per tick, exact backpressure |
+| `tb_ref_rx_nrzi_decoder.v`    | `ref_rx_nrzi_decoder.v`                              |
+| `tb_ref_rx_sync_detect.v`     | `ref_rx_sync_detect.v`                               |
+| `tb_ref_rx_bit_unstuffer.v`   | `ref_rx_bit_unstuffer.v`                             |
+| `tb_ref_rx_deserializer.v`    | `ref_rx_deserializer.v`                              |
+| `tb_ref_rx_eop_check.v`       | `ref_rx_eop_check.v`                                 |
+| `tb_usb_rx_decoder8.v`        | the `ref_rx_decoder` chain plus `usb_rx_decoder8.v`: same events as the serial decoder, n bits per tick, exact backpressure |
 | `tb_usb_rx_elastic_buffer.v`  | `usb_rx_elastic_buffer.v`                            |
-| `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_sampler.v` `usb_rx_fsls_dpll.v`, reference `usb_rx_fsls_frontend.v` |
+| `tb_usb_rx_fsls_frontend.v`   | `usb_rx_fsls_sampler.v` `usb_rx_fsls_dpll.v`, reference `ref_rx_fsls_frontend.v` |
 | `tb_usb_rx_hs_frontend.v`     | `usb_rx_hs_frontend.v`                               |
 | `tb_usb_rx_hs_sipo.v`         | `usb_rx_hs_frontend.v` `usb_rx_hs_sipo.v`: words bit for bit, write rule, lost-word replacement, E4 rule |
+| `tb_usb_rx_hs_reset.v`        | `usb_rx_hs_sipo.v` `usb_afe_rx_if.v`: `clk_rx` reset release split (fast / multicycle copy), a copy with the multicycle reset released one edge late gives identical outputs over 400 random resets |
 | `tb_usb_rx_status_sync.v`     | `usb_rx_status_flt.v` `usb_rx_status_sync.v`         |
 | `tb_usb_line_state.v`         | `usb_line_state.v`                                   |
 | `tb_usb_mode_term_ctrl.v`     | `usb_mode_term_ctrl.v`                               |

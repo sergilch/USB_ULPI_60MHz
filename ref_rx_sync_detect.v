@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_rx_sync_detect.v
+// ref_rx_sync_detect.v
 //
 // "SYNC Detect" of the USB 2.0 PHY RX path (HS / FS / LS).  Position:
 //
@@ -26,7 +26,7 @@
 //             again (rearm) on an SE0 bit (FS / LS EOP or reset) or when the
 //             receiver becomes inactive (HS squelch).
 //
-// Interface: the bit-serial stream of usb_rx_nrzi_decoder (i_en, i_bit, i_se0,
+// Interface: the bit-serial stream of ref_rx_nrzi_decoder (i_en, i_bit, i_se0,
 //   i_act), registered and passed on with two sideband bits:
 //     o_sync : this bit is the final 1 of SYNC (it is not a data bit);
 //     o_pkt  : a packet was in progress before this bit (data bits, and the
@@ -36,7 +36,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_rx_sync_detect #(
+module ref_rx_sync_detect #(
     parameter ZMIN = 6                // zeros needed in front of the final 1 (1..15)
 ) (
     input  wire clk,

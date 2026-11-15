@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_clk_gen.v - core clock clk60, island phase / ld, ce60 and the ULPI CLKOUT
+// usb_clk_gen.v - core clock clk60, island phase / ld and the ULPI CLKOUT
 //                 from the 480 MHz PLL clock
 //
 // WORK_PLAN 5.2, AFE_INTEGRATION_PLAN.md 3.4 / phase A4, DOC/afe_interface_spec.md 2,
@@ -7,7 +7,6 @@
 //
 //   PLL clk_bit (480 MHz) -> [THIS BLOCK] -> clk60  (60 MHz core clock, free-running)
 //                                         -> phase_j, ld (480 MHz island timing)
-//                                         -> ce60  (legacy clock enable, see below)
 //                                         -> clkout (CLKOUT, to the CLK pad, gated)
 //
 // Divider: a 4-bit Johnson (twisted-ring) counter j on clk_bit, 8 states.  The
@@ -34,9 +33,10 @@
 //     at E4, so high and low are 4 clk_bit cycles each (50 %, 16.67 ns).  Its
 //     output feeds nothing inside this block (no clock-as-data path).  Not
 //     gated: it runs whenever clk_bit runs, also while clkout is stopped.
-//   * E0 is the edge on which the ce60 logic updates (ce60 is high while
-//     phase = 7), so flops moved from clk_bit + ce60 to clk60 change at the
-//     same time as before: the move is cycle-exact.
+//   * E0 is the edge on which the single-clock design's ce60 logic updated
+//     (ce60 was high while phase = 7), so the flops moved from clk_bit + ce60
+//     to clk60 change at the same time as before: the move was cycle-exact.
+//     Testbenches that still need that tick decode it as phase_j == 4'b0111.
 //
 // phase / ld (480 MHz islands, Plan_60MHz.md 3.2 / 3.4)
 //   * phase_j[3:0] = j, the Johnson code of the phase (table above), straight
@@ -62,12 +62,11 @@
 //   * Deviation from Plan_60MHz.md 3.4 (load on phase 7 = E0, multicycle 8 / 7):
 //     recorded as part of decision D10 in WORK_PLAN.md.
 //
-// ce60 (legacy enable, removed in Plan_60MHz.md P9)
-//   * Registered, high in one cycle of eight (phase = 7), so ce60 logic on
-//     clk_bit updates at E0.  It serves the modules that are not on clk60 yet.
+// ce60: the legacy enable output (registered, high while phase = 7) was
+//   removed in Plan_60MHz.md P9; no block uses it any more.
 //
 // clkout (ULPI CLKOUT)
-//   * A flop on the falling clk_bit edge: it rises in the middle of the ce60
+//   * A flop on the falling clk_bit edge: it rises in the middle of the phase-7
 //     cycle, half a clk_bit period before E0 (on which the core samples and
 //     launches), and falls 4 clk_bit cycles later.  So high and low are 4
 //     clk_bit cycles each (50 % duty), and the core's ULPI outputs change about
@@ -86,12 +85,12 @@
 //   and stops low.  clk_on = 1 while clkout is running (updated at the same
 //   decision point), so a power sequencer can wait for clk_on = 0 before it
 //   stops the PLL: clk_bit must not stop while clkout or clk60 is high (the
-//   stop itself would cut the pulse).  ce60, clk60, phase and ld keep running
+//   stop itself would cut the pulse).  clk60, phase and ld keep running
 //   whenever clk_bit runs.
 //
 // Reset: rst_n is the clock domain's reset (power-on), not the ULPI RESETB:
 //   CLKOUT must keep running while the Link holds RESETB low.  Asynchronous
-//   assert; clk60 = 0, clkout = 0, ce60 = 0, ld = 0, clk_on = 0 and
+//   assert; clk60 = 0, clkout = 0, ld = 0, clk_on = 0 and
 //   phase_j = 0000 (phase 4) during reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
@@ -103,7 +102,6 @@ module usb_clk_gen (
     output reg        clk60,        // core clock (free-running)
     output wire [3:0] phase_j,      // clk_bit position inside the clk60 period (Johnson)
     output reg        ld,           // island strobe, high while phase = 3
-    output reg        ce60,         // legacy enable, high while phase = 7
     output reg        clkout,       // CLKOUT
     output reg        clk_on        // CLKOUT is running
 );
@@ -113,29 +111,34 @@ module usb_clk_gen (
 
     assign phase_j = j;
 
-    // one-gate phase decodes (adjacent bit pairs)
-    wire ph2 =  j[2] & ~j[1];       // 1100
-    wire ph6 = ~j[2] &  j[1];       // 0011
+    // Phase flags, registered one edge ahead (Plan_60MHz.md P9: one gate per
+    // flop at 480 MHz, slow corner): p2 = 1 in state 1100 (decoded from 1110),
+    // p6 = 1 in state 0011 (from 0001), hq = ~p2 & ~p6.  Each decode is one
+    // gate of an adjacent bit pair; the same function as the old combinational
+    // ph2 / ph6.
+    reg p2, p6, hq;
 
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) begin
             j      <= 4'b0000;
             clk60  <= 1'b0;
             ld     <= 1'b0;
-            ce60   <= 1'b0;
             hi     <= 1'b0;
             clk_on <= 1'b0;
+            p2     <= 1'b0;                      // flags of state 0000
+            p6     <= 1'b0;
+            hq     <= 1'b1;
         end else begin
             j     <= {j[2] & (j[1] | j[3]), j[1], j[0], ~j[3]};
             clk60 <= j[2];                       // = next j[3]
-            ld    <= ph2;                        // phase 3 next
-            ce60  <= ph6;                        // phase 7 next
-            if (ph6) begin                       // decision point
+            p2    <=  j[1] & ~j[0];              // 1110 -> 1100 next
+            p6    <= ~j[1] &  j[0];              // 0001 -> 0011 next
+            hq    <= ~(j[1] ^ j[0]);             // neither
+            ld    <= p2;                         // phase 3 next
+            if (p6)                              // decision point
                 clk_on <= clk_en;
-                hi     <= clk_en;                // phases 7, 0, 1, 2
-            end else if (ph2) begin
-                hi     <= 1'b0;                  // phase 3: fall at its middle
-            end
+            hi    <= (p6 & clk_en) | (hq & hi);  // set: phases 7, 0, 1, 2;
+                                                 // p2: fall at the middle of phase 3
         end
     end
 

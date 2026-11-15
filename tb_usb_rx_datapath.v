@@ -263,9 +263,8 @@ module tb_usb_rx_datapath;
     always @(posedge clk_bit) if (ce60) sent_rxev <= {rxe, rxa};
 
     usb_ulpi_rx_handler #(.DEPTH(8)) u_hdl (
-        .clk       (clk_bit),
+        .clk       (clk60),
         .rst_n     (rst_n),
-        .ce        (ce60),
         .rx_start  (rx_start),
         .rx_valid  (rx_valid),
         .rx_data   (rx_data),

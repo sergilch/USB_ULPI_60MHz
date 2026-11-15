@@ -38,7 +38,7 @@ module tb_ams_pwr_shadow;
     reg xo = 1'b0;
     always #(T_XO / 2.0) xo = ~xo;
     wire ref_clk = xo & vdd18a_up;
-    wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
+    wire clk_bit, pll_lock, lol, refsel_err, clkout, clk_on;
     wire        clk60, ld;           // core clock / island strobe (lock detector, sequencer)
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
@@ -52,7 +52,7 @@ module tb_ams_pwr_shadow;
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
-                      .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
+                      .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq u_seq (
         .ref_clk(ref_clk), .clk_bit(clk_bit), .clk60(clk60), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),

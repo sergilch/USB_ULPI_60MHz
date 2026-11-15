@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_sync_detect.v - self-checking testbench for usb_rx_sync_detect
+// tb_ref_rx_sync_detect.v - self-checking testbench for ref_rx_sync_detect
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxsync usb_rx_sync_detect.v tb_usb_rx_sync_detect.v
+//   iverilog -g2005 -o sim_rxsync ref_rx_sync_detect.v tb_ref_rx_sync_detect.v
 //   vvp sim_rxsync
 //
 // Two instances (ZMIN = 6 for HS, ZMIN = 4 for FS/LS) get the same decoded bit
@@ -19,7 +19,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_rx_sync_detect;
+module tb_ref_rx_sync_detect;
 
     reg clk = 1'b0;
     always #5 clk = ~clk;
@@ -29,14 +29,14 @@ module tb_usb_rx_sync_detect;
     wire a_en, a_bit, a_se0, a_act, a_sync, a_pkt;
     wire b_en, b_bit, b_se0, b_act, b_sync, b_pkt;
 
-    usb_rx_sync_detect #(.ZMIN(6)) dut_a (
+    ref_rx_sync_detect #(.ZMIN(6)) dut_a (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_bit (i_bit), .i_se0 (i_se0), .i_act (i_act),
         .o_en (a_en), .o_bit (a_bit), .o_se0 (a_se0), .o_act (a_act),
         .o_sync (a_sync), .o_pkt (a_pkt)
     );
 
-    usb_rx_sync_detect #(.ZMIN(4)) dut_b (
+    ref_rx_sync_detect #(.ZMIN(4)) dut_b (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_bit (i_bit), .i_se0 (i_se0), .i_act (i_act),
         .o_en (b_en), .o_bit (b_bit), .o_se0 (b_se0), .o_act (b_act),
@@ -139,8 +139,8 @@ module tb_usb_rx_sync_detect;
     integer p, i, k;
 
     initial begin
-        $dumpfile("tb_usb_rx_sync_detect.vcd");
-        $dumpvars(0, tb_usb_rx_sync_detect);
+        $dumpfile("tb_ref_rx_sync_detect.vcd");
+        $dumpvars(0, tb_ref_rx_sync_detect);
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         @(negedge clk) rst_n = 1'b1;

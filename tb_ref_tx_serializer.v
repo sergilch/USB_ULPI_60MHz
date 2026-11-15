@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_tx_serializer.v - self-checking testbench for usb_tx_serializer
+// tb_ref_tx_serializer.v - self-checking testbench for ref_tx_serializer
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim usb_tx_serializer.v tb_usb_tx_serializer.v
+//   iverilog -g2005 -o sim ref_tx_serializer.v tb_ref_tx_serializer.v
 //   vvp sim
 //
 // The bench builds the expected line-bit stream (data bits + EOP) while it
@@ -12,7 +12,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_tx_serializer;
+module tb_ref_tx_serializer;
 
     parameter real    HALF   = 1.042;   // ~480 MHz
     parameter integer FS_DIV = 40;
@@ -42,7 +42,7 @@ module tb_usb_tx_serializer;
     wire [1:0] tx_speed;
     wire       busy, tx_done, tx_underrun;
 
-    usb_tx_serializer #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
+    ref_tx_serializer #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
         .clk_bit    (clk_bit),
         .rst_n      (rst_n),
         .ce60       (ce60),
@@ -223,8 +223,8 @@ module tb_usb_tx_serializer;
     integer p, w, nw, nb, dat, spd_i;
 
     initial begin
-        $dumpfile("tb_usb_tx_serializer.vcd");
-        $dumpvars(0, tb_usb_tx_serializer);
+        $dumpfile("tb_ref_tx_serializer.vcd");
+        $dumpvars(0, tb_ref_tx_serializer);
 
         cur_div  = 1;
         cur_spd  = 2'b00;

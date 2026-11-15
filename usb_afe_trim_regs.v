@@ -35,7 +35,7 @@
 // Shadow / active: writes go to the shadow set; the AFE and the digital see
 //   only the active set, which changes all at once on UPDATE (one ce tick), so
 //   a multi-register trim change never shows an intermediate combination.
-//   Both sets reset to the defaults.  usb_afe_tx_if takes over TX_LEAD /
+//   Both sets reset to the defaults.  usb_afe_tx_if8 takes over TX_LEAD /
 //   TX_LAG only while it is idle; the analog trims are static levels.
 //
 // Status inputs (pwr_state, pll_err: ref_clk domain; pll_lock, lol: clk_bit):
@@ -47,10 +47,8 @@
 //   combinational from vnd_addr (the fixed ULPI read timing needs the value in
 //   the turnaround tick).  Reads have no side effect.
 //
-// Clocking: one clock with the tick enable ce; port names kept from the
-//   single-clock design: clk_bit = clk60 and ce = 1 in usb_ulpi_phy_top
-//   (Plan_60MHz.md P2), clk_bit with ce60 only in the standalone testbench.
-//   rst_n: the core reset.
+// Clocking: clk60 (Plan_60MHz.md P2; the clk_bit / ce ports of the
+//   single-clock design were replaced in P9).  rst_n: the core reset.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -63,9 +61,8 @@ module usb_afe_trim_regs #(
     parameter [7:0] D_PLL  = 8'h04,   // PLL_ICP 4
     parameter [7:0] D_DLY  = 8'h02    // SQ_COMP 0, LOCK_DLY 2
 ) (
-    input  wire       clk_bit,
+    input  wire       clk60,
     input  wire       rst_n,
-    input  wire       ce,
 
     // access (usb_ulpi_reg_file)
     input  wire       vnd_wr,
@@ -123,7 +120,7 @@ module usb_afe_trim_regs #(
 
     // ---------------- registers ----------------
     integer k;
-    always @(posedge clk_bit or negedge rst_n) begin
+    always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n) begin
             shd     <= DEF & MASK;
             act     <= DEF & MASK;
@@ -137,20 +134,18 @@ module usb_afe_trim_regs #(
         end else begin
             st0 <= {lol, pll_err, pll_lock, pwr_state};
             st1 <= st0;
-            if (ce) begin
-                st2 <= st1;
-                if (st1 == st2) stat <= st1;
-                lol_clr <= 1'b0;
-                if (vnd_wr) begin
-                    for (k = 0; k < 7; k = k + 1)
-                        if ({28'd0, vnd_addr} == k)
-                            shd[k*8 +: 8] <= vnd_wdata & MASK[k*8 +: 8];
-                    if (vnd_addr == 4'hC) test_q <= vnd_wdata[4:0];
-                    if (vnd_addr == 4'hD) lol_clr <= vnd_wdata[6];
-                    if (vnd_addr == 4'hE) begin
-                        rdact <= vnd_wdata[1];
-                        if (vnd_wdata[0]) act <= shd;
-                    end
+            st2 <= st1;
+            if (st1 == st2) stat <= st1;
+            lol_clr <= 1'b0;
+            if (vnd_wr) begin
+                for (k = 0; k < 7; k = k + 1)
+                    if ({28'd0, vnd_addr} == k)
+                        shd[k*8 +: 8] <= vnd_wdata & MASK[k*8 +: 8];
+                if (vnd_addr == 4'hC) test_q <= vnd_wdata[4:0];
+                if (vnd_addr == 4'hD) lol_clr <= vnd_wdata[6];
+                if (vnd_addr == 4'hE) begin
+                    rdact <= vnd_wdata[1];
+                    if (vnd_wdata[0]) act <= shd;
                 end
             end
         end

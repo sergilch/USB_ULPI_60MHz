@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
-// tb_usb_rx_bit_unstuffer.v - self-checking testbench for usb_rx_bit_unstuffer
+// tb_ref_rx_bit_unstuffer.v - self-checking testbench for ref_rx_bit_unstuffer
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_rxuns usb_rx_bit_unstuffer.v tb_usb_rx_bit_unstuffer.v
+//   iverilog -g2005 -o sim_rxuns ref_rx_bit_unstuffer.v tb_ref_rx_bit_unstuffer.v
 //   vvp sim_rxuns
 //
 // Packets: the final 1 of SYNC (i_sync), then data bits stuffed by a
@@ -20,7 +20,7 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module tb_usb_rx_bit_unstuffer;
+module tb_ref_rx_bit_unstuffer;
 
     reg clk = 1'b0;
     always #5 clk = ~clk;
@@ -29,7 +29,7 @@ module tb_usb_rx_bit_unstuffer;
     reg  i_en = 1'b0, i_bit = 1'b1, i_se0 = 1'b0, i_act = 1'b1, i_sync = 1'b0, i_pkt = 1'b0;
     wire o_en, o_dat, o_bit, o_serr, o_se0, o_act, o_sync, o_pkt;
 
-    usb_rx_bit_unstuffer dut (
+    ref_rx_bit_unstuffer dut (
         .clk (clk), .rst_n (rst_n),
         .i_en (i_en), .i_bit (i_bit), .i_se0 (i_se0), .i_act (i_act),
         .i_sync (i_sync), .i_pkt (i_pkt),
@@ -143,8 +143,8 @@ module tb_usb_rx_bit_unstuffer;
     integer p;
 
     initial begin
-        $dumpfile("tb_usb_rx_bit_unstuffer.vcd");
-        $dumpvars(0, tb_usb_rx_bit_unstuffer);
+        $dumpfile("tb_ref_rx_bit_unstuffer.vcd");
+        $dumpvars(0, tb_ref_rx_bit_unstuffer);
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         @(negedge clk) rst_n = 1'b1;

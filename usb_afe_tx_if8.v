@@ -6,18 +6,18 @@
 //   usb_tx_serializer8 --txd_v / tx_en_v / tx_se0_v, tx_speed--> [THIS BLOCK]
 //        --pin vectors (8 bits per tick)--> usb_tx_piso (clk_bit) --> HS TX, FS/LS
 //
-// The bit-serial usb_afe_tx_if (kept as the reference model of tb_usb_tx_vec)
+// The bit-serial ref_afe_tx_if (kept as the reference model of tb_usb_tx_vec)
 // split in two: everything except the last flop stage runs here on clk60 and
 // works on 8-bit vectors; usb_tx_piso shifts the vectors out at 480 MHz and
 // holds the idle clamp.  Every output bit is the old pin value of the same
 // bit time: output register after tick T+1's edge, bit i = the old
-// usb_afe_tx_if pin after clk_bit edge 8T + 4 + i, for the serializer vector of
+// ref_afe_tx_if pin after clk_bit edge 8T + 4 + i, for the serializer vector of
 // tick T (old serializer edges 8T + 2 + i).  The PISO adds 9 clk_bit cycles
 // (load on ld = E4, output flop), so the pins come LAT = 9 cycles after those of
-// the single-clock chain (usb_tx_serializer + usb_afe_tx_if); tb_usb_tx_vec
+// the single-clock chain (ref_tx_serializer + ref_afe_tx_if); tb_usb_tx_vec
 // checks that cycle for cycle.
 //
-// Function (as usb_afe_tx_if, per bit; see its header)
+// Function (as ref_afe_tx_if, per bit; see its header)
 //   * driver select from tx_speed: 00 HS current driver, 01 / 11 FS, 10 LS;
 //   * TX_EN lead: the data of all speeds is delayed by tx_lead bit times, the
 //     HS enable is not, so hs_tx_en rises tx_lead bits before the first SYNC

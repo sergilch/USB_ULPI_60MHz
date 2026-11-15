@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// usb_afe_tx_if.v - TX data boundary to the analog front end (HS TX + FS/LS)
+// ref_afe_tx_if.v - TX data boundary to the analog front end (HS TX + FS/LS)
 //
 // REFERENCE MODEL since Plan_60MHz.md P6: the design uses usb_afe_tx_if8 (clk60)
 // + usb_tx_piso (clk_bit), whose pins equal this module's LAT = 9 cycles later
@@ -83,14 +83,14 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_afe_tx_if #(
+module ref_afe_tx_if #(
     parameter LEAD_W = 5,                    // tx_lead width: 0 .. 2^LEAD_W - 1
     parameter LAG_W  = 3                     // tx_lag width:  0 .. 2^LAG_W - 1
 ) (
     input  wire              clk_bit,
     input  wire              rst_n,
 
-    // from usb_tx_path / usb_tx_serializer
+    // from usb_tx_path / ref_tx_serializer
     input  wire              txd,            // J = 1 / K = 0
     input  wire              tx_en,
     input  wire              tx_se0,

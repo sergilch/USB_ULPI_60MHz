@@ -14,7 +14,8 @@
 // Status side: linestate, vbusstate, host_disc, id_gnd, alt_int and the USB Interrupt
 //   Enable registers ie_rise / ie_fall (see usb_ulpi_rxcmd_gen).
 //
-// Clocking: one clock with tick enable ce (1 on clk60, ce60 on clk_bit).
+// Clocking: clk60; the tick enable ce of the single-clock design was removed in
+//   Plan_60MHz.md P9 (it was 1 in every instance).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -23,7 +24,6 @@ module usb_ulpi_rx_path #(
 ) (
     input  wire        clk,
     input  wire        rst_n,
-    input  wire        ce,
 
     // RX datapath
     input  wire        rx_start,
@@ -60,7 +60,6 @@ module usb_ulpi_rx_path #(
     usb_ulpi_rx_handler #(.DEPTH(DEPTH)) u_h (
         .clk       (clk),
         .rst_n     (rst_n),
-        .ce        (ce),
         .rx_start  (rx_start),
         .rx_valid  (rx_valid),
         .rx_data   (rx_data),
@@ -79,7 +78,6 @@ module usb_ulpi_rx_path #(
     usb_ulpi_rxcmd_gen u_g (
         .clk       (clk),
         .rst_n     (rst_n),
-        .ce        (ce),
         .linestate (linestate),
         .vbusstate (vbusstate),
         .host_disc (host_disc),

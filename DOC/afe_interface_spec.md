@@ -276,6 +276,8 @@ See section 4.2. Method: a scratch copy of `tb_usb_rx_datapath` with squelch rel
 
 ### 7.2 480 MHz timing on xh018
 
+**Update 2026-11-15 (`Plan_60MHz.md` P9):** with the full SDC and a sized mapping (`run_sta.sh`, ABC buffering + sizing) typical and fast close on every top, with no hold violation; the slow corner misses by 0.07–0.45 ns on the 480 MHz islands (one gate per flop is the library floor there) and by 1.90 ns on the ULPI `stp` input path with the placeholder I/O budget. Per-top table and the island changes: `Plan_60MHz.md` 8.11. The P1–P8 table below is the unsized state.
+
 **Update 2026-11-15 (`Plan_60MHz.md` P1–P8):** the estimate below led to option (c), not listed in the original conclusion: the digital core moved to a real 60 MHz clock `clk60` (`usb_clk_gen`, `clk_bit` ÷ 8), the HS receive chain to a digital 1:8 SIPO on `clk_rx` plus a parallel decoder on `clk60`, and the TX to 8-bit vectors on `clk60` plus a 480 MHz PISO. What still runs at 480 MHz are small islands with at most one or two gates between flops (section 2). OpenSTA is now installed (`run_sta.sh`, `constraints/usb_phy.sdc`, Yosys delay mapping without sizing or buffering, ideal clocks; WORK_PLAN 9.1). WNS in ns per top level:
 
 | Top | Slow | Typ | Fast | Worst group at slow, what remains |

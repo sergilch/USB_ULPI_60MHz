@@ -6,25 +6,32 @@
 #   ./run_sta.sh usb_clk_gen           only the named top level(s)
 #   CORNER=typ ./run_sta.sh            xh018 corner: slow (default), typ, fast
 #   ABC_D=2083 ./run_sta.sh            delay target of the mapping in ps
+#   SIZE=0 ./run_sta.sh                unsized X1 mapping (the P1..P8 numbers)
 #
 # Needs the X-FAB library (X-FAB/xh018_lib) and OpenSTA (sta); without them the
 # script reports SKIPPED and exits 0.  Per top level:
 #   * Yosys maps all usb_*.v for delay (synth -flatten, dfflibmap, abc -D) onto
 #     the D_CELLS_JIHD cells of the same corner: build/sta/<top>_<corner>.v.
-#     The mapping library is a copy of the corner's Liberty without the X0
-#     cells (build/sta/map_<corner>.lib): Yosys does no gate sizing and always
-#     picks the smallest flop, and X0 flops / gates cost about 0.5 ns per
-#     stage at the slow corner, far from what a sizing flow would give.  X1
-#     is the closer estimate (X2 as minimum is slower again: input load).
-#     run_synth.sh is unchanged (area mapping, all cells).  STA itself reads
-#     the complete library.
+#     Flops: dfflibmap from a copy of the corner's Liberty without the X0
+#     cells (build/sta/map_<corner>.lib), i.e. X1 flops (X0 flops cost about
+#     0.5 ns at the slow corner; larger flops are slower here, input load).
+#     Gates (SIZE=1, default since Plan_60MHz.md P9): ABC on the complete
+#     library with buffering and gate sizing after mapping (buffer -p;
+#     upsize; dnsize), which removes the unbuffered high-fan-out nets of the
+#     plain mapping.  SIZE=0: plain ABC mapping onto the X1+ library (no
+#     buffering, no sizing), the flow of the P1..P8 numbers.  Neither sizes
+#     flops or buffers nets that go from a flop straight to flop pins (reset
+#     and clock-enable trees): that is left to P&R.  run_synth.sh is unchanged
+#     (area mapping, all cells).  STA itself reads the complete library.
 #   * OpenSTA reads that netlist and constraints/usb_phy.sdc and writes
 #     build/sta/<top>_<corner>.rpt: clocks, setup / hold WNS and TNS, the
 #     violating endpoints and the worst paths per clock group.
 #
 # Limits (read the numbers with them in mind): ideal clocks (no CTS), no wire
-# load / parasitics, no I/O constraints yet, no hold fixing, no placement.  The
-# legacy ce60 paths are timed as single-cycle 480 MHz paths (see the SDC).
+# load / parasitics, no hold fixing, no placement; the I/O constraints of the
+# SDC use placeholder pad / CDR delays.
+#
+# The report also lists the register count per clock (all_registers -clock).
 #
 # Exit code: 0 always for the analysis itself (timing violations are a result,
 # not a script failure), 1 if a mapping or STA run breaks.
@@ -35,6 +42,7 @@ OUT=build/sta
 mkdir -p "$OUT"
 CORNER=${CORNER:-slow}
 ABC_D=${ABC_D:-2083}
+SIZE=${SIZE:-1}
 SDC=constraints/usb_phy.sdc
 
 # usb_ulpi_phy_pads is left out: the BBSUD8F pads have no timing model here.
@@ -69,15 +77,21 @@ open(dst, 'w').write(''.join(out))
 PY
 fi
 
-echo "OpenSTA $(sta -version), corner $CORNER ($(basename "$LIB")), abc -D $ABC_D"
-printf '  %-20s %9s %10s %6s %9s %6s  %s\n' top "WNS(ns)" "TNS(ns)" "#viol" "hold WNS" "#viol" "worst setup group"
+# ABC script for SIZE=1: Yosys' default Liberty script plus buffering / sizing
+ABCSCR=$OUT/abc_sized.scr
+echo 'strash; &get -n; &fraig -x; &put; scorr; dc2; dretime; strash; &get -n; &dch -f; &nf {D}; &put; buffer -p; upsize {D}; dnsize {D}' > "$ABCSCR"
+if [ "$SIZE" = 1 ]; then ABC="abc -D $ABC_D -liberty $LIB -script $ABCSCR"; mode="sized"
+else                     ABC="abc -D $ABC_D -liberty $MAPLIB";            mode="unsized X1"; fi
+
+echo "OpenSTA $(sta -version), corner $CORNER ($(basename "$LIB")), abc -D $ABC_D, $mode"
+printf '  %-20s %9s %10s %6s %9s %6s  %-14s %s\n' top "WNS(ns)" "TNS(ns)" "#viol" "hold WNS" "#viol" "worst group" "registers per clock"
 rc=0
 for top in "${TOPS[@]}"; do
     net=$OUT/${top}_$CORNER.v
     rpt=$OUT/${top}_$CORNER.rpt
     log=$OUT/${top}_$CORNER.log
     ys="read_verilog $RTL; hierarchy -check -top $top; synth -top $top -flatten;"
-    ys+=" dfflibmap -liberty $MAPLIB; abc -D $ABC_D -liberty $MAPLIB; opt_clean;"
+    ys+=" dfflibmap -liberty $MAPLIB; $ABC; opt_clean;"
     ys+=" select -assert-none t:\$_*; write_verilog -noattr $net"
     if ! yosys -q -l "$log" -p "$ys" > /dev/null 2>&1; then
         printf '  %-20s MAPPING FAILED (see %s)\n' "$top" "$log"; rc=1; continue
@@ -99,6 +113,8 @@ puts "== setup violators (endpoint, slack)"
 report_checks -path_delay max -slack_max 0 -group_path_count 100000 -endpoint_path_count 1 -format end
 puts "== hold violators (endpoint, slack)"
 report_checks -path_delay min -slack_max 0 -group_path_count 100000 -endpoint_path_count 1 -format end
+puts "== registers per clock"
+foreach c [all_clocks] { puts "regs [get_name \$c] [llength [all_registers -clock \$c]]" }
 puts "== worst setup path per group"
 report_checks -path_delay max -group_path_count 1 -fields {fanout cap slew net}
 puts "== worst hold path per group"
@@ -120,7 +136,8 @@ EOF
                s && /^Path Group:/ { g = $3 }
                s && /slack \(/ { if (best == "" || $1 + 0 < best + 0) { best = $1; bg = g } }
                END { print bg }' "$rpt")
-    printf '  %-20s %9s %10s %6s %9s %6s  %s\n' "$top" "${wns:-?}" "${tns:-?}" "$nviol" "${hwns:-?}" "$nhviol" "${grp:--}"
+    regs=$(awk '$1 == "regs" && $3 > 0 { printf "%s%s %s", sep, $2, $3; sep = ", " }' "$rpt")
+    printf '  %-20s %9s %10s %6s %9s %6s  %-14s %s\n' "$top" "${wns:-?}" "${tns:-?}" "$nviol" "${hwns:-?}" "$nhviol" "${grp:--}" "${regs:--}"
 done
 echo "--------------------------------------------------"
 echo "reports: $OUT/<top>_$CORNER.rpt"

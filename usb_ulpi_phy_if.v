@@ -136,7 +136,6 @@ module usb_ulpi_phy_if #(
     usb_ulpi_rx_path #(.DEPTH(RX_DEPTH)) u_rx (
         .clk         (clk60),
         .rst_n       (rst_n),
-        .ce          (1'b1),
         .rx_start    (rx_start),
         .rx_valid    (rx_valid),
         .rx_data     (rx_data),
