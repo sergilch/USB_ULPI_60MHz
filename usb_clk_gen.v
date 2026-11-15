@@ -65,21 +65,24 @@
 // ce60: the legacy enable output (registered, high while phase = 7) was
 //   removed in Plan_60MHz.md P9; no block uses it any more.
 //
-// clkout (ULPI CLKOUT)
-//   * A flop on the falling clk_bit edge: it rises in the middle of the phase-7
-//     cycle, half a clk_bit period before E0 (on which the core samples and
-//     launches), and falls 4 clk_bit cycles later.  So high and low are 4
-//     clk_bit cycles each (50 % duty), and the core's ULPI outputs change about
-//     1 ns after the CLKOUT edge (clock-to-out / hold for the Link).
-//   * clkout <= hi is a plain copy of a posedge flop (no logic and no feedback
-//     in the half-cycle path).  hi is high in phases 7, 0, 1, 2 of an enabled
-//     period.  The half-cycle flop-to-flop path itself does not meet 480 MHz
-//     at the slow corner (clock-to-Q + setup > 1.04 ns): the CLKOUT launch
-//     point is revisited with the ULPI I/O timing (Plan_60MHz.md 3.4, K2).
+// clkout (ULPI CLKOUT; Plan_60MHz.md 3.4 / K2, P9)
+//   * A rising-edge clk_bit flop that leads the core clock: it rises on
+//     E(8 - CKO_LEAD), CKO_LEAD clk_bit cycles before E0, and falls 4 clk_bit
+//     cycles later (50 % duty).  Before P9 it was a falling-edge flop half a
+//     clk_bit before E0; that half-cycle path did not meet 480 MHz at the slow
+//     corner, and the ULPI input budget at the core is 6.0 ns (ULPI setup)
+//     - delta - input pad, delta = CLKOUT flop clock-to-Q + CLK pad - CKO_LEAD
+//     * T_BIT (the CLK pin edge relative to E0).  A larger lead gives the
+//     inputs more time and the outputs less (output budget 9.0 ns - output pad
+//     + delta); the input hold at the PHY (0 ns) needs delta > -(input pad).
+//     CKO_LEAD = 2 with the placeholder pad delays of the SDC: delta ~ -0.4 ns.
+//     The lead is a parameter (the SDC must use the same value); make it a
+//     trim setting once the pad delays are known.
+//   * clkout <= (pr & clk_en) | (hq & clkout): one gate, from flops.
 //
 // Glitch-free start / stop of clkout
 //   clk_en (pll_lock & ~clock suspend, clk_bit domain) is sampled once per
-//   period, in the cycle before clkout would rise (phase 6).  If it is 0, that
+//   period, in the cycle before clkout would rise (phase 7 - CKO_LEAD).  If it is 0, that
 //   rising edge and the whole period are skipped; a pulse that has started
 //   always runs to its end.  So clkout only ever shows complete 4 + 4 periods,
 //   and stops low.  clk_on = 1 while clkout is running (updated at the same
@@ -95,7 +98,12 @@
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
-module usb_clk_gen (
+module usb_clk_gen #(
+    // CLKOUT lead: clkout rises on the clk_bit edge E(8 - CKO_LEAD), i.e.
+    // CKO_LEAD clk_bit cycles before the clk60 edge E0 (1 .. 4; header and
+    // constraints/usb_phy.sdc CKO_LEAD, which must match)
+    parameter integer CKO_LEAD = 2
+) (
     input  wire       clk_bit,
     input  wire       rst_n,
     input  wire       clk_en,       // CLKOUT allowed
@@ -107,44 +115,65 @@ module usb_clk_gen (
 );
 
     reg [3:0] j;                    // Johnson counter
-    reg       hi;                   // clkout value for the next falling edge
 
     assign phase_j = j;
 
-    // Phase flags, registered one edge ahead (Plan_60MHz.md P9: one gate per
-    // flop at 480 MHz, slow corner): p2 = 1 in state 1100 (decoded from 1110),
-    // p6 = 1 in state 0011 (from 0001), hq = ~p2 & ~p6.  Each decode is one
-    // gate of an adjacent bit pair; the same function as the old combinational
-    // ph2 / ph6.
-    reg p2, p6, hq;
+    // One-gate decode of the Johnson state of phase m (an adjacent bit pair,
+    // or j[3] / j[0] for 1111 / 0000); m is a constant at every use.
+    function dec;
+        input [3:0] s;
+        input integer m;
+        begin
+            case (m % 8)
+                0: dec =  s[3] &  s[0];         // 1111
+                1: dec =  s[1] & ~s[0];         // 1110
+                2: dec =  s[2] & ~s[1];         // 1100
+                3: dec =  s[3] & ~s[2];         // 1000
+                4: dec = ~s[3] & ~s[0];         // 0000
+                5: dec = ~s[1] &  s[0];         // 0001
+                6: dec = ~s[2] &  s[1];         // 0011
+                default: dec = ~s[3] & s[2];    // 0111
+            endcase
+        end
+    endfunction
+
+    // Phase flags, registered one edge ahead (one gate per 480 MHz flop):
+    //   p2 = 1 in phase 2 (for ld),
+    //   pr = 1 in phase 7 - CKO_LEAD (the cycle before clkout rises: decision),
+    //   pf = 1 in phase 11 - CKO_LEAD (the cycle before clkout falls),
+    //   hq = ~pr & ~pf.
+    // A flag that is 1 in phase k is loaded on E_k from the decode of phase k-1.
+    // Reset values: the flags of the reset state 0000 (phase 4).
+    localparam integer PR = 7 - CKO_LEAD;
+    localparam integer PF = 11 - CKO_LEAD;
+    localparam         PR_RST = ((PR % 8) == 4);
+    localparam         PF_RST = ((PF % 8) == 4);
+    reg p2, pr, pf, hq;
 
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) begin
             j      <= 4'b0000;
             clk60  <= 1'b0;
             ld     <= 1'b0;
-            hi     <= 1'b0;
+            clkout <= 1'b0;
             clk_on <= 1'b0;
-            p2     <= 1'b0;                      // flags of state 0000
-            p6     <= 1'b0;
-            hq     <= 1'b1;
+            p2     <= 1'b0;
+            pr     <= PR_RST;
+            pf     <= PF_RST;
+            hq     <= ~(PR_RST | PF_RST);
         end else begin
-            j     <= {j[2] & (j[1] | j[3]), j[1], j[0], ~j[3]};
-            clk60 <= j[2];                       // = next j[3]
-            p2    <=  j[1] & ~j[0];              // 1110 -> 1100 next
-            p6    <= ~j[1] &  j[0];              // 0001 -> 0011 next
-            hq    <= ~(j[1] ^ j[0]);             // neither
-            ld    <= p2;                         // phase 3 next
-            if (p6)                              // decision point
+            j      <= {j[2] & (j[1] | j[3]), j[1], j[0], ~j[3]};
+            clk60  <= j[2];                                  // = next j[3]
+            p2     <= dec(j, 1);                             // 1110 -> phase 2 next
+            pr     <= dec(j, PR + 7);                        // phase PR - 1 -> PR next
+            pf     <= dec(j, PF + 7);
+            hq     <= ~(dec(j, PR + 7) | dec(j, PF + 7));
+            ld     <= p2;                                    // phase 3 next
+            if (pr)                                          // decision point
                 clk_on <= clk_en;
-            hi    <= (p6 & clk_en) | (hq & hi);  // set: phases 7, 0, 1, 2;
-                                                 // p2: fall at the middle of phase 3
+            clkout <= (pr & clk_en) | (hq & clkout);         // rise at E(8 - CKO_LEAD),
+                                                             // fall 4 edges later
         end
-    end
-
-    always @(negedge clk_bit or negedge rst_n) begin
-        if (!rst_n) clkout <= 1'b0;
-        else        clkout <= hi;
     end
 
 endmodule

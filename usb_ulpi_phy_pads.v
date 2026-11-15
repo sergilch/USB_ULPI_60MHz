@@ -72,8 +72,9 @@
 // Clocking: as usb_ulpi_phy_top (Plan_60MHz.md P2, P6): the core on clk60 only;
 //   the TX line leaves as vectors (txd_v / tx_en_v / tx_se0_v) for usb_afe_tx_if8.
 //   clkout (CLKOUT, from usb_clk_gen) is only passed to the CLK pad; it rises
-//   half a clk_bit period before the clk60 edge on which the core samples and
-//   launches.
+//   CKO_LEAD clk_bit cycles (default 2, Plan_60MHz.md P9 / K2) before the
+//   clk60 edge on which the core samples and launches, so that with the pad
+//   delays the CLK pin edge lands close to that clk60 edge (SDC delta).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 

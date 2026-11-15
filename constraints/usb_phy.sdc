@@ -17,7 +17,8 @@
 #            a generated clock (/8) on the clk60 flop; a top level that takes
 #            clk60 as a port gets a primary clock with the same waveform, so
 #            the core can be timed standalone.
-#   clkout   ULPI CLKOUT, falling-edge flop in usb_clk_gen (generated, /8).
+#   clkout   ULPI CLKOUT, rising-edge flop in usb_clk_gen (generated, /8),
+#            CKO_LEAD clk_bit cycles before E0.
 #            Only a reference for the ULPI I/O constraints, it clocks no flop.
 #   clk_rx   480 MHz +- 1000 ppm CDR clock, asynchronous to clk_bit.  Timed at
 #            +1000 ppm (period 2.081 ns).
@@ -76,9 +77,10 @@ if {[llength [get_ports -quiet clk60]] && [get_property [get_ports clk60] direct
     }
     set drv [usb_net_driver clkout]
     if {$drv != ""} {
-        # rises and falls on falling clk_bit edges, 4 + 4 periods
+        # rising-edge flop (P9), 4 + 4 periods; its lead against clk60 is
+        # CKO_LEAD below (the generated clock is only a reference)
         create_generated_clock -name clkout -source [get_ports clk_bit] \
-            -edges {2 10 18} $drv
+            -edges {1 9 17} $drv
     }
 }
 
@@ -189,12 +191,18 @@ if {$has_60 && $has_bit} {
 #   At the PHY pins: Link -> PHY setup 6.0 ns / hold 0.0 ns before / after
 #   the CLK edge; PHY -> Link output delay <= 9.0 ns after the CLK edge; the
 #   PHY outputs must not change before the CLK edge (the Link's 0.0 ns hold).
-#   The CLK pin edge c_k lies delta = CKO_FF + PAD_OUT - T_BIT/2 after the
-#   clk60 edge E0_k (CLKOUT is a falling-edge clk_bit flop, half a clk_bit
-#   period before E0; usb_clk_gen).  The virtual clock ulpi_clk models the
+#   The CLK pin edge c_k lies delta = CKO_FF + PAD_OUT - CKO_LEAD * T_BIT
+#   after the clk60 edge E0_k (CLKOUT is a rising-edge clk_bit flop CKO_LEAD
+#   cycles before E0; usb_clk_gen parameter CKO_LEAD, Plan_60MHz.md K2 / P9).
+#   Budgets at the core: inputs 6.0 - delta - PAD_IN, outputs 9.0 - PAD_OUT
+#   + delta; PHY input hold needs delta > -PAD_IN (min).  CKO_LEAD = 2 with
+#   the placeholders below: delta = -0.37 ns.  The virtual clock ulpi_clk models the
 #   CLK pin edge.  The core launches ULPI outputs on E0_k for the Link to
 #   sample on c_(k+1), and samples ULPI inputs launched on c_k at E0_(k+1);
-#   the multicycles below pick those edges for either sign of delta.
+#   the setup multicycles below pick those edges for either sign of delta.
+#   They correct the edge choice (the default pair is only |delta| apart), so
+#   hold stays at its default, one period before the setup edge: inputs are
+#   held against E0_k, outputs against c_k (no -hold multicycle).
 #   Placeholders: PAD_IN / PAD_OUT (BBSUD8F, no timing model here) and CKO_FF
 #   (CLKOUT flop clock-to-Q, slow-corner X1 value).  No board delay.
 set ULPI_TSU  6.0
@@ -203,10 +211,11 @@ set ULPI_TCO  9.0
 set PAD_IN    1.0
 set PAD_OUT   3.0
 set CKO_FF    0.8
+set CKO_LEAD  2                ;# must match usb_clk_gen CKO_LEAD
 set ulpi_in  [get_ports -quiet {ulpi_data_in* ulpi_stp}]
 set ulpi_out [get_ports -quiet {ulpi_data_out* ulpi_data_oe ulpi_dir ulpi_nxt}]
 if {$has_60 && ([llength $ulpi_in] || [llength $ulpi_out])} {
-    set delta [expr {$CKO_FF + $PAD_OUT - $T_BIT / 2.0}]
+    set delta [expr {$CKO_FF + $PAD_OUT - $CKO_LEAD * $T_BIT}]
     set r [expr {fmod($delta + 10.0 * $T_60, $T_60)}]
     create_clock -name ulpi_clk -period $T_60 -waveform [list $r [expr {$r + $T_60 / 2.0}]]
     if {[llength $ulpi_in]} {
@@ -215,7 +224,6 @@ if {$has_60 && ([llength $ulpi_in] || [llength $ulpi_out])} {
         set_input_delay -clock ulpi_clk -min [expr {$ULPI_TH + $PAD_IN}] $ulpi_in
         if {$delta < 0} {
             set_multicycle_path -setup 2 -from [get_clocks ulpi_clk] -to [get_clocks clk60]
-            set_multicycle_path -hold  1 -from [get_clocks ulpi_clk] -to [get_clocks clk60]
         }
     }
     if {[llength $ulpi_out]} {
@@ -224,7 +232,6 @@ if {$has_60 && ([llength $ulpi_in] || [llength $ulpi_out])} {
         set_output_delay -clock ulpi_clk -min [expr {$PAD_OUT - $ULPI_TH}] $ulpi_out
         if {$delta >= 0} {
             set_multicycle_path -setup 2 -from [get_clocks clk60] -to [get_clocks ulpi_clk]
-            set_multicycle_path -hold  1 -from [get_clocks clk60] -to [get_clocks ulpi_clk]
         }
     }
 }

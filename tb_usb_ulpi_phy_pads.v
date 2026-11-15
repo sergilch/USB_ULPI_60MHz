@@ -20,7 +20,10 @@
 // where the ce60 logic of the single-clock design updated; generated in the same
 // simulation region as that edge, like ideal zero-skew clocks), ld (phase 3) for the
 // TX serializer island; clkout (to the CLK pad) rises half a clk_bit cycle before the
-// clk60 edge on which the core samples, as from usb_clk_gen.  So the
+// clk60 edge on which the core samples.  This is the TB's own CLKOUT model, for
+// pads without delay: usb_clk_gen leads by CKO_LEAD = 2 cycles since P9 so that
+// the real pad delays put the CLK pin edge near E0 (constraints/usb_phy.sdc);
+// with ideal pads that lead would cost the Link model its hold.  So the
 // core launches its outputs ~1 ns after the CLK pin edge, like a PHY clock-to-out, and
 // the Link model, clocked by the CLK pin, drives its outputs 2 ns after that edge
 // (hold time > the 1 ns sampling offset of the core).

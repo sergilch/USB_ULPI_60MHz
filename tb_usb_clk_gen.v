@@ -16,8 +16,12 @@
 // (hierarchical deposit); it must be back in the legal cycle within 8 clk_bit
 // cycles, after which the reference model is re-aligned to the new phase.
 // clk60 does not depend on clk_en: it is checked through random clk_en changes,
-// while clkout starts / stops only on whole periods (half a clk_bit before E0,
-// only when clk_en was 1 in the cycle before) and clk_on follows it.
+// while clkout starts / stops only on whole periods and clk_on follows it.
+// clkout (P9: rising-edge flop, CKO_LEAD clk_bit cycles before E0): high in
+// phases R .. R+3 (R = 8 - CKO_LEAD) of a period for which clk_en was 1 at the
+// edge E_R; rises on a rising clk_bit edge exactly CKO_LEAD edges before
+// clk60.  Checked for the main instance (CKO_LEAD = 2, the default, with the
+// illegal-state deposits) and for extra instances with CKO_LEAD = 1, 3, 4.
 //
 // Boundary rule (usb_clk_gen header): a clk60 counter is copied into a clk_bit
 // register on ld and back into a clk60 register.  In simulation and hardware
@@ -39,9 +43,24 @@ module tb_usb_clk_gen;
     wire [3:0] phase_j;
     reg  [2:0] phase;                   // binary decode of the Johnson phase
 
-    usb_clk_gen dut (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
+    usb_clk_gen #(.CKO_LEAD(2)) dut (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
                      .clk60(clk60), .phase_j(phase_j), .ld(ld),
                      .clkout(clkout), .clk_on(clk_on));
+
+    // CLKOUT of every lead: index = CKO_LEAD (2 = dut)
+    wire [4:1] cko_a, con_a;
+    wire [3:0] pj_a [1:4];
+    assign cko_a[2] = clkout;
+    assign con_a[2] = clk_on;
+    assign pj_a[2]  = phase_j;
+    genvar gl;
+    generate for (gl = 1; gl <= 4; gl = gl + 1) begin : g_lead
+        if (gl != 2) begin : g_x
+            wire c60x, ldx;
+            usb_clk_gen #(.CKO_LEAD(gl)) u (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
+                .clk60(c60x), .phase_j(pj_a[gl]), .ld(ldx), .clkout(cko_a[gl]), .clk_on(con_a[gl]));
+        end
+    end endgenerate
 
     always #(TB / 2.0) clk_bit = ~clk_bit;
 
@@ -77,14 +96,6 @@ module tb_usb_clk_gen;
     reg       exp_on = 1'b0;            // reference clk_on of the current period
     always @(negedge rst_n) exp_on = 1'b0;
 
-    // clkout after every falling edge: high in phases 7, 0, 1, 2 of an enabled
-    // period, low otherwise
-    always @(negedge clk_bit) begin
-        #0.2;
-        if (rst_n && !skip &&
-            clkout !== (exp_on && (phase == 3'd7 || phase <= 3'd2)))
-            err("clkout");
-    end
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) n <= 0;
         else        n <= n + 1;
@@ -102,8 +113,9 @@ module tb_usb_clk_gen;
             if (phase !== ph_exp)                                err("phase");
             if (clk60 !== (ph_exp <= 3'd3))                      err("clk60");
             if (ld    !== (ph_exp == 3'd3))                      err("ld");
-            // clk_on / clkout period decision: clk_en at the edge into phase 7
-            if (ph_exp == 3'd7) exp_on = en_q;
+            // clk_on / clkout period decision: clk_en at the edge into phase 6
+            // (R = 8 - CKO_LEAD); the clkout window is checked per lead below
+            if (ph_exp == 3'd6) exp_on = en_q;
             if (clk_on !== exp_on)                               err("clk_on");
         end else begin
             exp_on = clk_on;            // re-aligned after the recovery
@@ -138,22 +150,59 @@ module tb_usb_clk_gen;
     end
 
     //-------------------------------------------------------------------------
-    // clkout: rises half a clk_bit before E0 (phase 7, falling clk_bit edge),
-    // only after clk_en = 1 in the cycle before; whole periods; clk_on
+    // clkout of every lead L: after each rising edge, high exactly in phases
+    // R .. R+3 (R = 8 - L) of a period decided by clk_en at E_R; rises only on
+    // a rising clk_bit edge, L edges before clk60 rises; clk_on follows the
+    // decision.  The phase of each instance is its own phase_j (legal codes
+    // only; the main instance's phase is checked against the reference above).
     //-------------------------------------------------------------------------
     integer n_clkout = 0;
     always @(posedge clk_bit) en_q <= clk_en;
-    always @(posedge clkout) begin : chk_rise
-        if (skip) disable chk_rise;
-        if (clk_bit !== 1'b0)  err("clkout rise not on a falling clk_bit edge");
-        if (phase !== 3'd7)    err("clkout rise not in phase 7");
-        if (clk60 !== 1'b0)    err("clkout rise not before the clk60 rise");
-        if (!clk_on)           err("clkout high with clk_on = 0");
-        n_clkout = n_clkout + 1;
-        @(posedge clk_bit); #0.2;
-        if (clk60 !== 1'b1)    err("clk60 did not rise half a clk_bit after clkout");
-    end
-    always @(negedge clkout) if (rst_n && !skip && phase !== 3'd3) err("clkout fall not in phase 3");
+
+    function [2:0] ph_of(input [3:0] c);
+        case (c)
+            4'b1111: ph_of = 3'd0;  4'b1110: ph_of = 3'd1;
+            4'b1100: ph_of = 3'd2;  4'b1000: ph_of = 3'd3;
+            4'b0000: ph_of = 3'd4;  4'b0001: ph_of = 3'd5;
+            4'b0011: ph_of = 3'd6;  default: ph_of = 3'd7;
+        endcase
+    endfunction
+
+    generate for (gl = 1; gl <= 4; gl = gl + 1) begin : g_chk
+        reg       on_l = 1'b0;          // reference decision of the current period
+        reg       was  = 1'b0;          // clkout before the edge
+        reg [2:0] ph, rel;
+        integer   wait_c60 = -1;        // edges until clk60 must rise after a clkout rise
+        always @(negedge rst_n) begin on_l = 1'b0; wait_c60 = -1; end
+        always @(posedge clk_bit) begin
+            was = cko_a[gl];
+            #0.2;
+            ph  = ph_of(pj_a[gl]);
+            rel = ph - (8 - gl);        // position in the clkout period (0 = rise)
+            if (rst_n && !(gl == 2 && skip)) begin
+                if (rel == 3'd0) on_l = en_q;
+                if (cko_a[gl] !== (on_l && rel <= 3'd3)) err("clkout window");
+                if (con_a[gl] !== on_l)                  err("clk_on (lead)");
+                if (!was && cko_a[gl]) begin
+                    if (gl == 2) n_clkout = n_clkout + 1;
+                    wait_c60 = gl;
+                end
+                if (wait_c60 > 0) begin
+                    wait_c60 = wait_c60 - 1;
+                end else if (wait_c60 == 0) begin
+                    wait_c60 = -1;
+                    if (ph !== 3'd0) err("clk60 edge (E0) not CKO_LEAD edges after the clkout rise");
+                end
+            end else begin
+                on_l = con_a[gl];
+                wait_c60 = -1;
+            end
+        end
+        // clkout changes only right after a rising clk_bit edge
+        always @(cko_a[gl]) if (rst_n && clk_bit !== 1'b1) err("clkout changed on a falling clk_bit edge");
+    end endgenerate
+
+    always @(posedge clkout) if (!skip && clk60 !== 1'b0) err("clkout rise not before the clk60 rise");
     always @(posedge clk_bit) begin
         #0.3;
         if (rst_n && !clk_on && clkout) err("clkout high while clk_on = 0");

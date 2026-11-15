@@ -73,7 +73,7 @@ tree, is the standard solution.
 
  usb_rx_fsls_dpll60 <─ rcv_v, dp_v, dm_v [7:0] ─ usb_rx_fsls_sampler <─ rxrcv, rxdp, rxdm (2-FF + 1:8 SIPO)
 
- usb_clk_gen: ÷8 Johnson counter (phase_j[3:0], ld = phase 3) ─> clk60 (core), CLKOUT (falling-edge flop, gated)
+ usb_clk_gen: ÷8 Johnson counter (phase_j[3:0], ld = phase 3) ─> clk60 (core), CLKOUT (falling-edge flop, gated; P9: rising-edge, CKO_LEAD cycles ahead)
  usb_pll_lock_det: phase[2:0] reused as 3 LSBs of the frequency count
 ```
 
@@ -289,7 +289,7 @@ blocks), so that wiring is done once, on the new clock structure.
 | # | Risk | Mitigation |
 |---|---|---|
 | K1 | Parallel unstuffer / SYNC detector longer than expected at the slow corner. | P3 measures it first; fallback: pipeline the decoder by one tick (latency only). **P3: happened** (a direct unrolling: 33.6 ns); closed with closed-form per-bit logic in three stages, 13.7 ns (8.5). |
-| K2 | ULPI hold time once the core uses its own `clk60` tree instead of a `clk_bit` edge. | 3.4: CLKOUT launch selectable in `clk_bit` steps; check in STA with pad delays. |
+| K2 | ULPI hold time once the core uses its own `clk60` tree instead of a `clk_bit` edge. | 3.4: CLKOUT launch selectable in `clk_bit` steps; check in STA with pad delays. **P9:** `usb_clk_gen` parameter `CKO_LEAD` (rising-edge CLKOUT flop, lead 1–4 cycles); with the placeholder pad delays only lead 2 meets input setup / hold and output setup / hold (8.11). Re-check with the BBSUD8F delays; make the lead a trim setting. |
 | K3 | PISO load phase and `clk60` edge misaligned after CTS. | Generate both from the same ÷8 counter; constrain with `create_generated_clock`; the multicycle covers up to 7 `clk_bit` cycles of skew in data, not the clock itself. |
 | K4 | TX start latency grows beyond the USB / ULPI budget. | Recompute in P6; the lead delay line already costs `tx_lead` bits, the PISO adds ≤ 8. **P6:** +9 bit times against the single-clock chain (+13 against P2), data `tx_lead` + 12 after the serializer bit (spec 4.1, 8.8); check against the budget with the full chain. |
 | K5 | `clk_rxw` from a CDR clock that glitches when the CDR re-locks. | Confirm D1 (free-running, glitch-free) with the analog team in P0; the FIFO is reset while squelched. |
@@ -311,7 +311,7 @@ blocks), so that wiring is done once, on the new clock structure.
 | P6 | ✅ 2026-11-15, see 8.8. New `usb_tx_serializer8` (clk60, 8 line bits per tick, HS EOP splice, FS/LS tick bit timer), `usb_afe_tx_if8` (clk60: driver select, 40-bit lead window, lag dilation, pin vectors) and `usb_tx_piso` (clk_bit: 8:1 shift loaded on `ld`, idle clamp, 68 flops). `usb_tx_path` is clk60 only (`SPLIT` and `usb_tx_ser_bridge` removed); the ULPI tops lose `clk_bit` / `ld` and output `txd_v` / `tx_en_v` / `tx_se0_v`. New `tb_usb_tx_vec`: bit-exact against the bit-serial chain, pins LAT = 9 cycles later. All 42 TBs pass with unchanged packet checks; the bit-serial `usb_tx_serializer` / `usb_afe_tx_if` stay as reference models. |
 | P7 | ✅ 2026-11-15, see 8.9. `usb_pll_lock_det` on `clk60` (count = ticks × 8 + position of the window-end flag change in an 8-sample `clk_bit` word, 17-flop island; heartbeat `clk60` / 16); `usb_pwr_seq` core-side copies on `clk60` (`core_rst_n_c`, `iso_en_c`, `dir_hold_c`, `afe_en_c`; `clk_en_b` stays on `clk_bit`); `usb_ulpi_phy_pads` exports the `clk_bit` island reset `bit_rst_n`; `usb_rx_status_sync` outputs on `clk60` with squelch / disconnect filters in ticks (the squelch / disconnect island moved in from `usb_line_state`). `tb_usb_pll_lock_det` (every window count exact against a bit-rate counter), `tb_usb_pwr_seq`, `tb_usb_rx_status_sync` (rewritten, tick reference), `tb_ams_pwr_shadow` pass; all 42 TBs pass. |
 | P8 | ✅ 2026-11-15, see 8.10. Last `clk_bit` register outside the islands moved: `usb_afe_rx_if`'s `rx_en_hs` / `cdr_en` on `clk60` (port `clk60` replaces `clk_bit`). `ams_phy_end.v` and the AFE-level TBs run `usb_mode_term_ctrl` on `clk60` with `ce60` = 1 as in `usb_ulpi_phy_top`; `ce60` is no longer used by any RTL instance. Docs: `CLAUDE.md` (clock rule: `clk_bit` islands, `clk60` core, `clk_rx` / `clk_rxw`), README, module headers, `DOC/afe_interface_spec.md` 2 / 3.2 / 4.1 / 4.2 / 7.2 (consolidated STA), `WORK_PLAN.md` D1 / D10 / 5.2 / 9.1 / 9.3 / conventions, `AFE_INTEGRATION_PLAN.md` I12 / R1 / 6.2 row. All 42 TBs pass; `run_ams_tests.sh`: static check OK, Spectre runs SKIP (no `xrun`). |
-| P9 | ◐ 2026-11-15, see 8.11. Done: `ce` ports removed where unused (only the six leaves whose TBs exercise gaps keep `ce`; `ce60` removed from `usb_clk_gen`); the serial reference models moved to TB-only `ref_*.v` with their TBs `tb_ref_*.v`; full SDC (ULPI I/O with placeholder pad / ULPI 1.1 numbers, AFE pins, `clk_rx` ↔ `clk60` max-delay, `clk_rx` reset multicycle); `run_sta.sh` sized by default, registers per clock reported; `clk_rx` reset release split into a fast and a multicycle copy (new `tb_usb_rx_hs_reset`); 480 MHz islands restructured to one gate per flop where function-preserving. typ / fast: no setup or hold violation on any top. Open: slow-corner setup (WNS −0.07 … −0.45 on the islands, library floor of one gate at 480 MHz; −1.90 on the ULPI input path, K2). All 43 TBs pass. |
+| P9 | ◐ 2026-11-15, see 8.11. Done: `ce` ports removed where unused (only the six leaves whose TBs exercise gaps keep `ce`; `ce60` removed from `usb_clk_gen`); the serial reference models moved to TB-only `ref_*.v` with their TBs `tb_ref_*.v`; full SDC (ULPI I/O with placeholder pad / ULPI 1.1 numbers, AFE pins, `clk_rx` ↔ `clk60` max-delay, `clk_rx` reset multicycle); `run_sta.sh` sized by default, registers per clock reported; `clk_rx` reset release split into a fast and a multicycle copy (new `tb_usb_rx_hs_reset`); 480 MHz islands restructured to one gate per flop where function-preserving; CLKOUT from a rising-edge flop with a selectable lead (`CKO_LEAD` = 2, K2), ULPI hold multicycles corrected. typ / fast: no setup or hold violation on any top; slow: every `clk60` / ULPI top meets (`usb_ulpi_phy_top` +1.23). Open: slow-corner setup on the 480 MHz islands (WNS −0.07 … −0.40, library floor of one gate per flop); real pad / CDR delays for the I/O constraints. All 43 TBs pass. |
 
 ### 8.1 P1 notes
 
@@ -728,21 +728,43 @@ it is the class that sizing and buffering address, so P9 needs a sized flow befo
 - **Library floor (K8):** at the slow corner an X1 flop has 0.84–0.97 ns clock-to-Q and ≈ 0.7 ns
   setup, leaving ≈ 0.4 ns for one gate of the 2.03 ns budget; the smallest mux is ≈ 0.6 ns, and
   larger flops are slower. Every remaining island violation is one such gate, or the zero-gate
-  half-cycle path `hi` → falling-edge `clkout` (−0.45). Further closure needs physical
-  optimization (useful skew, per-path cell choice) or a different CLKOUT launch (K2).
+  half-cycle path `hi` → falling-edge `clkout` (−0.45, removed by option 2 below). Further
+  closure needs physical optimization (useful skew, per-path cell choice).
+- **CLKOUT launch and ULPI I/O (option 2, K2):** `clkout` is a rising-edge `clk_bit` flop that
+  rises `CKO_LEAD` cycles before E0 (parameter, default 2; the SDC variable `CKO_LEAD` must
+  match). The CLK pin edge then lies delta = CKO_FF + PAD_OUT − CKO_LEAD · T_BIT after E0
+  (−0.37 ns with the placeholders); budgets at the core: inputs 6.0 − delta − PAD_IN, outputs
+  9.0 − PAD_OUT + delta, PHY input hold delta > −PAD_IN. The two `-hold 1` ULPI multicycles were
+  wrong: the `-setup 2` there corrects the edge choice (the default pair is only |delta| apart),
+  so hold must stay at its default; with them the input hold looked like +17.4 ns instead of
+  +0.6. `tb_usb_clk_gen` checks the window, edge and lead for `CKO_LEAD` 1–4;
+  `tb_usb_pll_lock_det` expects the rise on the edge into phase 6. `tb_usb_ulpi_phy_pads` keeps
+  its own CLKOUT model (pads without delay). ULPI I/O slack, slow corner (input setup / input
+  hold / output setup / output hold, ns):
+
+  | `CKO_LEAD` | In setup | In hold | Out setup | Out hold |
+  |---|---|---|---|---|
+  | 1 | −0.86 | +2.81 | +5.57 | +1.94 |
+  | **2** | **+1.23** | **+0.73** | **+3.49** | **+4.02** |
+  | 3 | +3.31 | −1.35 | +1.41 | +6.10 |
+  | 4 | +5.39 | −3.44 | −0.68 | +8.19 |
+
+  At the fast corner lead 2 gives +3.93 / +0.59 / +4.80 / +3.57. The window is ≈ 1.2 ns setup /
+  0.6 ns hold on placeholder pad delays (same at every corner), so the lead has to be re-chosen
+  with the real BBSUD8F numbers.
 
 Sized STA, WNS in ns (slow / typ / fast), registers per clock:
 
 | Top | Slow | Typ | Fast | Registers per clock | Slow-corner remainder |
 |---|---|---|---|---|---|
-| `usb_ulpi_phy_top` | −1.90 | +0.23 | +0.80 | `clk60` 503 | 2 endpoints, `ulpi_stp` input → core with the placeholder I/O budget (K2) |
+| `usb_ulpi_phy_top` | +1.23 | +3.35 | +3.93 | `clk60` 503 | — (was −1.90 on the `ulpi_stp` input before option 2) |
 | `usb_rx_datapath` | −0.39 | +0.83 | +1.15 | `clk_bit` 56, `clk60` 278, `clk_rx` 58, `clk_rxw` 148 | SIPO word-load mux (was −2.32); `clk_bit` tx_en OR −0.31 |
 | `usb_rx_decoder8` | +6.49 | +11.53 | +12.85 | `clk60` 152 | — |
-| `usb_ulpi_tx_top` | −0.21 | +1.01 | +1.35 | `clk60` 182 | one path |
+| `usb_ulpi_tx_top` | +2.91 | +4.14 | +4.48 | `clk60` 182 | — (ULPI input, option 2) |
 | `usb_afe_tx_if8` | +3.26 | +10.10 | +11.78 | `clk60` 205 | — |
 | `usb_tx_piso` | −0.40 | +0.79 | +1.15 | `clk_bit` 68 | clamp force term (two gates), shift mux |
 | `usb_afe_rx_if` | −0.23 | +0.92 | +1.13 | `clk60` 1, `clk_rx` 54 | delay-line mux (was −1.82) |
-| `usb_clk_gen` | −0.45 | +0.26 | +0.47 | `clk_bit` 12 | `hi` → `clkout` half cycle (was −0.71) |
+| `usb_clk_gen` | −0.22 | +0.90 | +1.22 | `clk_bit` 11 | one-gate counter / flag paths (was −0.71) |
 | `usb_pll_lock_det` | −0.07 | +0.98 | +1.27 | `clk_bit` 17, `clk60` 37, `ref_clk` 21 | sample-word mux |
 | `usb_rx_status_sync` | −0.33 | +0.85 | +1.19 | `clk_bit` 7, `clk60` 86 | disconnect OR |
 | `usb_line_state` | −0.32 | +0.86 | +1.18 | `clk_bit` 2, `clk60` 17 | `hs_tx_act` OR |

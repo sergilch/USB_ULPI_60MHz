@@ -14,8 +14,10 @@
 //
 // Checked all the time
 //   * clkout (CLKOUT): every high phase exactly 4 clk_bit cycles, every low phase
-//     4 + 8k cycles (complete periods only, stops low), each rising edge half a
-//     cycle before a clk_bit edge in phase 7 (the old ce60); phase 7 every 8 cycles;
+//     4 + 8k cycles (complete periods only, stops low), each rising edge on the
+//     clk_bit edge into phase 6, i.e. CKO_LEAD = 2 cycles before E0 (usb_clk_gen
+//     default since Plan_60MHz.md P9; before P9: half a cycle before E0);
+//     phase 7 (the old ce60) every 8 cycles;
 //     no rising edge unless clk_en was 1 at the decision point; clk_on = 0 only
 //     while clkout is low (safe point to stop the PLL).
 //   * clk60_a (afe_pll_bm clk60_out, CLK60_A of afe_pll.va): clk_bit / 8,
@@ -144,14 +146,15 @@ module tb_usb_pll_lock_det;
                 if (cg_started && (ce_gap != 7)) ckerr("ce60 not every 8 cycles");
                 ce_gap = 0; cg_started = 1'b1;
             end else ce_gap = ce_gap + 1;
-            // clkout changes at negedges, so at a posedge it is stable: classify the
-            // cycle that ends here; a transition shows as clkout != c60_q
-            if (clkout && !c60_q) begin                 // rose half a cycle ago
-                if (!ce60) ckerr("clkout rise not in a ce60 cycle");
+            // clkout changes just after a posedge, so at the next posedge it is
+            // stable: classify the cycle that ends here; a transition shows as
+            // clkout != c60_q (phase_j here is still that cycle's phase)
+            if (clkout && !c60_q) begin                 // rose on the previous edge
+                if (phase_j !== 4'b0011) ckerr("clkout rise not on the edge into phase 6");
                 if (!en_h1) ckerr("clkout rise without clk_en");
                 if ((n_pulse > 0) && (lo_cnt % 8 != 4)) ckerr("low phase not 4 + 8k cycles");
                 hi_cnt = 1; lo_cnt = 0; n_pulse = n_pulse + 1;
-            end else if (!clkout && c60_q) begin        // fell half a cycle ago
+            end else if (!clkout && c60_q) begin        // fell on the previous edge
                 if (hi_cnt != 4) ckerr("high phase not 4 cycles");
                 hi_cnt = 0; lo_cnt = 1;
             end else if (clkout) begin
