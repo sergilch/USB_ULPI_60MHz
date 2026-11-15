@@ -7,8 +7,8 @@
 // module provides
 //   reg  vin_on, pwr_good, susp_req, clk_susp, wake     stimulus
 //   wire por_n, pg18a, clk_bit, ref_clk, clkout, ce60, clk_on, pll_lock, lol,
-//        bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b,
-//        dir_hold_b, clk_en_b, pll_err, state[3:0]     from the DUT chain
+//        bias_en, ldo_en, pll_en, iso_en, core_rst_n_c, iso_en_c, afe_en_c,
+//        dir_hold_c, clk_en_b, pll_err, state[3:0]     from the DUT chain
 //   `AMS_V18A                                          VDD18A in volts
 //   localparam real VIN_RAMP                           VDD33 ramp time, ns
 //
@@ -18,7 +18,7 @@
 //      LDO's PWR_GOOD gives pg18a and VDD18A must then be 1.75-1.85 V.
 //   2. Sequencer: bias, pll_en, lock within 100 us of pll_en (spec 4.3),
 //      iso_en 0, core reset released, CLKOUT, DIR released (state RUN; the
-//      clk_bit-side copies are checked 100 ns later).
+//      clk60-side copies are checked 100 ns later).
 //      CLKOUT 60 MHz +- 0.1 % over 64 periods, 50 % duty (4 + 4 clk_bit).
 //   3. Low power with CLKOUT stopped: CLKOUT stops low, then pll_en = 0; no
 //      CLKOUT edge for 5 us.  Wake: relock, CLKOUT within 100 us, RUN.
@@ -74,11 +74,11 @@
         wait (pll_en === 1'b1);   t_pll  = $realtime;
         wait (pll_lock === 1'b1); t_lock = $realtime;
         wait (state === 4'd5);    t_run  = $realtime;
-        #(100);                                   // clk_bit-side copies: 2 edges
+        #(100);                                   // clk60-side copies: 2 clk60 edges
         $display("   PG18A -> pll_en %.1f us, pll_en -> lock %.1f us, lock -> RUN %.2f us",
                  (t_pll - t_pg) / 1000.0, (t_lock - t_pll) / 1000.0, (t_run - t_lock) / 1000.0);
         if (t_lock - t_pll > 100000.0) begin errors = errors + 1; $display("ERROR: lock later than 100 us after pll_en"); end
-        if (iso_en !== 1'b0 || core_rst_n_b !== 1'b1 || dir_hold_b !== 1'b0) begin
+        if (iso_en !== 1'b0 || core_rst_n_c !== 1'b1 || dir_hold_c !== 1'b0) begin
             errors = errors + 1; $display("ERROR: RUN without iso_en 0 / reset release / DIR release");
         end
         @(posedge clkout); t_a = $realtime;

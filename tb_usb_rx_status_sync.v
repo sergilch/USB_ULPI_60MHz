@@ -6,27 +6,33 @@
 //            usb_rx_status_sync.v tb_usb_rx_status_sync.v
 //   vvp sim_rx_status_sync
 //
+// Clocks: clk_bit; clk60 / ld generated as in the ULPI testbenches (clk60 rises
+// with a blocking assignment on the edge where ce60 was high, ld = phase 3).
 // Stimulus: the asynchronous inputs change on the falling clk_bit edge (so the
 // sampling edge is unambiguous), with random run lengths from 1 cycle up to a
-// few filter lengths: pulses shorter than, equal to and longer than the filter.
+// few filter lengths: pulses shorter than, equal to and longer than the filter,
+// and single-cycle disconnect pulses.
 //
-// Reference (history-based, independent of the counter in the DUT): let in[k]
-// be an input as sampled at rising edge k (the first flop; its reset value
-// counts as an input of ISO).
-//   * rxdp / rxdm / rxrcv: moved to usb_rx_fsls_sampler (Plan_60MHz.md P4);
-//     bits 0..2 of the vectors are kept, their outputs tied to the reset values.
-//   * squelch / disc (filter length L, clk_bit): out after edge t flips to
-//     !out iff in[t-2-L .. t-2] all equal !out (the filter sees the second
-//     flop, L + 1 samples).
-//   * VBUS / ID (filter length L, ce60 ticks): as above over in[e-2] for the
-//     last L + 1 edges e with ce60 high, and the output may change on those
-//     edges only.
-// Every output is compared after every rising edge, also in and right after
-// reset (reset values = isolated values: rxdp = rxdm = 0, rxrcv = 1,
-// squelch = 1, disc = 0, a_vbus_vld = sess_vld = 0, sess_end = 1, id_gnd = 0).
-// Phases: filter lengths (sq, disc, vb) = (0, 0, 0), (2, 5, 1), (7, 1, 3),
+// Reference (history-based, independent of the counters / flops in the DUT):
+// let in[k] be an input as sampled at rising clk_bit edge k (reset: the
+// isolated value).  Plan_60MHz.md P7 timing:
+//   * squelch: tick value at the ld edge k = in[k-2] (2-FF synchronizer);
+//     disc: tick value = OR of in[k-9 .. k-2] (the 8 samples of the tick).
+//     At a clk60 edge the output flips to !out iff the last L + 1 tick values
+//     (the newest one taken 4 clk_bit edges before) all equal !out
+//     (L = sq_flt / disc_flt, ticks).
+//   * VBUS / ID: 2-FF on clk60: at clk60 edge e the filter sees the input
+//     sampled at clk60 edge e-2; the output flips iff the last L + 1 of these
+//     (L = vb_flt) all equal !out.
+//   * Every output may change on clk60 edges only.
+// Every output is compared after every clk_bit edge, also in and right after
+// reset (reset values = isolated values: squelch = 1, disc = 0,
+// a_vbus_vld = sess_vld = 0, sess_end = 1, id_gnd = 0).
+// Phases: filter lengths (sq, disc, vb) = (0, 0, 0), (1, 0, 1), (2, 3, 3),
 // (15, 15, 0); a long VBUS debounce (vb_flt = 200 ticks) with bounce; reset in
-// the middle of activity.
+// the middle of activity.  Directed: a one-cycle disconnect pulse at each of
+// the 8 phases of a tick must show (disc_flt = 0), a one-cycle squelch pulse
+// shows only if it covers the E4 sample.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -40,25 +46,28 @@ module tb_usb_rx_status_sync;
     always #(HALF) clk_bit = ~clk_bit;
     reg rst_n = 1'b0;
     reg [2:0] ce_cnt = 3'd0;
-    wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
+    reg  clk60 = 1'b0;
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7)      clk60 = 1'b1;
+        else if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
+    wire ld = (ce_cnt == 3'd3);
 
-    // inputs: bit order {id, sess_end, sess_vld, a_vbus, disc, squelch, rxrcv, rxdm, rxdp}
-    localparam [8:0] ISO = {1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0};
-    reg  [8:0] in = ISO;
+    // inputs / outputs: bit order {id, sess_end, sess_vld, a_vbus, disc, squelch}
+    localparam [5:0] ISO = {1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1};
+    reg  [5:0] in = ISO;
     reg  [3:0] sq_flt = 4'd0, disc_flt = 4'd0;
     reg [15:0] vb_flt = 16'd0;
-    wire [8:0] out;
-    assign out[2:0] = ISO[2:0];        // group 1 no longer in the DUT
+    wire [5:0] out;
 
     usb_rx_status_sync dut (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
-        .squelch(in[3]), .disc(in[4]),
-        .a_vbus_vld(in[5]), .sess_vld(in[6]), .sess_end(in[7]), .id_gnd(in[8]),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld),
+        .squelch(in[0]), .disc(in[1]),
+        .a_vbus_vld(in[2]), .sess_vld(in[3]), .sess_end(in[4]), .id_gnd(in[5]),
         .sq_flt(sq_flt), .disc_flt(disc_flt), .vb_flt(vb_flt),
-        .squelch_s(out[3]),
-        .disc_s(out[4]), .a_vbus_vld_s(out[5]), .sess_vld_s(out[6]),
-        .sess_end_s(out[7]), .id_gnd_s(out[8]));
+        .squelch_s(out[0]), .disc_s(out[1]), .a_vbus_vld_s(out[2]), .sess_vld_s(out[3]),
+        .sess_end_s(out[4]), .id_gnd_s(out[5]));
 
     initial begin
         $dumpfile("tb_usb_rx_status_sync.vcd");
@@ -66,142 +75,181 @@ module tb_usb_rx_status_sync;
     end
 
     // ---------------- reference ----------------
-    // hist[b][k]: input bit b sampled at edge (cyc - k), k = 0 newest
     localparam HN = 300;
-    reg  [HN-1:0] hist [0:8];        // clk_bit history
-    reg  [HN-1:0] vhist [5:8];       // per ce60 tick: input sampled one edge before
-    reg  [8:0] in_prev;               // what the first flop took at the previous edge
-    reg  [8:0] exp_o;
-    integer    cyc = 0, b, k, L;
-    reg        ce_q = 1'b0;           // ce60 as seen by the DUT at the next edge
-    always @(negedge clk_bit) ce_q <= (ce_cnt == 3'd7);
-    reg        all;
-    reg  [8:0] o_before;
+    reg  [15:0]   h  [0:1];          // clk_bit samples of squelch / disc, [j] = in[k-j]
+    reg  [HN-1:0] th [0:1];          // tick values (squelch / disc), [0] newest
+    reg  [HN-1:0] vh [2:5];          // VBUS / ID sampled at clk60 edges, [0] newest
+    reg  [5:0] exp_o, o_before;
+    reg        t_new [0:1];          // tick value taken at the last ld edge
+    integer    b, k, L, ncmp = 0, nflip = 0;
+    reg        all, orv;
 
     task ref_reset;
         begin
-            for (b = 0; b < 9; b = b + 1) hist[b] = {HN{ISO[b]}};
-            for (b = 5; b < 9; b = b + 1) vhist[b] = {HN{ISO[b]}};
-            exp_o = ISO; in_prev = ISO;   // flops hold ISO: same as an ISO history
+            for (b = 0; b < 2; b = b + 1) begin
+                h[b] = {16{ISO[b]}}; th[b] = {HN{ISO[b]}}; t_new[b] = ISO[b];
+            end
+            for (b = 2; b < 6; b = b + 1) vh[b] = {HN{ISO[b]}};
+            exp_o = ISO;
         end
     endtask
-
     initial ref_reset;
 
-    always @(posedge clk_bit) begin
-        #0.1;
-        cyc = cyc + 1;
+    // edge type of this edge, from ce_cnt before the edge
+    always @(posedge clk_bit) begin : refm
+        reg is_ld, is_e0;
+        is_ld = (ce_cnt == 3'd3);
+        is_e0 = (ce_cnt == 3'd7);
         if (!rst_n) begin
             ref_reset;
-            if (out !== ISO) begin
-                errors = errors + 1;
-                $display("ERROR @%0t: reset value %b, expected %b", $time, out, ISO);
-            end
         end else begin
             o_before = exp_o;
-            // in_prev = input sampled at this edge's predecessor = in[t-1]
-            for (b = 0; b < 9; b = b + 1) hist[b] = {hist[b][HN-2:0], in_prev[b]};
-            // group 1: second flop = what the first took at the previous edge
-            for (b = 0; b < 3; b = b + 1) exp_o[b] = ISO[b];   // group 1 moved out (P4), tied off
-            // group 2: the filter sees the second flop before this edge = hist[1]
-            for (b = 3; b < 5; b = b + 1) begin
-                L = (b == 3) ? sq_flt : disc_flt;
-                all = 1;
-                for (k = 1; k <= L + 1; k = k + 1)
-                    if (hist[b][k] != !o_before[b]) all = 0;
-                if (all) exp_o[b] = !o_before[b];
+            // clk_bit sample of this edge
+            for (b = 0; b < 2; b = b + 1) h[b] = {h[b][14:0], in[b]};
+            // h[b][j] = in[k - j]
+            if (is_ld) begin
+                t_new[0] = h[0][2];
+                orv = 1'b0;
+                for (k = 2; k <= 9; k = k + 1) orv = orv | h[1][k];
+                t_new[1] = orv;
             end
-            // group 3 (ce60 was high before this edge: the DUT enable at this edge)
-            if (ce_q) begin
-                for (b = 5; b < 9; b = b + 1) vhist[b] = {vhist[b][HN-2:0], hist[b][1]};
-                for (b = 5; b < 9; b = b + 1) begin
+            if (is_e0) begin
+                for (b = 0; b < 2; b = b + 1) begin
+                    th[b] = {th[b][HN-2:0], t_new[b]};
+                    L = (b == 0) ? sq_flt : disc_flt;
+                    all = 1;
+                    for (k = 0; k <= L; k = k + 1) if (th[b][k] != !o_before[b]) all = 0;
+                    if (all) exp_o[b] = !o_before[b];
+                end
+                // VBUS / ID: vh[b][0] = sample of this clk60 edge; the filter sees vh[b][2]
+                for (b = 2; b < 6; b = b + 1) begin
+                    vh[b] = {vh[b][HN-2:0], in[b]};
                     L = vb_flt;
                     all = 1;
-                    for (k = 0; k <= L; k = k + 1)
-                        if (vhist[b][k] != !o_before[b]) all = 0;
+                    for (k = 2; k <= L + 2; k = k + 1) if (vh[b][k] != !o_before[b]) all = 0;
                     if (all) exp_o[b] = !o_before[b];
                 end
             end
-            if (out !== exp_o) begin
-                errors = errors + 1;
-                if (errors < 20)
-                    $display("ERROR @%0t: out %b, expected %b (flt %0d/%0d/%0d)",
-                             $time, out, exp_o, sq_flt, disc_flt, vb_flt);
-                exp_o = out;          // resynchronize, report each divergence once
-            end
-            in_prev = in;
+        end
+        #0.1;
+        ncmp = ncmp + 1;
+        if (exp_o != o_before) nflip = nflip + 1;
+        if (out !== exp_o) begin
+            errors = errors + 1;
+            if (errors < 20)
+                $display("ERROR @%0t: out %b, expected %b (flt %0d/%0d/%0d, rst %b)",
+                         $time, out, exp_o, sq_flt, disc_flt, vb_flt, rst_n);
+            exp_o = out;          // resynchronize, report each divergence once
         end
     end
 
     // ---------------- stimulus ----------------
-    integer run_left [0:8];
-    integer maxrun   [0:8];
-    integer ph;
+    integer run_left [0:5];
+    integer maxrun   [0:5];
+    reg     stim_on = 1'b1;
 
-    initial for (b = 0; b < 9; b = b + 1) run_left[b] = 1;
+    initial for (b = 0; b < 6; b = b + 1) run_left[b] = 1;
 
     always @(negedge clk_bit) begin : stim
         integer i;
-        for (i = 0; i < 9; i = i + 1) begin
-            run_left[i] = run_left[i] - 1;
-            if (run_left[i] <= 0) begin
-                in[i] = ~in[i];
-                run_left[i] = 1 + ({$random(seed)} % maxrun[i]);
+        if (stim_on)
+            for (i = 0; i < 6; i = i + 1) begin
+                run_left[i] = run_left[i] - 1;
+                if (run_left[i] <= 0) begin
+                    in[i] = ~in[i];
+                    run_left[i] = 1 + ({$random(seed)} % maxrun[i]);
+                end
             end
-        end
     end
 
     task set_phase(input integer s, input integer d, input integer v);
         integer i;
         begin
             sq_flt = s; disc_flt = d; vb_flt = v;
-            for (i = 0; i < 3; i = i + 1) maxrun[i] = 6;
-            maxrun[3] = 2 * s + 4;
-            maxrun[4] = 2 * d + 4;
-            for (i = 5; i < 9; i = i + 1) maxrun[i] = 8 * (2 * v + 3);
+            maxrun[0] = 8 * (2 * s + 2);
+            maxrun[1] = 8 * (2 * d + 2);
+            for (i = 2; i < 6; i = i + 1) maxrun[i] = 8 * (2 * v + 3);
         end
     endtask
 
+    task cyc(input integer n); begin repeat (n) @(negedge clk_bit); end endtask
+
     // ---------------- sequence ----------------
+    integer ph, nd, ns;
     initial begin
         set_phase(0, 0, 0);
         repeat (7) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b1;
-        ph = 0;
-        repeat (3000) @(posedge clk_bit);
+        repeat (4000) @(posedge clk_bit);
         // filter lengths change only while the inputs are quiet
         @(negedge clk_bit) rst_n = 1'b0;
-        set_phase(2, 5, 1);
+        set_phase(1, 0, 1);
         repeat (4) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b1;
-        repeat (6000) @(posedge clk_bit);
+        repeat (8000) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b0;
-        set_phase(7, 1, 3);
+        set_phase(2, 3, 3);
         repeat (3) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b1;
-        repeat (8000) @(posedge clk_bit);
+        repeat (10000) @(posedge clk_bit);
         // reset in the middle of activity, then the longest squelch filter
         @(negedge clk_bit) rst_n = 1'b0;
         set_phase(15, 15, 0);
         repeat (2) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b1;
-        repeat (8000) @(posedge clk_bit);
+        repeat (20000) @(posedge clk_bit);
+
+        // directed: single-cycle pulses at every phase of a tick
+        stim_on = 1'b0;
+        @(negedge clk_bit) rst_n = 1'b0;
+        set_phase(0, 0, 0);
+        in = ISO;
+        cyc(3);
+        @(negedge clk_bit) rst_n = 1'b1;
+        cyc(40);
+        nd = 0; ns = 0;
+        for (ph = 0; ph < 8; ph = ph + 1) begin
+            while (ce_cnt != ph[2:0]) cyc(1);
+            in[1] = 1'b1; cyc(1); in[1] = 1'b0;
+            fork : wd
+                begin @(posedge out[1]) nd = nd + 1; disable wd; end
+                begin cyc(40); disable wd; end
+            join
+            cyc(40);
+            while (ce_cnt != ph[2:0]) cyc(1);
+            in[0] = 1'b0; cyc(1); in[0] = 1'b1;
+            fork : ws
+                begin @(negedge out[0]) ns = ns + 1; disable ws; end
+                begin cyc(40); disable ws; end
+            join
+            cyc(40);
+        end
+        if (nd != 8) begin
+            errors = errors + 1; $display("ERROR: %0d of 8 one-cycle disconnect pulses shown", nd);
+        end
+        if (ns != 1) begin
+            errors = errors + 1; $display("ERROR: %0d of 8 one-cycle squelch pulses shown (expected 1)", ns);
+        end
+
         // long VBUS debounce: bouncing for a while (runs up to 120 ticks), then
-        // a clean level (history depth limits L to HN - 1 = 299 ticks)
+        // a clean level (history depth limits L to HN - 3 ticks)
+        stim_on = 1'b1;
         @(negedge clk_bit) rst_n = 1'b0;
         set_phase(0, 0, 200);
-        for (b = 5; b < 9; b = b + 1) maxrun[b] = 8 * 120;
+        for (b = 2; b < 6; b = b + 1) maxrun[b] = 8 * 120;
         repeat (2) @(posedge clk_bit);
         @(negedge clk_bit) rst_n = 1'b1;
         repeat (8 * 2000) @(posedge clk_bit);
-        for (b = 5; b < 9; b = b + 1) begin maxrun[b] = 8 * 1000; run_left[b] = 8 * 1000; end
+        for (b = 2; b < 6; b = b + 1) begin maxrun[b] = 8 * 1000; run_left[b] = 8 * 1000; end
         repeat (8 * 900) @(posedge clk_bit);
-        if (out[8:5] !== in[8:5]) begin
+        if (out[5:2] !== in[5:2]) begin
             errors = errors + 1;
             $display("ERROR: VBUS / ID outputs %b did not settle to %b after 900 ticks",
-                     out[8:5], in[8:5]);
+                     out[5:2], in[5:2]);
         end
 
+        $display("    %0d edges compared, %0d output changes", ncmp, nflip);
+        if (nflip < 1000) begin errors = errors + 1; $display("ERROR: too few output changes"); end
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED: %0d error(s)", errors);
         $finish;

@@ -45,11 +45,18 @@
 //   PAD_RESETB is active low.  It resets the core asynchronously and is released
 //   synchronously to the core clock clk60 through two flip-flops, i.e. on the second
 //   clk60 rising edge after the pin (Plan_60MHz.md P2; before: two clk_bit edges).
-//   Since P6 the core has no clk_bit part left (the TX PISO sits outside, next to the
-//   AFE interface, with its own reset synchronizer when wired in).  core_rst_n is exported for
-//   the blocks that will sit next to usb_ulpi_phy_top (RX datapath, clock / power
-//   control); island clocks get their own synchronizers when they are wired in (P7).
-//   ifc_ctrl is reset with the core, so the protection pulls are on during reset.
+//   Since P6 the core has no clk_bit part left.  core_rst_n is exported for the blocks
+//   that will sit next to usb_ulpi_phy_top (RX datapath, line state, status sync).
+//   bit_rst_n (Plan_60MHz.md P7) is the reset of the clk_bit-only islands (usb_tx_piso):
+//   core_rst_n through a second 2-FF synchronizer on clk_bit, so it is asserted with
+//   it (asynchronously) and released on the second clk_bit edge after it, i.e.
+//   2 clk_bit cycles after the core.  A reset released by a clk60 flop would reach the
+//   island flops one clk_bit cycle later (recovery 2.08 ns, not the 4-cycle boundary
+//   multicycle).  Mixed blocks (clk60 + a small island: line state, status sync, RX
+//   datapath sampler) take core_rst_n; their island flops leave reset with inputs that
+//   equal their reset values.  The CDR island has its own synchronizer in
+//   usb_rx_hs_sipo.  ifc_ctrl is reset with the core, so the protection pulls are on
+//   during reset.
 //
 // NAND tree (DFT): the PI / PO pins of all 13 cells form one chain, PI of the first
 //   cell tied to 1, in the order STP, RESETB, DATA0..DATA7, DIR, NXT, CLK; the end of
@@ -86,8 +93,10 @@ module usb_ulpi_phy_pads #(
 
     // ---------------- on-chip side ----------------
     input  wire        clk60,        // core clock (usb_clk_gen)
+    input  wire        clk_bit,      // 480 MHz: island reset synchronizer only
     input  wire        clkout,       // CLKOUT (usb_clk_gen), to the CLK pad only
     output wire        core_rst_n,
+    output wire        bit_rst_n,    // reset of the clk_bit islands
 
     // RX datapath
     input  wire        rx_start,
@@ -240,6 +249,14 @@ module usb_ulpi_phy_pads #(
         else           rst_sync <= {rst_sync[0], 1'b1};
     end
     assign core_rst_n = rst_sync[1];
+
+    // clk_bit island reset: core_rst_n, released on the second clk_bit edge after it
+    reg [1:0] bit_sync;
+    always @(posedge clk_bit or negedge core_rst_n) begin
+        if (!core_rst_n) bit_sync <= 2'b00;
+        else             bit_sync <= {bit_sync[0], 1'b1};
+    end
+    assign bit_rst_n = bit_sync[1];
 
     // ---------------- PHY core (with the one and only register file) ----------------
     usb_ulpi_phy_top #(

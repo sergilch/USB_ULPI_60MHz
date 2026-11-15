@@ -59,7 +59,8 @@
 //     low; status changes meanwhile produce exactly one RXCMD when STP falls;
 //   * RESETB: asynchronous reset of the core, release on the second clk60 edge after
 //     the pin (Plan_60MHz.md P2; before: two clk_bit edges), all registers back at
-//     their reset values.
+//     their reset values; the clk_bit island reset bit_rst_n (P7) is asserted with it
+//     and released on the second clk_bit edge after core_rst_n.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -110,7 +111,7 @@ module tb_usb_ulpi_phy_pads;
     reg        host_disc = 1'b0, a_vbus_vld = 1'b0, sess_vld = 1'b0, sess_end = 1'b1;
     reg        id_gnd = 1'b0, alt_int = 1'b0;
 
-    wire       core_rst_n;
+    wire       core_rst_n, bit_rst_n;
     wire [1:0] xcvrselect, opmode, cfg_speed, tx_speed;
     wire       termselect, suspendm, soft_reset, cfg_bypass;
     wire [7:0] ifc_ctrl, otg_ctrl;
@@ -132,8 +133,10 @@ module tb_usb_ulpi_phy_pads;
         .PAD_ULPI_STP  (PAD_ULPI_STP),
         .PAD_RESETB    (PAD_RESETB),
         .clk60         (clk60),
+        .clk_bit       (clk_bit),
         .clkout        (clkout),
         .core_rst_n    (core_rst_n),
+        .bit_rst_n     (bit_rst_n),
         .rx_start      (1'b0),
         .rx_valid      (1'b0),
         .rx_data       (8'h00),
@@ -723,9 +726,9 @@ module tb_usb_ulpi_phy_pads;
             @(negedge clk_bit);
             resetb = 1'b0;
             #(0.1);
-            if (core_rst_n !== 1'b0) begin
+            if (core_rst_n !== 1'b0 || bit_rst_n !== 1'b0) begin
                 errors = errors + 1;
-                $display("ERROR @%0t: core_rst_n not asserted asynchronously by RESETB", $time);
+                $display("ERROR @%0t: core_rst_n / bit_rst_n not asserted asynchronously by RESETB", $time);
             end
             wait_clk(10);
             @(negedge clk_bit);
@@ -739,6 +742,20 @@ module tb_usb_ulpi_phy_pads;
             if (core_rst_n !== 1'b1) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: core_rst_n not released two clk60 edges after RESETB", $time);
+            end
+            if (bit_rst_n !== 1'b0) begin
+                errors = errors + 1;
+                $display("ERROR @%0t: bit_rst_n released with core_rst_n", $time);
+            end
+            @(posedge clk_bit); #(0.1);
+            if (bit_rst_n !== 1'b0) begin
+                errors = errors + 1;
+                $display("ERROR @%0t: bit_rst_n released one clk_bit edge after core_rst_n", $time);
+            end
+            @(posedge clk_bit); #(0.1);
+            if (bit_rst_n !== 1'b1) begin
+                errors = errors + 1;
+                $display("ERROR @%0t: bit_rst_n not released two clk_bit edges after core_rst_n", $time);
             end
             sh_reset;
             wait_clk(10);

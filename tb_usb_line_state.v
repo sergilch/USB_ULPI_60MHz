@@ -6,9 +6,13 @@
 //   vvp sim_line_state
 //
 // The inputs are the receiver samples (clk60 domain, as from usb_rx_datapath)
-// and squelch / disconnect / hs_tx_act (clk_bit domain), all driven on the
-// falling clk_bit edge.  clk60 / ld are generated as in the ULPI testbenches
-// (clk60 rises with a blocking assignment on the edge where ce60 was high).
+// and squelch / disconnect / hs_tx_act, all driven on the falling clk_bit edge.
+// Squelch / disconnect reach the DUT as clk60 signals, as from
+// usb_rx_status_sync (Plan_60MHz.md P7, filter 0): a testbench island takes
+// squelch on ld and ORs disc over the tick (the island moved from the DUT to
+// usb_rx_status_sync, tested there).  hs_tx_act goes to the DUT's own clk_bit
+// island.  clk60 / ld are generated as in the ULPI testbenches (clk60 rises
+// with a blocking assignment on the edge where ce60 was high).
 //
 // LineState reference, rebuilt from the spec rather than from the DUT's
 // counter: per clk60 tick n the testbench computes the raw state r[n] from the
@@ -68,9 +72,18 @@ module tb_usb_line_state;
     wire [1:0] ls;
     wire       hd;
 
+    // squelch / disc per tick (usb_rx_status_sync with sq_flt = disc_flt = 0,
+    // without its synchronizer and filter flops)
+    reg sq_c = 1'b1, disc_c = 1'b0, disc_acc = 1'b0;
+    always @(posedge clk_bit or negedge rst_n) begin
+        if (!rst_n) begin sq_c <= 1'b1; disc_c <= 1'b0; disc_acc <= 1'b0; end
+        else if (ld) begin sq_c <= sq; disc_c <= disc_acc | disc; disc_acc <= 1'b0; end
+        else disc_acc <= disc_acc | disc;
+    end
+
     usb_line_state #(.DISC_TAIL(TAIL_T)) dut (
         .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld),
-        .rxdp_s(dp), .rxdm_s(dm), .rxrcv_s(rcv), .squelch_s(sq), .disc_s(disc),
+        .rxdp_s(dp), .rxdm_s(dm), .rxrcv_s(rcv), .squelch_s(sq_c), .disc_s(disc_c),
         .xcvrselect(xs), .opmode(om), .host_mode(host), .hs_tx_act(txa),
         .linestate(ls), .host_disc(hd));
 

@@ -6,15 +6,17 @@
 // top-level inputs of usb_ulpi_phy_top.  Position:
 //
 //   AFE --> usb_rx_datapath (FS/LS sampler) --ls_dp, ls_dm, ls_rcv (clk60)-->
-//       --> usb_rx_status_sync --squelch_s, disc_s (clk_bit)----------------->
+//       --> usb_rx_status_sync --squelch_s, disc_s (clk60)------------------->
 //       [THIS BLOCK] --linestate[1:0], host_disc--> usb_ulpi_phy_top
 //                                                   (RXCMD, ULPI Debug register)
 //
-// Clocking (Plan_60MHz.md P4): clk60.  rxdp_s / rxdm_s / rxrcv_s are clk60-domain
-// inputs (the newest sample of the usb_rx_fsls_sampler word).  squelch_s,
-// disc_s and hs_tx_act are clk_bit signals: a 5-flop clk_bit island takes
-// squelch_s on ld and ORs disc_s / hs_tx_act over the 8 clk_bit cycles of a
-// tick (taken over on ld, usb_clk_gen boundary rule), so short pulses count.
+// Clocking (Plan_60MHz.md P4, P7): clk60.  rxdp_s / rxdm_s / rxrcv_s are clk60-domain
+// inputs (the newest sample of the usb_rx_fsls_sampler word); squelch_s and
+// disc_s are clk60 outputs of usb_rx_status_sync (since P7: it takes squelch
+// on ld and ORs disc over the 8 clk_bit cycles of a tick, the island that was
+// here).  hs_tx_act (tx_active of usb_tx_piso) is a clk_bit signal: a 2-flop
+// clk_bit island ORs it over the tick (taken over on ld, usb_clk_gen boundary
+// rule), so short pulses count.
 //
 // LineState encoding (UTMI+ / ULPI 1.1, Table 7 and Fig. 12; USB3320 Note 6-1):
 //   bit 0 = D+ single-ended receiver, bit 1 = D- single-ended receiver
@@ -49,7 +51,7 @@
 //   Latency from the line (receiver output) to linestate: FS/LS: 2 clk_bit of
 //   synchronizer + up to 8 until the sampler word is taken on ld + 4 to the next
 //   clk60 edge + 1 tick = at most 2.75 ticks for J / K (2 ticks + 6 cycles);
-//   HS: squelch filter of usb_rx_status_sync + up to 8 to ld + 4 + 1 tick; plus
+//   HS: usb_rx_status_sync (2 + up to 8 to ld + 4 + sq_flt ticks) + 1 tick; plus
 //   (SE_FS - 1) or (SE_LS - 1) ticks for SE0 / SE1.  ULPI 1.1: LineState within
 //   2-3 clocks of D+ / D-; the RXCMD adds the rest.
 //
@@ -60,10 +62,10 @@
 //     DmPulldown, the 15 kOhm pull-downs of a downstream port) at HS
 //     (XcvrSelect 00) with OpMode 00 (normal; chirps are 800 mV by design);
 //   * disc_s is ORed over the transmit window: from the first tick with
-//     hs_tx_act (tx_active of usb_afe_tx_if: TX_EN high at the pins, including
+//     hs_tx_act (tx_active of usb_tx_piso: TX_EN high at the pins, including
 //     lead / lag) until DISC_TAIL ticks after the last one, to cover the delay
-//     of the AFE detector and of the synchronizer (per tick: disc_s and
-//     hs_tx_act ORed over its 8 clk_bit cycles);
+//     of the AFE detector and of the synchronizer (per tick: disc ORed over its
+//     8 clk_bit cycles in usb_rx_status_sync, hs_tx_act here);
 //   * at the end of the window, host_disc takes the result (on the next tick).
 //     So it is updated once per transmitted packet (every SOF, 125 us) and holds
 //     in between.  It is cleared when the port leaves HS host mode.
@@ -99,7 +101,7 @@ module usb_line_state #(
     input  wire       rxdp_s,
     input  wire       rxdm_s,
     input  wire       rxrcv_s,
-    // from usb_rx_status_sync (clk_bit domain)
+    // from usb_rx_status_sync (clk60 domain)
     input  wire       squelch_s,
     input  wire       disc_s,
 
@@ -108,7 +110,7 @@ module usb_line_state #(
     input  wire [1:0] opmode,
     input  wire       host_mode,      // DpPulldown & DmPulldown
 
-    // local HS transmitter (usb_afe_tx_if tx_active)
+    // local HS transmitter (usb_tx_piso tx_active, clk_bit domain)
     input  wire       hs_tx_act,
 
     output reg  [1:0] linestate,
@@ -116,22 +118,19 @@ module usb_line_state #(
 );
 
     // ---------------- clk_bit input island (changes on ld) ----------------
-    reg sq_t, disc_t, txa_t, disc_a, txa_a;
+    reg txa_t, txa_a;
     always @(posedge clk_bit or negedge rst_n) begin
         if (!rst_n) begin
-            sq_t <= 1'b1; disc_t <= 1'b0; txa_t <= 1'b0;
-            disc_a <= 1'b0; txa_a <= 1'b0;
+            txa_t <= 1'b0; txa_a <= 1'b0;
         end else if (ld) begin
-            sq_t   <= squelch_s;
-            disc_t <= disc_a | disc_s;
             txa_t  <= txa_a | hs_tx_act;
-            disc_a <= 1'b0;
             txa_a  <= 1'b0;
         end else begin
-            disc_a <= disc_a | disc_s;
             txa_a  <= txa_a | hs_tx_act;
         end
     end
+    wire sq_t   = squelch_s;
+    wire disc_t = disc_s;
 
     // ---------------- LineState ----------------
     wire is_hs    = (xcvrselect == 2'b00);

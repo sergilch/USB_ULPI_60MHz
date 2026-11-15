@@ -8,7 +8,7 @@
 //   pll_lock (usb_pll_lock_det), clk_on (usb_clk_gen) --> [THIS BLOCK]
 //   susp_req / clk_susp / wake (low-power control) ---+       |
 //     --> bias_en, ldo_en, pll_en, iso_en                      (AFE pins)
-//     --> core_rst_n_b, iso_en_b, dir_hold_b, afe_en_b, clk_en_b (clk_bit side)
+//     --> core_rst_n_c, iso_en_c, dir_hold_c, afe_en_c (clk60 side), clk_en_b (clk_bit)
 //     --> state, pll_err                                       (status)
 //
 // Clock: ref_clk = REF_DIG, the buffered reference from the PLL block.  The
@@ -64,21 +64,29 @@
 //   pg18a is low (the PLL loses its supply anyway).  BIAS starts again only
 //   after pll_en is 0.
 //
-// clk_bit-side copies (consumers are clk_bit flops; clk_bit may be stopped):
-//   core_rst_n_b  reset of the digital core: asserted asynchronously, released
-//                 on the second clk_bit edge (AND it with the RESETB sync).
-//   iso_en_b      asserted asynchronously (works without clk_bit, e.g. a supply
-//                 loss in suspend), released on the second clk_bit edge.
-//   dir_hold_b    as iso_en_b (DIR high at once, released synchronously).
-//   afe_en_b      dropped asynchronously, raised on the second clk_bit edge
+// Core-side copies (Plan_60MHz.md P7: clk60, was clk_bit; the consumers are
+//   core / clk60 logic; clk60 stops with clk_bit):
+//   core_rst_n_c  reset of the digital core: asserted asynchronously, released
+//                 on the second clk60 edge (AND it with the RESETB sync).
+//   iso_en_c      asserted asynchronously (works without a clock, e.g. a supply
+//                 loss in suspend), released on the second clk60 edge.  Also
+//                 the clamp input of usb_tx_piso (a level control, captured
+//                 there by one clk_bit flop).
+//   dir_hold_c    as iso_en_c (DIR high at once, released synchronously).
+//   afe_en_c      dropped asynchronously, raised on the second clk60 edge
 //                 (usb_afe_rx_if rx_en: RX_EN / CDR_EN off).
+//   The releases come 2 clk60 edges (17-33 ns) after the ref_clk flop instead
+//   of 2 clk_bit edges (2-4 ns); every power-up / wake time of spec 5 grows by
+//   < 30 ns.
+// clk_bit copy:
 //   clk_en_b      2-FF both ways (usb_clk_gen clk_en; it samples it once per
-//                 CLKOUT period).
+//                 CLKOUT period, at bit rate, so it stays on clk_bit).
 //   The AFE pins bias_en, pll_en, iso_en come straight from ref_clk flops
 //   (level shifters / isolation cells on the AFE side, spec 1); state and
 //   pll_err are ref_clk-domain status (synchronized where they are read).
 //
-// Clocks: ref_clk (sequencer), clk_bit (output synchronizers).
+// Clocks: ref_clk (sequencer), clk60 (core-side synchronizers), clk_bit
+//   (clk_en_b).  clk60 comes from usb_clk_gen on the same clk_bit.
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
@@ -90,6 +98,7 @@ module usb_pwr_seq #(
 ) (
     input  wire       ref_clk,
     input  wire       clk_bit,
+    input  wire       clk60,
     input  wire       por_n,
 
     input  wire       pwr_good,
@@ -106,11 +115,12 @@ module usb_pwr_seq #(
     output reg        pll_en,
     output reg        iso_en,
 
+    // clk60 side
+    output wire       core_rst_n_c,
+    output wire       iso_en_c,
+    output wire       afe_en_c,
+    output wire       dir_hold_c,
     // clk_bit side
-    output wire       core_rst_n_b,
-    output wire       iso_en_b,
-    output wire       afe_en_b,
-    output wire       dir_hold_b,
     output wire       clk_en_b,
 
     // status (ref_clk)
@@ -267,36 +277,37 @@ module usb_pwr_seq #(
         end
     end
 
-    // ---------------- clk_bit-side copies ----------------
+    // ---------------- clk60-side copies ----------------
     // core reset: async assert, sync release
     reg [1:0] rs;
-    always @(posedge clk_bit or negedge core_rel) begin
+    always @(posedge clk60 or negedge core_rel) begin
         if (!core_rel) rs <= 2'b00;
         else           rs <= {rs[0], 1'b1};
     end
-    assign core_rst_n_b = rs[1];
+    assign core_rst_n_c = rs[1];
 
     // isolation and DIR hold: async assert, sync release
     reg [1:0] iso_s, dh_s;
-    always @(posedge clk_bit or posedge iso_en) begin
+    always @(posedge clk60 or posedge iso_en) begin
         if (iso_en) iso_s <= 2'b11;
         else        iso_s <= {iso_s[0], 1'b0};
     end
-    assign iso_en_b = iso_s[1];
-    always @(posedge clk_bit or posedge dir_hold) begin
+    assign iso_en_c = iso_s[1];
+    always @(posedge clk60 or posedge dir_hold) begin
         if (dir_hold) dh_s <= 2'b11;
         else          dh_s <= {dh_s[0], 1'b0};
     end
-    assign dir_hold_b = dh_s[1];
+    assign dir_hold_c = dh_s[1];
 
     // HS AFE enable: async drop, sync rise
     reg [1:0] ae;
-    always @(posedge clk_bit or negedge afe_en) begin
+    always @(posedge clk60 or negedge afe_en) begin
         if (!afe_en) ae <= 2'b00;
         else         ae <= {ae[0], 1'b1};
     end
-    assign afe_en_b = ae[1];
+    assign afe_en_c = ae[1];
 
+    // ---------------- clk_bit copy ----------------
     // CLKOUT enable: plain 2-FF
     reg [1:0] cen_s;
     always @(posedge clk_bit or negedge por_n) begin

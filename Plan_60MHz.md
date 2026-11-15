@@ -1,8 +1,9 @@
 # Plan: move the digital core to a 60 MHz clock
 
 Status: in progress. P1 (clock generator, SDC skeleton, STA baseline), P2 (ULPI core on `clk60`),
-P3 (parallel RX decoder), P4 (FS/LS receive on `clk60`) done 2026-11-14 and P5 (HS receive) done
-2026-11-15; P0 open (D10 proposed, waiting for the analog team). Progress and results:
+P3 (parallel RX decoder), P4 (FS/LS receive on `clk60`) done 2026-11-14, P5 (HS receive), P6 (TX)
+and P7 (lock detector, power sequencer, pads, status sync) done 2026-11-15; P0 open (D10 proposed,
+waiting for the analog team). Progress and results:
 section 8.
 Related: `WORK_PLAN.md` (D1, D2, 5.2, 9.1, 9.3, risk R1), `AFE_INTEGRATION_PLAN.md` (I12),
 `DOC/afe_interface_spec.md` 7.2 (480 MHz timing estimate on xh018).
@@ -306,7 +307,8 @@ blocks), so that wiring is done once, on the new clock structure.
 | P4 | ✅ 2026-11-14, see 8.6. New `usb_rx_fsls_sampler` (clk_bit island, 54 flops) + `usb_rx_fsls_dpll` (clk60); FS/LS half of `usb_rx_datapath` = sampler → DPLL → `usb_rx_decoder8` → 4-entry event FIFO; output stage and hold-off on clk60; `usb_line_state` on clk60 fed from the sampler; `rxdp` / `rxdm` / `rxrcv` out of `usb_rx_status_sync`. `tb_usb_rx_fsls_frontend` rewritten (sample-exact against the old front end), `tb_usb_rx_datapath`, `tb_usb_afe_fsls`, `tb_usb_afe_chirp` pass with unchanged packet counts; LineState J/K latency 19 cycles (≤ 3 ticks). |
 | P5 | ✅ 2026-11-15, see 8.7. New `usb_rx_hs_sipo` (`clk_rx` island: `usb_rx_hs_frontend` unchanged, 1:8 SIPO, Johnson word clock `clk_rxw`, write gate) + word FIFO (`usb_rx_elastic_buffer` W 16 / AW 3, `clk_rxw` → `clk60`); one `usb_rx_decoder8` for HS and FS/LS, generalized to `ZMIN_HS` 4..8 (two SYNCs / four events per tick, K11 closed); 8-entry event FIFO with four write ports and a direct output path. Serial HS decoder and HS event buffer removed from the datapath. A3 sweep (`tb_usb_afe_rx_if`) and `tb_afe_hs_chain`, `tb_usb_afe_chirp`, AMS shadow: output identical to before P5. HS RX latency +2 ticks (K12). |
 | P6 | ✅ 2026-11-15, see 8.8. New `usb_tx_serializer8` (clk60, 8 line bits per tick, HS EOP splice, FS/LS tick bit timer), `usb_afe_tx_if8` (clk60: driver select, 40-bit lead window, lag dilation, pin vectors) and `usb_tx_piso` (clk_bit: 8:1 shift loaded on `ld`, idle clamp, 68 flops). `usb_tx_path` is clk60 only (`SPLIT` and `usb_tx_ser_bridge` removed); the ULPI tops lose `clk_bit` / `ld` and output `txd_v` / `tx_en_v` / `tx_se0_v`. New `tb_usb_tx_vec`: bit-exact against the bit-serial chain, pins LAT = 9 cycles later. All 42 TBs pass with unchanged packet checks; the bit-serial `usb_tx_serializer` / `usb_afe_tx_if` stay as reference models. |
-| P7–P9 | Not started. |
+| P7 | ✅ 2026-11-15, see 8.9. `usb_pll_lock_det` on `clk60` (count = ticks × 8 + position of the window-end flag change in an 8-sample `clk_bit` word, 17-flop island; heartbeat `clk60` / 16); `usb_pwr_seq` core-side copies on `clk60` (`core_rst_n_c`, `iso_en_c`, `dir_hold_c`, `afe_en_c`; `clk_en_b` stays on `clk_bit`); `usb_ulpi_phy_pads` exports the `clk_bit` island reset `bit_rst_n`; `usb_rx_status_sync` outputs on `clk60` with squelch / disconnect filters in ticks (the squelch / disconnect island moved in from `usb_line_state`). `tb_usb_pll_lock_det` (every window count exact against a bit-rate counter), `tb_usb_pwr_seq`, `tb_usb_rx_status_sync` (rewritten, tick reference), `tb_ams_pwr_shadow` pass; all 42 TBs pass. |
+| P8–P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -573,3 +575,63 @@ the lead copies) + `usb_tx_piso` 5.1 k, 68 flops at 480 MHz (the old TX had ≈ 
 480 MHz). K8 stays open for the PISO: decide with sized numbers whether the load-mux PISO is kept
 or replaced by a mux-free structure (K8 options).
 
+### 8.9 P7 notes (lock detector, power sequencer, pads, status sync)
+
+- **`usb_pll_lock_det`** (clk60 + a 17-flop `clk_bit` island): the island is the 2-FF synchronizer
+  of the reference-window flag, a 7-bit shift register and an 8-sample word register loaded on
+  `ld`, so every island flop has at most the `ld` mux in front of it. On clk60 the word gets an
+  input register (K10 rule: the E4 → E0 path has half a tick; without it the range check failed
+  by −3.6 ns), the window end is the sample where the flag changes (at most one per word), and
+  the count is 8 × ticks + p − p_start in `clk_bit` cycles: the same number as a bit-rate
+  counter, which `tb_usb_pll_lock_det` checks for every window (mutants: no p_start, wrong carry
+  bit, reversed word: all caught). **Deviation from 3.2 / 4.4:** the LSBs come from the sample
+  word, not from `phase_j` of `usb_clk_gen`; an enable-captured phase needs two gates in front of
+  the island flops (K8). Timeout 1023 ticks (8184 cycles, was 8191), heartbeat `clk60` / 16
+  (same 128-cycle period), reset synchronizers and `lol` on clk60 (`lol_clr` is now a clk60
+  pulse, which is what `usb_afe_trim_regs` on clk60 delivers). The decision comes 2–3 ticks after
+  the window end instead of 3 cycles; every lock / loss time of the testbench is unchanged at its
+  printed resolution (lock 72.7 / 69.6 / 77.8 / 72.7 µs; reference stop 19.4 µs, was 19.5;
+  dead clock 1.36 µs, was 1.40).
+- **`usb_pwr_seq`:** the core-side copies are released on the second clk60 edge and renamed
+  `core_rst_n_c`, `iso_en_c`, `dir_hold_c`, `afe_en_c` (were `_b`, clk_bit); assertion stays
+  asynchronous. `clk_en_b` stays a clk_bit 2-FF (`usb_clk_gen` samples it at bit rate). New
+  port `clk60`. `tb_usb_pwr_seq`: lock +30 ns, core release +10 ns, DIR / RX_EN +30 ns;
+  `tb_ams_pwr_shadow` lock → RUN 0.23 µs (was 0.24). `iso_en_c` also feeds the PISO clamp,
+  which captures it with one clk_bit flop (a level control, like `drv_dis` since P6; the
+  clk60 → `cq` path is single-cycle in reality, not the 4 / 3 multicycle: give it a false path
+  or max-delay with the full SDC in P9).
+- **`usb_ulpi_phy_pads`:** new input `clk_bit` and output `bit_rst_n` = `core_rst_n` through a
+  2-FF synchronizer on `clk_bit` (released 2 `clk_bit` edges after the core), for the
+  clk_bit-only islands (`usb_tx_piso`) when Phase 8.1 wires them. A reset released by a clk60
+  flop would reach clk_bit flops after one `clk_bit` cycle (recovery not covered by the
+  boundary multicycle). Mixed blocks (status sync, line state, RX datapath) keep `core_rst_n`:
+  their island flops leave reset with inputs equal to their reset values. `tb_usb_ulpi_phy_pads`
+  checks the release edges.
+- **`usb_rx_status_sync`:** all outputs are clk60 registers. Squelch / disconnect: 2-FF on
+  `clk_bit`, one value per tick on `ld` (squelch: the E4 sample; disc: OR of the 8 samples, so a
+  one-cycle pulse counts), filter on clk60 in ticks. This is the island that was in
+  `usb_line_state` (which keeps only the 2-flop `hs_tx_act` OR) moved one block up, so the
+  status sync has 7 clk_bit flops (was 96, all on clk_bit with the filters on `ce60`). VBUS / ID: 2-FF
+  and debounce on clk60. **Filter defaults change units:** `sq_flt` 2 → 1 tick (two E4 samples
+  16.7 ns apart must agree), `disc_flt` 2 → 0 (a disconnect inside an EOP can be shorter than
+  two ticks); set so in the AFE-level testbenches and `ams_phy_end.v`. HS LineState latency
+  (squelch → `linestate`): 2 + ≤ 8 + 4 cycles + 1 + `sq_flt` ticks, 13 cycles (≈ 1.6 ticks)
+  more than before with the new default (old: 2 + 3 filter cycles + ≤ 8 + 4). `tb_usb_rx_status_sync` rewritten against a tick-level reference
+  (per-edge sample history), with directed one-cycle pulses at all 8 phases (disc: all shown;
+  squelch: only the one on the E4 sample); four mutants caught. `tb_usb_afe_chirp`: same checks
+  and packet count, absolute times after the HS part ≤ 0.1 µs later; `tb_usb_afe_fsls`,
+  `tb_ams_link_shadow`: output identical.
+- **Not in P7:** `usb_afe_rx_if` (its `rx_en_hs` / `cdr_en` registers, 4.3) is still
+  `clk_bit` + `ce60`; it is not in the P7 list of section 6 and moves with the wiring (P8 / 8.1).
+
+STA (unsized, as 8.2):
+
+| Top | Before P7 | After P7, slow | typ / fast | Remaining violations |
+|---|---|---|---|---|
+| `usb_pll_lock_det` | −3.58 / −76 / 50 (8.2) | −0.11 / −0.87 / 8 | +0.95 / +1.26 | K8: the 8 word flops (`ld` mux, `ld` fan-out 8); clk60 +4.75 |
+| `usb_rx_status_sync` | −5.86 / −369 / 78 (8.6) | −0.12 / −0.25 / 3 | +0.96 / +1.26 | K8: the disc OR accumulator; clk60 +5.33 |
+| `usb_line_state` | −0.33 / −0.6 / 5 (8.6) | −0.33 / −0.38 / 2 | +0.84 / +1.17 | K8: the `hs_tx_act` OR accumulator; clk60 +4.62 |
+| `usb_pwr_seq` | +0.55 | +0.55 | +1.29 / +1.50 | — (clk_bit: `clk_en_b` only; clk60 +15.1) |
+
+Flops at 480 MHz: lock detector 57 → 17 (75 in total), status sync 96 → 7 (93), line state
+5 → 2, power sequencer 9 → 2; pads + 2 (`bit_rst_n`).

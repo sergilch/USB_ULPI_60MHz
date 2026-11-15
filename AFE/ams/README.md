@@ -10,7 +10,7 @@ These testbenches co-simulate the digital RTL of the repository (`usb_*.v`) with
 |---|---|
 | `lib/usb_connect.vams` | Connect modules `usb_l2e` (digital → electrical: 0 / 1.8 V, 50 ps edges, 50 Ω), `usb_e2l` (electrical → digital: thresholds 0.8 / 1.0 V around the models' 0.9 V), `usb_bidir`, and the connect rules `usb_cr` |
 | `lib/ams_prims.va` | `ams_vdc`, `ams_vsup` (supply ramp switched by a logic pin), `ams_res`, `ams_cap`: the tops need no Spectre primitive cells |
-| `ams_phy_end.v` | One end of the line (device or host): the digital PHY below ULPI (`usb_mode_term_ctrl`, `usb_tx_path`, `usb_afe_tx_if`, `usb_afe_rx_if`, `usb_rx_status_sync`, `usb_line_state`, `usb_rx_datapath`) plus the Link model's hooks (registers, byte feeder, receive monitor), with the AFE pins as plain digital ports. Plain Verilog-2005 |
+| `ams_phy_end.v` | One end of the line (device or host): the digital PHY below ULPI (`usb_mode_term_ctrl`, `usb_tx_path`, `usb_afe_tx_if8` + `usb_tx_piso`, `usb_afe_rx_if`, `usb_rx_status_sync`, `usb_line_state`, `usb_rx_datapath`) plus the Link model's hooks (registers, byte feeder, receive monitor), with the AFE pins as plain digital ports. Plain Verilog-2005 |
 | `ams_link_seq.vh` | Link models, sequence and checks of the line test (included in the top module) |
 | `tb_ams_link.vams` + `amscf_link.scs` | Two ends (device, host +400 ppm), each with `afe_transceiver`, `afe_receiver`, `afe_cdr` on one DP / DM: attach, FS packets both ways, reset, device chirp K (0.65–0.75 V, no J), host chirps, switch to HS (0.36–0.44 V), HS packets both ways. About 85 µs |
 | `ams_pwr_seq.vh` | Stimulus and checks of the power-up test |

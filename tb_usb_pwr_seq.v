@@ -10,10 +10,11 @@
 //
 // Setup: supplies (VDD33 -> pwr_good, VDD18A -> pg18a and the reference clock),
 //   ref_clk 24 MHz + 200 ppm -> afe_pll_bm (TAU 5 us) -> clk_bit ->
-//   usb_pll_lock_det + usb_clk_gen (clk_en = clk_en_b) and usb_pwr_seq.  On the
-//   clk_bit side, reset by core_rst_n_b and isolated by iso_en_b:
-//   usb_afe_tx_if8 (clk60) + usb_tx_piso, usb_afe_rx_if (rx_en = afe_en_b, HS), usb_mode_term_ctrl (FS
-//   peripheral: pull-up on), usb_rx_status_sync.  An isolation-cell model on the
+//   usb_pll_lock_det + usb_clk_gen (clk_en = clk_en_b) and usb_pwr_seq (core-side
+//   copies on clk60, Plan_60MHz.md P7).  Reset by core_rst_n_c and isolated by
+//   iso_en_c: usb_afe_tx_if8 (clk60) + usb_tx_piso, usb_afe_rx_if (rx_en =
+//   afe_en_c, HS), usb_mode_term_ctrl (FS peripheral: pull-up on),
+//   usb_rx_status_sync (clk60 + ld).  An isolation-cell model on the
 //   AFE side clamps every digital output to its isolated value while the iso_en
 //   pin is 1.  While VDD33 is off (from 200 ns after pwr_good falls until it
 //   rises) every AFE output to the digital is X.
@@ -23,16 +24,16 @@
 //     the AFE pins behind the isolation cells, the digital outputs whenever the
 //     iso_en pin is 0, and every digital output that takes AFE inputs
 //     (usb_afe_rx_if, usb_rx_status_sync);
-//   * iso_en_b = 1 whenever the iso_en pin is 1 (asynchronous, no clock needed);
+//   * iso_en_c = 1 whenever the iso_en pin is 1 (asynchronous, no clock needed);
 //   * pll_en rises only with bias_en on for >= BIAS_CYC; iso_en falls, the core
 //     reset is released and CLKOUT starts only with the PLL locked;
 //   * pll_en is never off for less than OFF_CYC reference cycles;
 //   * CLKOUT: no edge while pll_en = 0, every high phase exactly 4 clk_bit
 //     cycles; pll_en falls (other than on a supply loss) only with CLKOUT low
 //     and clk_on = 0;
-//   * dir_hold_b is 1 whenever CLKOUT has not run for 30 ns while the core is
+//   * dir_hold_c is 1 whenever CLKOUT has not run for 30 ns while the core is
 //     out of reset, and falls only while CLKOUT is running;
-//   * afe_en_b (RX_EN / CDR_EN) is 0 while CLKOUT is stopped.
+//   * afe_en_c (RX_EN / CDR_EN) is 0 while CLKOUT is stopped.
 // Cases
 //   [1] POR with no supplies, VDD18A (reference) only: everything stays off
 //   [2] power-up: order and times (bias, PLL lock, release, CLKOUT, DIR)
@@ -74,30 +75,30 @@ module tb_usb_pwr_seq;
     wire        clk60, ld;           // core clock (TX vectors) / island strobe
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
-    wire bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
+    wire bias_en, ldo_en, pll_en, iso_en, core_rst_n_c, iso_en_c, afe_en_c, dir_hold_c, clk_en_b, pll_err;
     wire [3:0] state;
     reg  susp_req = 1'b0, clk_susp = 1'b0, wake = 1'b0;
 
     afe_pll_bm u_pll (.CDR_FREF(ref_clk), .PLL_EN(pll_en), .clk_out(clk_bit));
-    usb_pll_lock_det u_ld (.clk_bit(clk_bit), .ref_clk(ref_clk), .rst_n(por_n), .pll_en(pll_en),
+    usb_pll_lock_det u_ld (.clk_bit(clk_bit), .clk60(clk60), .ld(ld), .ref_clk(ref_clk), .rst_n(por_n), .pll_en(pll_en),
                            .refsel(2'b01), .lol_clr(1'b0), .pll_lock(pll_lock), .lol(lol),
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
                       .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq #(.BIAS_CYC(BIAS_CYC), .LOCK_TO(LOCK_TO), .OFF_CYC(OFF_CYC)) dut (
-        .ref_clk(ref_clk), .clk_bit(clk_bit), .por_n(por_n),
+        .ref_clk(ref_clk), .clk_bit(clk_bit), .clk60(clk60), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),
         .susp_req(susp_req), .clk_susp(clk_susp), .wake(wake),
         .bias_en(bias_en), .ldo_en(ldo_en), .pll_en(pll_en), .iso_en(iso_en),
-        .core_rst_n_b(core_rst_n_b), .iso_en_b(iso_en_b), .afe_en_b(afe_en_b),
-        .dir_hold_b(dir_hold_b), .clk_en_b(clk_en_b), .state(state), .pll_err(pll_err));
+        .core_rst_n_c(core_rst_n_c), .iso_en_c(iso_en_c), .afe_en_c(afe_en_c),
+        .dir_hold_c(dir_hold_c), .clk_en_b(clk_en_b), .state(state), .pll_err(pll_err));
 
     // TX: idle, or a stream of HS packets while tx_on (serializer-like vectors on clk60)
     reg       tx_on = 1'b0;
     reg [7:0] txd_v = 8'hFF, tx_en_v = 8'h00;
     always @(posedge clk60) begin
-        if (tx_on && core_rst_n_b) begin
+        if (tx_on && core_rst_n_c) begin
             tx_en_v <= (({$random} % 25) == 0) ? 8'h00 : 8'hFF;
             txd_v   <= $random;
         end else begin
@@ -107,15 +108,15 @@ module tb_usb_pwr_seq;
 
     wire [7:0] p_p, p_hen, p_oe, p_dat, p_se0, p_any;
     wire       p_ls, p_act;
-    usb_afe_tx_if8 u_tx8 (.clk60(clk60), .rst_n(core_rst_n_b),
+    usb_afe_tx_if8 u_tx8 (.clk60(clk60), .rst_n(core_rst_n_c),
         .txd_v(txd_v), .tx_en_v(tx_en_v), .tx_se0_v(8'h00), .tx_speed(2'b00),
         .tx_lead(5'd10), .tx_lag(3'd0), .lead_first(1'b0),
         .hs_p_v(p_p), .hs_en_v(p_hen), .fs_oe_v(p_oe), .fs_dat_v(p_dat), .fs_se0_v(p_se0),
         .any_v(p_any), .fs_ls_q(p_ls), .act(p_act));
     wire hs_tx_p, hs_tx_n, hs_tx_en, fs_oe, fs_dat, fs_se0, fs_ls, tx_active;
-    usb_tx_piso u_tx (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ld(ld),
+    usb_tx_piso u_tx (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .ld(ld),
         .hs_p_v(p_p), .hs_en_v(p_hen), .fs_oe_v(p_oe), .fs_dat_v(p_dat), .fs_se0_v(p_se0),
-        .any_v(p_any), .fs_ls_q(p_ls), .act(p_act), .drv_dis(1'b0), .iso_en(iso_en_b),
+        .any_v(p_any), .fs_ls_q(p_ls), .act(p_act), .drv_dis(1'b0), .iso_en(iso_en_c),
         .hs_tx_p(hs_tx_p), .hs_tx_n(hs_tx_n), .hs_tx_en(hs_tx_en), .fs_oe(fs_oe), .fs_dat(fs_dat),
         .fs_se0(fs_se0), .fs_ls(fs_ls), .tx_active(tx_active));
 
@@ -130,29 +131,29 @@ module tb_usb_pwr_seq;
     wire a_se   = afe_ok ? 1'b0 : 1'bx;
     wire rx_en_hs, cdr_en, hs_rxd, hs_squelch, hs_cdr_lock;
     wire clk_rx = clk_bit & (cdr_en === 1'b1);
-    usb_afe_rx_if u_rx (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .speed(2'b00), .rx_en(afe_en_b),
-        .iso_en(iso_en_b), .lock_dly(3'd2), .sq_comp(3'd0), .rx_en_hs(rx_en_hs), .cdr_en(cdr_en),
+    usb_afe_rx_if u_rx (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .speed(2'b00), .rx_en(afe_en_c),
+        .iso_en(iso_en_c), .lock_dly(3'd2), .sq_comp(3'd0), .rx_en_hs(rx_en_hs), .cdr_en(cdr_en),
         .clk_rx(clk_rx), .hs_rxd_a(a_rxd), .squelch_a(a_sq),
         .hs_rxd(hs_rxd), .hs_squelch(hs_squelch), .hs_cdr_lock(hs_cdr_lock));
 
     wire pu_dp, pu_dm, hst, pd_dp, pd_dm, tbusy, byp, sdis, edis, ddis, hostm;
-    usb_mode_term_ctrl u_mode (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ce60(ce60),
+    usb_mode_term_ctrl u_mode (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .ce60(ce60),
         .xcvrselect(2'b01), .termselect(1'b1), .opmode(2'b00), .dp_pulldown(1'b0), .dm_pulldown(1'b0),
-        .iso_en(iso_en_b), .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hst),
+        .iso_en(iso_en_c), .dp_pullup_en(pu_dp), .dm_pullup_en(pu_dm), .hs_term_en(hst),
         .dp_pulldown_en(pd_dp), .dm_pulldown_en(pd_dm), .term_busy(tbusy), .tx_bypass(byp),
         .tx_sync_dis(sdis), .tx_eop_dis(edis), .drv_dis(ddis), .host_mode(hostm));
 
     wire s_dp, s_dm, s_rcv, s_sq, s_disc, s_vv, s_sv, s_se, s_id;
-    usb_rx_status_sync u_ss (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ce60(ce60),
+    usb_rx_status_sync u_ss (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .clk60(clk60), .ld(ld),
         .squelch(a_sq), .disc(a_disc),
         .a_vbus_vld(a_vb), .sess_vld(a_vb), .sess_end(a_se), .id_gnd(a_se),
-        .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd4),
+        .sq_flt(4'd1), .disc_flt(4'd0), .vb_flt(16'd4),
         .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_vv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
     // FS/LS receivers: through the sampler of usb_rx_datapath (Plan_60MHz.md P4),
     // newest sample of the word as usb_line_state sees it
     wire [7:0] smp_rcv, smp_dp, smp_dm;
-    usb_rx_fsls_sampler u_smp (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ld(ld),
+    usb_rx_fsls_sampler u_smp (.clk_bit(clk_bit), .rst_n(core_rst_n_c), .ld(ld),
         .rxrcv(a_rcv), .rxdp(a_dp), .rxdm(a_dm),
         .rcv_v(smp_rcv), .dp_v(smp_dp), .dm_v(smp_dm));
     assign s_dp = smp_dp[7], s_dm = smp_dm[7], s_rcv = smp_rcv[7];
@@ -170,7 +171,7 @@ module tb_usb_pwr_seq;
     wire [13:0] afe_pin = iso_en ? ISO : dig_out;
     wire [3:0]  pwr_pin = {bias_en, ldo_en, pll_en, iso_en};
     wire [11:0] dig_in  = {hs_rxd, hs_squelch, hs_cdr_lock, s_dp, s_dm, s_rcv, s_sq, s_disc, s_vv, s_sv, s_se, s_id};
-    wire [5:0]  dig_ctl = {core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err};
+    wire [5:0]  dig_ctl = {core_rst_n_c, iso_en_c, afe_en_c, dir_hold_c, clk_en_b, pll_err};
 
     // ---------------- continuous checks ----------------
     real    t_bias_on = -1.0, t_clk60 = -1.0e9, t_lock_fall = -1.0e9, t_pg_fall = -1.0e9;
@@ -204,7 +205,7 @@ module tb_usb_pwr_seq;
         if (clkout !== 1'b0 || clk_on !== 1'b0) err("pll_en fell with CLKOUT running");
     end
     always @(negedge iso_en) if (chk_on && pll_lock !== 1'b1) err("iso_en released without PLL lock");
-    always @(posedge core_rst_n_b) if (chk_on && pll_lock !== 1'b1) err("core reset released without PLL lock");
+    always @(posedge core_rst_n_c) if (chk_on && pll_lock !== 1'b1) err("core reset released without PLL lock");
     always @(posedge clkout) begin
         clk60_edges = clk60_edges + 1; t_clk60 = $realtime; t_clk60_r = $realtime;
         if (chk_on && pll_en !== 1'b1) err("CLKOUT edge with pll_en = 0");
@@ -218,7 +219,7 @@ module tb_usb_pwr_seq;
         if (chk_on && hi_cyc != 4 && $realtime - t_pg_fall > 300.0) err("CLKOUT high phase not 4 clk_bit cycles");
         hi_cyc = 0;
     end
-    always @(negedge dir_hold_b) if (chk_on && $realtime - t_clk60 > 20.0) err("DIR hold released with CLKOUT stopped");
+    always @(negedge dir_hold_c) if (chk_on && $realtime - t_clk60 > 20.0) err("DIR hold released with CLKOUT stopped");
 
     // sampled checks every 2 ns
     always #2 if (chk_on) begin
@@ -227,9 +228,9 @@ module tb_usb_pwr_seq;
         if (!iso_en && (^dig_out === 1'bx)) err("digital output X / Z while not isolated");
         if (^dig_in === 1'bx) err("digital input-side output X / Z");
         if (^dig_ctl === 1'bx || ^state === 1'bx) err("sequencer output X / Z");
-        if (iso_en === 1'b1 && iso_en_b !== 1'b1) err("iso_en_b not set with the iso_en pin");
-        if (core_rst_n_b && dir_hold_b !== 1'b1 && $realtime - t_clk60 > 30.0) err("CLKOUT stopped, DIR not held");
-        if (afe_en_b && $realtime - t_clk60 > 30.0 && $realtime - t_pg_fall > 300.0) err("RX_EN allowed with CLKOUT stopped");
+        if (iso_en === 1'b1 && iso_en_c !== 1'b1) err("iso_en_c not set with the iso_en pin");
+        if (core_rst_n_c && dir_hold_c !== 1'b1 && $realtime - t_clk60 > 30.0) err("CLKOUT stopped, DIR not held");
+        if (afe_en_c && $realtime - t_clk60 > 30.0 && $realtime - t_pg_fall > 300.0) err("RX_EN allowed with CLKOUT stopped");
     end
 
     // ---------------- helpers ----------------
@@ -244,11 +245,11 @@ module tb_usb_pwr_seq;
     endtask
     task expect_off(input [8*40-1:0] what);
         begin
-            if (pwr_pin !== {1'b0, por_n, 1'b0, 1'b1} || afe_pin !== ISO || core_rst_n_b !== 1'b0 || iso_en_b !== 1'b1 ||
-                dir_hold_b !== 1'b1 || afe_en_b !== 1'b0 || clkout !== 1'b0) begin
+            if (pwr_pin !== {1'b0, por_n, 1'b0, 1'b1} || afe_pin !== ISO || core_rst_n_c !== 1'b0 || iso_en_c !== 1'b1 ||
+                dir_hold_c !== 1'b1 || afe_en_c !== 1'b0 || clkout !== 1'b0) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: %0s: not all off (pins %b, afe %b, rst %b iso %b dir %b afe_en %b)",
-                         $time, what, pwr_pin, afe_pin, core_rst_n_b, iso_en_b, dir_hold_b, afe_en_b);
+                         $time, what, pwr_pin, afe_pin, core_rst_n_c, iso_en_c, dir_hold_c, afe_en_c);
             end
         end
     endtask
@@ -283,10 +284,10 @@ module tb_usb_pwr_seq;
         wait (pll_en === 1'b1); t_pll = $realtime;
         wait (pll_lock === 1'b1); t_lock = $realtime;
         wait (iso_en === 1'b0); t_iso = $realtime;
-        wait (core_rst_n_b === 1'b1); t_rel = $realtime;
+        wait (core_rst_n_c === 1'b1); t_rel = $realtime;
         wait (clkout === 1'b1); t_ck = $realtime;
-        wait (dir_hold_b === 1'b0); t_dir = $realtime;
-        wait (afe_en_b === 1'b1); t_afe = $realtime;
+        wait (dir_hold_c === 1'b0); t_dir = $realtime;
+        wait (afe_en_c === 1'b1); t_afe = $realtime;
         $display("   pwr_good -> pll_en %.2f us, -> lock %.2f us, -> iso_en 0 %.2f us, -> core out of reset %.2f us,",
                  (t_pll - t0) / 1000.0, (t_lock - t0) / 1000.0, (t_iso - t0) / 1000.0, (t_rel - t0) / 1000.0);
         $display("   -> CLKOUT %.2f us, -> DIR released %.2f us, -> RX_EN allowed %.2f us",
@@ -326,7 +327,7 @@ module tb_usb_pwr_seq;
         e0 = clk60_edges;
         #20000;
         if (clk60_edges != e0) err("CLKOUT edges in SUSP");
-        if (core_rst_n_b !== 1'b1 || iso_en_b !== 1'b0 || pu_dp !== 1'b1 || bias_en !== 1'b1)
+        if (core_rst_n_c !== 1'b1 || iso_en_c !== 1'b0 || pu_dp !== 1'b1 || bias_en !== 1'b1)
             err("core / terminations / bias not kept alive in SUSP");
         if (s_dp !== 1'b1 || s_rcv !== 1'b1) err("FS receiver status lost in SUSP");
         t0 = $realtime;
@@ -348,7 +349,7 @@ module tb_usb_pwr_seq;
         u_pll.f_off = 0.0;
         wait_state(4'd5, 300000.0, "RUN after relock");
         if (lol !== 1'b1) err("lol not set after a loss of lock");
-        if (core_rst_n_b !== 1'b1) err("core reset during a relock");
+        if (core_rst_n_c !== 1'b1) err("core reset during a relock");
         #2000;
 
         // [6] supply loss while transmitting; dead PLL at power-up
@@ -368,7 +369,7 @@ module tb_usb_pwr_seq;
         wait (pll_en === 1'b0); t0 = $realtime;
         wait (pll_en === 1'b1);
         if ($realtime - t0 < OFF_CYC * T_REF - 1.0) err("PLL off time before the retry too short");
-        if (iso_en !== 1'b1 || core_rst_n_b !== 1'b0 || dir_hold_b !== 1'b1 || clkout !== 1'b0 || afe_pin !== ISO)
+        if (iso_en !== 1'b1 || core_rst_n_c !== 1'b0 || dir_hold_c !== 1'b1 || clkout !== 1'b0 || afe_pin !== ISO)
             err("lock timeout: not isolated / in reset");
         u_pll.dead = 1'b0;
         wait_state(4'd5, 400000.0, "RUN after the retry");
@@ -382,7 +383,7 @@ module tb_usb_pwr_seq;
         #2000;
         pwr_good = 1'b0; vdd33 = 1'b0;
         #(3 * T_REF + 5);
-        if (iso_en !== 1'b1 || iso_en_b !== 1'b1 || core_rst_n_b !== 1'b0 || afe_pin !== ISO)
+        if (iso_en !== 1'b1 || iso_en_c !== 1'b1 || core_rst_n_c !== 1'b0 || afe_pin !== ISO)
             err("not isolated / reset without clk_bit");
         #1000 pg18a = 1'b0; vdd18a = 1'b0;
         #10000;

@@ -216,10 +216,10 @@ module tb_usb_afe_fsls;
     wire       hdisc;
 
     usb_rx_status_sync u_ss (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60),
+        .clk_bit(clk_bit), .rst_n(rst_n), .clk60(clk60), .ld(ld),
         .squelch(1'b1), .disc(1'b0),
         .a_vbus_vld(1'b1), .sess_vld(1'b1), .sess_end(1'b0), .id_gnd(1'b0),
-        .sq_flt(4'd2), .disc_flt(4'd2), .vb_flt(16'd0),
+        .sq_flt(4'd1), .disc_flt(4'd0), .vb_flt(16'd0),
         .squelch_s(s_sq), .disc_s(s_disc),
         .a_vbus_vld_s(s_avv), .sess_vld_s(s_sv), .sess_end_s(s_se), .id_gnd_s(s_id));
     usb_line_state u_ls (

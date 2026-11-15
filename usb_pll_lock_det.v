@@ -20,22 +20,41 @@
 //   synchronized into clk_bit (2 FF) and every toggle ends one window.  The
 //   synchronizer delay is the same at both ends of a window, so the count is
 //   exact to +-1.  The first window after start is partial and is ignored.
-//   If no toggle arrives (reference stopped) the count saturates at 2^CW - 1
-//   (CW = 13: 8191 cycles, 17 us at 480 MHz; must stay above the largest
-//   EXP + TOL), which counts as a bad window and starts the next one.
+//   If no toggle arrives (reference stopped) the count saturates (timeout,
+//   2^(CW-3) - 1 ticks = 8184 clk_bit cycles, 17 us at 480 MHz; must stay
+//   above the largest EXP + TOL), which counts as a bad window and starts the
+//   next one.
+//
+// Count (Plan_60MHz.md 3.2 / P7): the count is kept in clk_bit cycles, but
+//   only its 3 LSBs are found at bit rate.  A 17-flop clk_bit island (the
+//   synchronizer, a 7-bit shift register and an 8-sample word register loaded
+//   on ld, the usb_clk_gen boundary rule) delivers the synchronized flag of
+//   the 8 clk_bit edges of each tick to clk60; there the window end is the
+//   sample where the flag changes (position p = 0 .. 7, at most one change per
+//   tick since a window is > 4000 cycles).  Count = 8 x (ticks between the
+//   two window-end words, a CW-3 bit clk60 counter) + p - p_start: the same
+//   number of clk_bit cycles as a counter at bit rate, without one (the
+//   13-bit counter of the single-clock version failed 480 MHz at the slow
+//   corner).  The word gets a clk60 input register first (an island register
+//   read by the core feeds a flop, Plan_60MHz.md K10: the E4 -> E0 path has
+//   half a tick); the judgement is one tick later, 2 to 3 ticks after the flag
+//   change.  (Plan 3.2 proposed the usb_clk_gen phase
+//   as the LSBs; an enable-captured phase needs two gates in front of the
+//   island flops, the sample word none.)
 //
 // Timing: lock after GOOD_N + 1 windows at most once the PLL is inside the
 //   tolerance (24 MHz, NW = 8: a window is 10.7 us, lock <= 53 us after
-//   settling); loss of lock within 2 windows (21 us) + 2 clk_bit cycles, or
-//   within 1 window + the timeout if the reference stops.
+//   settling); loss of lock within 2 windows (21 us) + 4 ticks, or within
+//   1 window + the timeout if the reference stops.
 //
 // pll_en (async, from the power sequencer): 0 clears pll_lock at once and
 //   restarts the detector (its own reset synchronizer, async assert / sync
-//   release on clk_bit).  Switching the PLL off on purpose does not set lol.
+//   release on clk60).  Switching the PLL off on purpose does not set lol.
 //
-// Dead clock: if clk_bit stops while pll_en = 1, nothing on clk_bit can react.
-//   A free-running heartbeat (clk_bit / 2^7) is checked on ref_clk; without an
-//   edge for 32 reference cycles (1.3 us at 24 MHz) the detector is reset
+// Dead clock: if clk_bit (and with it clk60) stops while pll_en = 1, nothing
+//   on those clocks can react.  A free-running heartbeat (clk60 / 16, period
+//   128 clk_bit cycles as before P7) is checked on ref_clk; without an edge for
+//   32 reference cycles (1.3 us at 24 MHz) the detector is reset
 //   asynchronously, so pll_lock falls even without a clock.  lol is then set
 //   when the clock comes back (lock_hist below is only reset by pll_en).
 //
@@ -49,23 +68,29 @@
 //                                         set, for a PLL that can do it
 //     11    reserved    20       1        treated as 24 MHz
 //
-// Clocks: clk_bit, ref_clk; rst_n asynchronous (power-on reset of the clock
-//   control, not RESETB), release synchronized per domain here.
+// Clocks: clk60 (detector, outputs), clk_bit + ld (sample island), ref_clk
+//   (window); clk60 / ld from usb_clk_gen on the same clk_bit.  rst_n
+//   asynchronous (power-on reset of the clock control, not RESETB), release
+//   synchronized per domain here; the island flops take rst_n directly (they
+//   hold the reset value of their input, r_tog, until it moves).  lol_clr is
+//   a clk60 pulse (usb_afe_trim_regs).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_pll_lock_det #(
     parameter NW     = 8,          // window = 2^NW reference cycles
-    parameter CW     = 13,         // clk_bit counter width (saturation = timeout, > EXP + TOL)
+    parameter CW     = 13,         // count width in clk_bit cycles (timeout 2^(CW-3) - 1 ticks, > EXP + TOL)
     parameter TOL    = 5,          // accepted deviation, counts
     parameter GOOD_N = 4           // consecutive good windows for lock
 ) (
     input  wire       clk_bit,
+    input  wire       clk60,       // core clock (usb_clk_gen)
+    input  wire       ld,          // island strobe (usb_clk_gen)
     input  wire       ref_clk,
     input  wire       rst_n,
     input  wire       pll_en,
     input  wire [1:0] refsel,
-    input  wire       lol_clr,     // clk_bit pulse
+    input  wire       lol_clr,     // clk60 pulse
     output reg        pll_lock,
     output reg        lol,
     output reg  [4:0] fb_div,
@@ -75,7 +100,8 @@ module usb_pll_lock_det #(
     localparam integer EXP_19 = (4800 << NW) / 192;
     localparam integer EXP_24 = (4800 << NW) / 240;
     localparam integer EXP_26 = (4800 << NW) / 260;
-    localparam [CW-1:0] CMAX  = {CW{1'b1}};
+    localparam integer TW     = CW - 3;                // tick counter width
+    localparam [TW-1:0] TMAX  = {TW{1'b1}};
 
     // ---------------- REFSEL decode ----------------
     reg [CW-1:0] lo, hi;
@@ -106,11 +132,29 @@ module usb_pll_lock_det #(
         end
     end
 
-    // ---------------- heartbeat (clk_bit, power-on domain) ----------------
-    reg [6:0] hb_div;
+    // ---------------- sample island (clk_bit) ----------------
+    // tw: the synchronized flag t2 after 8 consecutive clk_bit edges, the last
+    // one the edge before ld (bit 0 oldest); loaded on ld (E4), so consecutive
+    // words cover every edge once and tw is stable from E4 to E4
+    reg       t1, t2;
+    reg [6:0] sh;
+    reg [7:0] tw;
     always @(posedge clk_bit or negedge rst_n) begin
-        if (!rst_n) hb_div <= 7'd0;
-        else        hb_div <= hb_div + 7'd1;
+        if (!rst_n) begin
+            t1 <= 1'b0; t2 <= 1'b0; sh <= 7'd0; tw <= 8'd0;
+        end else begin
+            t1 <= r_tog;
+            t2 <= t1;
+            sh <= {t2, sh[6:1]};
+            if (ld) tw <= {t2, sh};
+        end
+    end
+
+    // ---------------- heartbeat (clk60, power-on domain) ----------------
+    reg [3:0] hb_div;
+    always @(posedge clk60 or negedge rst_n) begin
+        if (!rst_n) hb_div <= 4'd0;
+        else        hb_div <= hb_div + 4'd1;
     end
 
     // ---------------- clock-alive check (ref_clk) ----------------
@@ -122,7 +166,7 @@ module usb_pll_lock_det #(
             dcnt <= 6'd0;
             dead <= 1'b0;
         end else begin
-            h1 <= hb_div[6]; h2 <= h1; h3 <= h2;
+            h1 <= hb_div[3]; h2 <= h1; h3 <= h2;
             if (h2 ^ h3)          dcnt <= 6'd0;
             else if (!dcnt[5])    dcnt <= dcnt + 6'd1;
             dead <= dcnt[5];
@@ -132,7 +176,7 @@ module usb_pll_lock_det #(
     // ---------------- detector reset: rst_n & pll_en & clock alive ----------------
     wire rst_l_a = rst_n & pll_en & ~dead;
     reg  rl1, rst_l_n;
-    always @(posedge clk_bit or negedge rst_l_a) begin
+    always @(posedge clk60 or negedge rst_l_a) begin
         if (!rst_l_a) begin rl1 <= 1'b0; rst_l_n <= 1'b0; end
         else          begin rl1 <= 1'b1; rst_l_n <= rl1;  end
     end
@@ -140,40 +184,50 @@ module usb_pll_lock_det #(
     // lock history, reset only by pll_en (not by a dead clock)
     wire rst_e_a = rst_n & pll_en;
     reg  re1, rst_e_n, lock_hist;
-    always @(posedge clk_bit or negedge rst_e_a) begin
+    always @(posedge clk60 or negedge rst_e_a) begin
         if (!rst_e_a) begin re1 <= 1'b0; rst_e_n <= 1'b0; end
         else          begin re1 <= 1'b1; rst_e_n <= re1;  end
     end
 
-    // ---------------- count and judge (clk_bit) ----------------
-    reg          t1, t2, t3;
-    reg [CW-1:0] cnt;
+    // ---------------- window end, count and judge (clk60) ----------------
+    reg  [7:0]   twc;                      // tw, clk60 input register
+    reg          wl;                       // twc[7] of the previous tick
+    reg [TW-1:0] tk;                       // ticks since the word that started the window
+    reg [2:0]    p0;                       // sample position of the window start
     reg          armed;                    // a full window is being counted
     reg [2:0]    good;                     // consecutive good windows (saturating)
-    wire         win  = t2 ^ t3;
-    // range check and timeout one cycle ahead (registered): at a window end the
-    // previous edge was always a plain increment (windows are > 4000 cycles), so
-    // ok / tout describe the count at the window end
-    reg          ok, tout;
 
-    always @(posedge clk_bit or negedge rst_l_n) begin
+    wire [7:0] chg = twc ^ {twc[6:0], wl};
+    wire       wend = |chg;                // the flag changed in this word
+    reg  [2:0] p;
+    integer    i;
+    always @* begin
+        p = 3'd0;
+        for (i = 7; i >= 0; i = i - 1) if (chg[i]) p = i;
+    end
+    wire          tout  = (tk == TMAX);
+    // window length in clk_bit cycles
+    wire [CW:0]   n_win = {1'b0, tk, 3'b000} + {{(CW-2){1'b0}}, p} - {{(CW-2){1'b0}}, p0};
+    wire          ok    = (n_win >= {1'b0, lo}) && (n_win <= {1'b0, hi});
+
+    always @(posedge clk60 or negedge rst_l_n) begin
         if (!rst_l_n) begin
-            t1 <= 1'b0; t2 <= 1'b0; t3 <= 1'b0;
-            cnt        <= {{(CW-1){1'b0}}, 1'b1};
-            ok         <= 1'b0;
-            tout       <= 1'b0;
-            armed      <= 1'b0;
-            good       <= 3'd0;
-            pll_lock   <= 1'b0;
+            twc      <= 8'd0;
+            wl       <= 1'b0;
+            tk       <= {{(TW-1){1'b0}}, 1'b1};
+            p0       <= 3'd0;
+            armed    <= 1'b0;
+            good     <= 3'd0;
+            pll_lock <= 1'b0;
         end else begin
-            t1 <= r_tog; t2 <= t1; t3 <= t2;
-            ok   <= (cnt >= lo - 1'b1) && (cnt <= hi - 1'b1);
-            tout <= (cnt == CMAX - 1'b1);
-            if (win || tout) begin
-                cnt   <= {{(CW-1){1'b0}}, 1'b1};
+            twc <= tw;
+            wl  <= twc[7];
+            if (wend || tout) begin
+                tk    <= {{(TW-1){1'b0}}, 1'b1};
+                p0    <= wend ? p : 3'd0;
                 armed <= 1'b1;
                 if (armed) begin
-                    if (ok && !tout) begin
+                    if (wend && ok && !tout) begin
                         if (good != 3'd7) good <= good + 3'd1;
                         if (good + 3'd1 >= GOOD_N) pll_lock <= 1'b1;
                     end else begin
@@ -182,21 +236,21 @@ module usb_pll_lock_det #(
                     end
                 end
             end else begin
-                cnt <= cnt + 1'b1;
+                tk <= tk + 1'b1;
             end
         end
     end
 
     // loss of lock = was locked, is not, with pll_en still on (bad window, or a
     // dead-clock reset seen once the clock is back)
-    always @(posedge clk_bit or negedge rst_e_n) begin
+    always @(posedge clk60 or negedge rst_e_n) begin
         if (!rst_e_n) lock_hist <= 1'b0;
         else          lock_hist <= pll_lock;
     end
     wire lost = lock_hist & ~pll_lock & rst_e_n;
 
     // sticky loss-of-lock flag: survives pll_en = 0, cleared by lol_clr / reset
-    always @(posedge clk_bit or negedge rst_n) begin
+    always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n)       lol <= 1'b0;
         else if (lost)    lol <= 1'b1;
         else if (lol_clr) lol <= 1'b0;

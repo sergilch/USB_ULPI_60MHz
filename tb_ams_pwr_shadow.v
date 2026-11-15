@@ -39,27 +39,27 @@ module tb_ams_pwr_shadow;
     always #(T_XO / 2.0) xo = ~xo;
     wire ref_clk = xo & vdd18a_up;
     wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
-    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire        clk60, ld;           // core clock / island strobe (lock detector, sequencer)
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
-    wire bias_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
+    wire bias_en, pll_en, iso_en, core_rst_n_c, iso_en_c, afe_en_c, dir_hold_c, clk_en_b, pll_err;
     wire [3:0] state;
 
     afe_pll_bm u_pll (.CDR_FREF(ref_clk), .PLL_EN(pll_en & vdd18a_up), .clk_out(clk_bit));
     always @(fb_div) if (fb_div != 5'd0) u_pll.DIV = fb_div;
-    usb_pll_lock_det u_ld (.clk_bit(clk_bit), .ref_clk(ref_clk), .rst_n(por_n), .pll_en(pll_en),
+    usb_pll_lock_det u_ld (.clk_bit(clk_bit), .clk60(clk60), .ld(ld), .ref_clk(ref_clk), .rst_n(por_n), .pll_en(pll_en),
                            .refsel(2'b01), .lol_clr(1'b0), .pll_lock(pll_lock), .lol(lol),
                            .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(por_n), .clk_en(clk_en_b),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
                       .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
     usb_pwr_seq u_seq (
-        .ref_clk(ref_clk), .clk_bit(clk_bit), .por_n(por_n),
+        .ref_clk(ref_clk), .clk_bit(clk_bit), .clk60(clk60), .por_n(por_n),
         .pwr_good(pwr_good), .pg18a(pg18a), .pll_lock(pll_lock), .clk_on(clk_on),
         .susp_req(susp_req), .clk_susp(clk_susp), .wake(wake),
         .bias_en(bias_en), .ldo_en(ldo_en), .pll_en(pll_en), .iso_en(iso_en),
-        .core_rst_n_b(core_rst_n_b), .iso_en_b(iso_en_b), .afe_en_b(afe_en_b),
-        .dir_hold_b(dir_hold_b), .clk_en_b(clk_en_b), .state(state), .pll_err(pll_err));
+        .core_rst_n_c(core_rst_n_c), .iso_en_c(iso_en_c), .afe_en_c(afe_en_c),
+        .dir_hold_c(dir_hold_c), .clk_en_b(clk_en_b), .state(state), .pll_err(pll_err));
 
     initial begin
         $dumpfile("tb_ams_pwr_shadow.vcd");

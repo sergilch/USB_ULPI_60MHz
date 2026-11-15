@@ -9,50 +9,62 @@
 //     --> [THIS BLOCK] --> usb_line_state (LineState, HostDisconnect)
 //                      --> VbusState / IdGnd of usb_ulpi_phy_top
 //
-// The FS/LS receivers (RXDP_A, RXDM_A, RXRCV_A) are no longer synchronized
-// here (Plan_60MHz.md P4): usb_rx_fsls_sampler in usb_rx_datapath takes them,
-// and usb_line_state gets its D+ / D- / rxrcv samples from there.
+// The FS/LS receivers (RXDP_A, RXDM_A, RXRCV_A) are not synchronized here
+// (Plan_60MHz.md P4): usb_rx_fsls_sampler in usb_rx_datapath takes them, and
+// usb_line_state gets its D+ / D- / rxrcv samples from there.
 //
-// All inputs are asynchronous (analog comparators).  Two groups (numbered as
-// before P4):
+// Clocking (Plan_60MHz.md P7): every output is a clk60 register.  Only the
+// squelch / disconnect capture stays at bit rate, in a 7-flop clk_bit island
+// (moved here from usb_line_state):
 //
-//   2. squelch, disc -> squelch_s, disc_s: 2-FF synchronizer + glitch filter
-//      on clk_bit.  The output takes a new value once the synchronized input has
-//      held it for flt + 1 consecutive cycles (flt = sq_flt for squelch,
-//      disc_flt for disconnect; 0 = no filtering, 1 cycle after the second
-//      flop).  Shorter pulses are dropped; latency 2 + flt + 1 cycles.
-//      The squelch detector already filters (spec 4.2: 4 ns release / 12 ns
-//      hold); this filter is the digital safety margin against comparator
-//      chatter, so keep sq_flt small (default 2 = 6.25 ns total): it delays the
-//      HS LineState only, not the HS data path (usb_afe_rx_if has its own
-//      squelch synchronizer on clk_rx).
-//   3. a_vbus_vld, sess_vld, sess_end, id_gnd -> *_s: 2-FF synchronizer, then
-//      a debounce counted in ce60 ticks: a new value is taken after it held for
-//      vb_flt + 1 consecutive ticks (VB_W bits: up to 2^16 ticks = 1.09 ms with
-//      the default VB_W = 16, the ms-range debounce of WORK_PLAN 4.1).  These
-//      outputs change on ce60 only, so they are ULPI-domain signals (8-cycle
-//      multicycle paths into usb_ulpi_phy_top).
+//   2. squelch, disc: 2-FF synchronizer on clk_bit, then one value per tick,
+//      taken over on ld (E4, usb_clk_gen boundary rule):
+//        squelch: the synchronized sample at E4;
+//        disc:    the OR of the synchronized samples of the 8 clk_bit edges
+//                 E5 .. E4, so a disconnect pulse of one clk_bit cycle counts
+//                 (the HostDisconnect window of usb_line_state ORs per tick).
+//      Glitch filter on clk60 (usb_rx_status_flt, en = 1): the output takes a
+//      new value once the tick value has held it for flt + 1 consecutive ticks
+//      (flt = sq_flt / disc_flt, in ticks; 0 = no filtering).  Latency from
+//      the input: 2 clk_bit cycles + up to 8 to E4 + 4 to the next clk60 edge
+//      + flt ticks, i.e. 6..14 clk_bit cycles + flt ticks.
+//      Before P7 the filter counted clk_bit cycles (default 2 = 6.25 ns in
+//      total).  The squelch detector already filters (spec 4.2: 4 ns release /
+//      12 ns hold); this filter is the digital margin against comparator
+//      chatter.  Recommended: sq_flt = 1 (the value must be the same at two
+//      E4 samples 16.7 ns apart), disc_flt = 0 (a disconnect within an EOP can
+//      be shorter than two ticks).  It delays the HS LineState only, not the
+//      HS data path (usb_afe_rx_if has its own squelch synchronizer on clk_rx).
+//   3. a_vbus_vld, sess_vld, sess_end, id_gnd: 2-FF synchronizer on clk60,
+//      then a debounce: a new value is taken after it held for vb_flt + 1
+//      consecutive ticks (VB_W bits: up to 2^16 ticks = 1.09 ms with the
+//      default VB_W = 16, the ms-range debounce of WORK_PLAN 4.1).  As before
+//      P7 apart from the synchronizer clock (was clk_bit, with the filter on
+//      ce60): latency 2 ticks + vb_flt + 1 ticks (was 2 cycles + vb_flt + 1).
 //
 // Reset values are the isolated values of DOC/afe_interface_spec.md 3.4 /
-// 3.5: squelch = 1, disc = 0,
-// a_vbus_vld = sess_vld = 0, sess_end = 1, id_gnd = 0.  The filters start in
-// that state, so a status that is already different at reset release shows up
-// after the normal filter delay (and produces the RXCMD it should).
+// 3.5: squelch = 1, disc = 0, a_vbus_vld = sess_vld = 0, sess_end = 1,
+// id_gnd = 0.  The filters start in that state, so a status that is already
+// different at reset release shows up after the normal filter delay (and
+// produces the RXCMD it should).
 //
 // Filter lengths are ports until the trim / config registers exist (WORK_PLAN
 // 6.4); they are quasi-static.
 //
-// Clocking: clk_bit, ce60 enable for group 3; active-low asynchronous reset.
+// Clocks: clk60; clk_bit + ld for the squelch / disconnect island.  Reset
+//   rst_n, active low, asynchronous (also the island's: every island flop holds
+//   its reset value with an input that equals it until the inputs move).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_rx_status_sync #(
-    parameter SQ_W = 4,               // squelch / disconnect filter counter width
-    parameter VB_W = 16               // VBUS / ID debounce counter width (ce60 ticks)
+    parameter SQ_W = 4,               // squelch / disconnect filter counter width (ticks)
+    parameter VB_W = 16               // VBUS / ID debounce counter width (ticks)
 ) (
-    input  wire            clk_bit,
+    input  wire            clk_bit,   // 480 MHz: squelch / disconnect island only
     input  wire            rst_n,
-    input  wire            ce60,
+    input  wire            clk60,     // core clock (usb_clk_gen)
+    input  wire            ld,        // island strobe (usb_clk_gen)
 
     // asynchronous AFE outputs
     input  wire            squelch,
@@ -62,29 +74,54 @@ module usb_rx_status_sync #(
     input  wire            sess_end,
     input  wire            id_gnd,
 
-    // filter lengths (quasi-static)
-    input  wire [SQ_W-1:0] sq_flt,    // squelch: extra clk_bit cycles
-    input  wire [SQ_W-1:0] disc_flt,  // disconnect: extra clk_bit cycles
-    input  wire [VB_W-1:0] vb_flt,    // VBUS / ID: extra ce60 ticks
+    // filter lengths (quasi-static), all in clk60 ticks
+    input  wire [SQ_W-1:0] sq_flt,    // squelch: extra ticks
+    input  wire [SQ_W-1:0] disc_flt,  // disconnect: extra ticks
+    input  wire [VB_W-1:0] vb_flt,    // VBUS / ID: extra ticks
 
-    // synchronized (clk_bit domain)
+    // synchronized + filtered (clk60 domain)
     output wire            squelch_s,
     output wire            disc_s,
-    // synchronized + debounced, change on ce60 only
     output wire            a_vbus_vld_s,
     output wire            sess_vld_s,
     output wire            sess_end_s,
     output wire            id_gnd_s
 );
 
-    // ---------------- 2-FF synchronizers ----------------
-    // reset value = isolated value of each input (bit order as din)
-    localparam [8:3] RST_V = {1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1};
-
-    wire [8:3] din = {id_gnd, sess_end, sess_vld, a_vbus_vld, disc, squelch};
-    reg  [8:3] s1, s2;
-
+    // ---------------- clk_bit island: squelch / disconnect ----------------
+    reg sq1, sq2, dc1, dc2;           // 2-FF synchronizers
+    reg dc_a;                         // disc seen since the last ld
+    reg sq_t, dc_t;                   // tick values (change on ld = E4)
     always @(posedge clk_bit or negedge rst_n) begin
+        if (!rst_n) begin
+            sq1 <= 1'b1; sq2 <= 1'b1; dc1 <= 1'b0; dc2 <= 1'b0;
+            dc_a <= 1'b0; sq_t <= 1'b1; dc_t <= 1'b0;
+        end else begin
+            sq1 <= squelch; sq2 <= sq1;
+            dc1 <= disc;    dc2 <= dc1;
+            if (ld) begin
+                sq_t <= sq2;
+                dc_t <= dc_a | dc2;
+                dc_a <= 1'b0;
+            end else
+                dc_a <= dc_a | dc2;
+        end
+    end
+
+    usb_rx_status_flt #(.W(SQ_W), .RST_V(1'b1)) u_sq (
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(sq_t), .len(sq_flt),
+        .dout(squelch_s));
+    usb_rx_status_flt #(.W(SQ_W), .RST_V(1'b0)) u_disc (
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(dc_t), .len(disc_flt),
+        .dout(disc_s));
+
+    // ---------------- VBUS / ID: 2-FF on clk60, debounce in ticks ----------------
+    // reset value = isolated value of each input (bit order as din)
+    localparam [3:0] RST_V = {1'b0, 1'b1, 1'b0, 1'b0};
+
+    wire [3:0] din = {id_gnd, sess_end, sess_vld, a_vbus_vld};
+    reg  [3:0] s1, s2;
+    always @(posedge clk60 or negedge rst_n) begin
         if (!rst_n) begin
             s1 <= RST_V;
             s2 <= RST_V;
@@ -94,26 +131,17 @@ module usb_rx_status_sync #(
         end
     end
 
-    // ---------------- squelch / disconnect filters (clk_bit) ----------------
-    usb_rx_status_flt #(.W(SQ_W), .RST_V(1'b1)) u_sq (
-        .clk(clk_bit), .rst_n(rst_n), .en(1'b1), .din(s2[3]), .len(sq_flt),
-        .dout(squelch_s));
-    usb_rx_status_flt #(.W(SQ_W), .RST_V(1'b0)) u_disc (
-        .clk(clk_bit), .rst_n(rst_n), .en(1'b1), .din(s2[4]), .len(disc_flt),
-        .dout(disc_s));
-
-    // ---------------- VBUS / ID debounce (ce60 ticks) ----------------
     usb_rx_status_flt #(.W(VB_W), .RST_V(1'b0)) u_avv (
-        .clk(clk_bit), .rst_n(rst_n), .en(ce60), .din(s2[5]), .len(vb_flt),
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(s2[0]), .len(vb_flt),
         .dout(a_vbus_vld_s));
     usb_rx_status_flt #(.W(VB_W), .RST_V(1'b0)) u_sv (
-        .clk(clk_bit), .rst_n(rst_n), .en(ce60), .din(s2[6]), .len(vb_flt),
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(s2[1]), .len(vb_flt),
         .dout(sess_vld_s));
     usb_rx_status_flt #(.W(VB_W), .RST_V(1'b1)) u_se (
-        .clk(clk_bit), .rst_n(rst_n), .en(ce60), .din(s2[7]), .len(vb_flt),
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(s2[2]), .len(vb_flt),
         .dout(sess_end_s));
     usb_rx_status_flt #(.W(VB_W), .RST_V(1'b0)) u_id (
-        .clk(clk_bit), .rst_n(rst_n), .en(ce60), .din(s2[8]), .len(vb_flt),
+        .clk(clk60), .rst_n(rst_n), .en(1'b1), .din(s2[3]), .len(vb_flt),
         .dout(id_gnd_s));
 
 endmodule

@@ -150,8 +150,8 @@ These extend `WORK_PLAN.md`; the phase numbers in brackets point there.
 |---|---|---|
 | `usb_afe_tx_if` (since Plan_60MHz.md P6: `usb_afe_tx_if8` on `clk60` + PISO `usb_tx_piso` on `clk_bit`; pins 9 bit times later, spec 4.1) | Retiming of the TX bit stream into `TX_IN_P/N` (complementary flops), programmable `TX_EN` lead / lag (shift-register delay of the data), HS vs. FS/LS driver select, FS/LS driver controls (`FS_OE`, `FS_DAT`, `FS_SE0`, `FS_LS`), chirp mode, idle clamp. | 6.1, 3.4, 3.5 |
 | `usb_afe_rx_if` | Maps the CDR clock / data and the squelch output onto `usb_rx_datapath`; generates `hs_cdr_lock` from a squelch-release delay; RX enable / power-down per speed. | 6.2 |
-| `usb_pll_lock_det` | Digital PLL lock / loss-of-lock detector (frequency count of `clk_bit` against the reference), plus a CDR sanity check (`clk_rx` frequency within a window while squelched). | 5.3 |
-| `usb_rx_status_sync` | Synchronizers and glitch filters for squelch, disconnect, `rxdp`, `rxdm`, `rxrcv`, VBUS / ID comparators. | 3.1, 4.1 |
+| `usb_pll_lock_det` | Digital PLL lock / loss-of-lock detector (frequency count of `clk_bit` against the reference; since Plan_60MHz.md P7 on `clk60` with the 3 LSBs from a `clk_bit` sample word), plus a CDR sanity check (`clk_rx` frequency within a window while squelched). | 5.3 |
+| `usb_rx_status_sync` | Synchronizers and glitch filters for squelch, disconnect, VBUS / ID comparators (`rxdp`, `rxdm`, `rxrcv`: `usb_rx_fsls_sampler` since Plan_60MHz.md P4; outputs and filters on `clk60` since P7). | 3.1, 4.1 |
 | `usb_line_state` | LineState / event detection from the FS/LS receivers and squelch. | 3.2 |
 | `usb_mode_term_ctrl` | Termination and pull control, ordered switching. | 3.3 |
 | `usb_afe_trim_regs` | Trim / enable register block behind the ULPI vendor registers, with the map from I11. | 6.4, 6.6 |

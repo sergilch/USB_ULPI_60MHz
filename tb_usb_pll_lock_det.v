@@ -25,6 +25,12 @@
 //   * pll_lock never rises while the PLL ratio was grossly off (> 0.3 %) in the
 //     last 3 windows (the window in which an error ends can still average
 //     inside the tolerance), and never while it is off by more than 0.12 % now.
+//   * window length (Plan_60MHz.md P7: clk60 tick count + the position of the
+//     flag change in the clk_bit sample word): at every window end the DUT's
+//     count n_win must equal the number of clk_bit edges between the last two
+//     changes of the reference flag (r_tog) as seen at clk_bit, counted here
+//     with a plain bit-rate counter (the single-clock implementation); only
+//     windows between two real flag changes (not after a timeout or a reset).
 // Cases
 //   [1] reset values; fb_div / refsel_err for all four refsel codes
 //   [2] 24 MHz + 300 ppm: lock within 5 windows after the PLL settles inside
@@ -64,7 +70,7 @@ module tb_usb_pll_lock_det;
     reg        rst_n = 1'b0, pll_en = 1'b0, clk_susp = 1'b0, lol_clr = 1'b0;
     reg  [1:0] refsel = 2'b01;
     wire       clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
-    wire        clk60, ld;           // core clock / island strobe (not used here)
+    wire        clk60, ld;           // core clock / island strobe (usb_clk_gen)
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire       clk_en = pll_lock & !clk_susp;
@@ -74,7 +80,7 @@ module tb_usb_pll_lock_det;
     always @(fb_div) if (fb_div != 5'd0) u_pll.DIV = fb_div;
 
     usb_pll_lock_det dut (
-        .clk_bit(clk_bit), .ref_clk(ref_clk), .rst_n(rst_n), .pll_en(pll_en),
+        .clk_bit(clk_bit), .clk60(clk60), .ld(ld), .ref_clk(ref_clk), .rst_n(rst_n), .pll_en(pll_en),
         .refsel(refsel), .lol_clr(lol_clr),
         .pll_lock(pll_lock), .lol(lol), .fb_div(fb_div), .refsel_err(refsel_err));
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
@@ -226,12 +232,37 @@ module tb_usb_pll_lock_det;
         end
     endtask
 
-    task clear_lol;
+    task clear_lol;                  // one clk60 cycle
         begin
-            @(negedge clk_bit) lol_clr = 1'b1;
-            @(negedge clk_bit) lol_clr = 1'b0;
+            @(negedge clk60) lol_clr = 1'b1;
+            @(negedge clk60) lol_clr = 1'b0;
         end
     endtask
+
+    // =====================================================================
+    // window length reference (bit-rate counter)
+    // =====================================================================
+    integer bc = 0, tr_last = -1, tr_prev = -1, n_wcmp = 0, w_err = 0;
+    reg     rt_q = 1'b0, prev_real = 1'b0, real_e;
+    always @(posedge clk_bit) begin
+        bc = bc + 1;
+        if (dut.r_tog !== rt_q) begin tr_prev = tr_last; tr_last = bc; rt_q = dut.r_tog; end
+    end
+    always @(posedge clk60) begin
+        if (dut.rst_l_n !== 1'b1) prev_real = 1'b0;
+        else if (dut.wend || dut.tout) begin
+            real_e = dut.wend && (bc - tr_last < 32) && (tr_prev >= 0);
+            if (real_e && prev_real && dut.armed && !dut.tout) begin
+                n_wcmp = n_wcmp + 1;
+                if (dut.n_win != tr_last - tr_prev) begin
+                    w_err = w_err + 1;
+                    if (w_err <= 10) $display("ERROR @%0t: window count %0d, bit-rate count %0d",
+                                              $time, dut.n_win, tr_last - tr_prev);
+                end
+            end
+            prev_real = real_e;
+        end
+    end
 
     // full start: pll_en up, measure the lock time against the settling point
     task start_pll(input [8*32-1:0] what);
@@ -374,7 +405,9 @@ module tb_usb_pll_lock_det;
         else $display("    no lock (VCO at %0.1f MHz, ratio %0.3f instead of 20)", u_pll.f_now, u_pll.f_now / 26.0);
 
         $display("    CLKOUT pulses checked: %0d", n_pulse);
-        errors = errors + ck_err + lk_err;
+        $display("    window counts compared: %0d", n_wcmp);
+        if (n_wcmp < 50) begin errors = errors + 1; $display("ERROR: too few window counts compared"); end
+        errors = errors + ck_err + lk_err + w_err;
         if (n60_runs < 1000 || n60_starts < 3) begin
             errors = errors + 1; $display("ERROR: clk60_a check not exercised (%0d runs, %0d starts)", n60_runs, n60_starts);
         end
