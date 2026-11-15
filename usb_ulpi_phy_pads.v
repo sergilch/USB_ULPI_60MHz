@@ -45,8 +45,8 @@
 //   PAD_RESETB is active low.  It resets the core asynchronously and is released
 //   synchronously to the core clock clk60 through two flip-flops, i.e. on the second
 //   clk60 rising edge after the pin (Plan_60MHz.md P2; before: two clk_bit edges).
-//   The TX serializer island inside the core uses the same reset: its release on a
-//   clk60 edge (E0) is a 1-cycle recovery path on clk_bit.  core_rst_n is exported for
+//   Since P6 the core has no clk_bit part left (the TX PISO sits outside, next to the
+//   AFE interface, with its own reset synchronizer when wired in).  core_rst_n is exported for
 //   the blocks that will sit next to usb_ulpi_phy_top (RX datapath, clock / power
 //   control); island clocks get their own synchronizers when they are wired in (P7).
 //   ifc_ctrl is reset with the core, so the protection pulls are on during reset.
@@ -62,9 +62,9 @@
 // Register file: there is exactly one, usb_ulpi_reg_file inside usb_ulpi_phy_top
 //   (u_core.u_rf); this wrapper adds no register storage of its own.
 //
-// Clocking: as usb_ulpi_phy_top (Plan_60MHz.md P2): the core on clk60, the TX
-//   serializer on clk_bit with the island strobe ld, all three from usb_clk_gen.
-//   clkout (CLKOUT, also from usb_clk_gen) is only passed to the CLK pad; it rises
+// Clocking: as usb_ulpi_phy_top (Plan_60MHz.md P2, P6): the core on clk60 only;
+//   the TX line leaves as vectors (txd_v / tx_en_v / tx_se0_v) for usb_afe_tx_if8.
+//   clkout (CLKOUT, from usb_clk_gen) is only passed to the CLK pad; it rises
 //   half a clk_bit period before the clk60 edge on which the core samples and
 //   launches.
 //-----------------------------------------------------------------------------
@@ -85,9 +85,7 @@ module usb_ulpi_phy_pads #(
     inout  wire        PAD_RESETB,
 
     // ---------------- on-chip side ----------------
-    input  wire        clk_bit,      // 480 MHz: TX serializer island
     input  wire        clk60,        // core clock (usb_clk_gen)
-    input  wire        ld,           // island strobe (usb_clk_gen)
     input  wire        clkout,       // CLKOUT (usb_clk_gen), to the CLK pad only
     output wire        core_rst_n,
 
@@ -155,9 +153,9 @@ module usb_ulpi_phy_pads #(
     output wire [3:0]  atb_sel,
     output wire        ana_lpbk,
 
-    output wire        txd,
-    output wire        tx_en,
-    output wire        tx_se0,
+    output wire [7:0]  txd_v,        // TX line vectors (bit 0 first)
+    output wire [7:0]  tx_en_v,
+    output wire [7:0]  tx_se0_v,
     output wire [1:0]  tx_speed,
 
     output wire        busy,
@@ -250,10 +248,8 @@ module usb_ulpi_phy_pads #(
         .DIV_W    (DIV_W),
         .RX_DEPTH (RX_DEPTH)
     ) u_core (
-        .clk_bit       (clk_bit),
         .rst_n         (core_rst_n),
         .clk60         (clk60),
-        .ld            (ld),
         .ulpi_data_in  (ulpi_data_in),
         .ulpi_stp      (ulpi_stp),
         .ulpi_dir      (ulpi_dir),
@@ -310,9 +306,9 @@ module usb_ulpi_phy_pads #(
         .otg_ctrl      (otg_ctrl),
         .cfg_speed     (cfg_speed),
         .cfg_bypass    (cfg_bypass),
-        .txd           (txd),
-        .tx_en         (tx_en),
-        .tx_se0        (tx_se0),
+        .txd_v           (txd_v),
+        .tx_en_v         (tx_en_v),
+        .tx_se0_v        (tx_se0_v),
         .tx_speed      (tx_speed),
         .busy          (busy),
         .tx_done       (tx_done),

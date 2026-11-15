@@ -3,26 +3,33 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_afe_tx_if usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v usb_afe_tx_if.v \
+//            usb_tx_serializer8.v usb_tx_path.v usb_afe_tx_if8.v usb_tx_piso.v tx_vec2ser_bm.v \
 //            afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v afe_fsls_bm.v \
 //            tb_usb_afe_tx_if.v
 //   vvp sim_afe_tx_if
 //
 // Chain (AFE_INTEGRATION_PLAN.md phase A2)
-//   usb_tx_path -> usb_afe_tx_if (DUT) -> afe_hs_tx_bm (T_EN = 20 ns settling,
+//   usb_tx_path (clk60) -> usb_afe_tx_if8 (clk60) + usb_tx_piso (clk_bit) (DUT,
+//   Plan_60MHz.md P6) -> afe_hs_tx_bm (T_EN = 20 ns settling,
 //   0.5 ns delay) and afe_fsls_bm -> afe_line_bm with afe_term_bm at both ends
 //   (HS: 45 Ohm + 45 Ohm; FS / LS: 1.5 kOhm device pull-up, 15 kOhm host
 //   pull-downs) -> line sampler + reference decoder.
 //
 // Checks, at three levels
 //   1. Pins, cycle-exact, every clk_bit cycle (also during reset): a reference
-//      model of the DUT built from the serializer outputs (history ring):
-//      data delayed by tx_lead + 3, hs_tx_en 3 cycles after tx_en (so tx_lead
-//      before the data) until tx_lead + 3 + tx_lag after it, J during
-//      the lead, EOP level held during the lag, hs_tx_n = !hs_tx_p, FS/LS
-//      driver controls, driver select by speed, clamp (drv_dis / iso_en) to the
-//      idle values with the rest of the packet dropped, tx_lead / tx_lag taken
-//      over only when idle, reset values, tx_active.
+//      model built from the serial copy of the serializer vectors
+//      (tx_vec2ser_bm, old bit-serial timing; history ring) gives the pins of
+//      the old single-clock usb_afe_tx_if: data delayed by tx_lead + 3,
+//      hs_tx_en 3 cycles after tx_en (so tx_lead before the data) until
+//      tx_lead + 3 + tx_lag after it, J during the lead, EOP level held during
+//      the lag, FS/LS driver controls, driver select by speed.  The DUT pins
+//      must equal those LAT = 9 cycles later (usb_tx_piso), hs_tx_n = !hs_tx_p,
+//      with the PISO clamp: drv_dis | iso_en registered once, then idle values
+//      until the packet's enables have fallen (the rest dropped), fs_ls 0 and
+//      held to the next FS/LS bit.  tx_lead / tx_lag: the model follows the
+//      DUT's registers and checks they change only after >= 110 idle bits and
+//      are taken over while idle.  Reset values; tx_active high before every
+//      driven enable and low after 40 quiet cycles.
 //   2. Line, electrical, HS: sampled 1.0 ns after every clk_bit edge.  The
 //      line must be idle (< 50 mV) while TX_EN is low or the driver has not
 //      settled (T_EN after TX_EN rose), and J / K with |DP - DM| = 400 mV +-20 mV
@@ -67,6 +74,13 @@ module tb_usb_afe_tx_if;
     reg [2:0] ce_cnt = 3'd0;
     wire ce60 = (ce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt <= ce_cnt + 3'd1;
+    // clk60 / ld as usb_clk_gen (CLAUDE.md TB convention)
+    reg  clk60 = 1'b0;
+    wire ld = (ce_cnt == 3'd3);
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7) clk60 = 1'b1;
+        if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
 
     // ---------------- transmitter (usb_tx_path) ----------------
     reg  [7:0] f_b  [0:255];
@@ -79,11 +93,21 @@ module tb_usb_afe_tx_if;
     wire       f_ready, s_txd, s_en, s_se0, t_busy, t_done, t_under;
     wire [1:0] s_spd;
 
+    wire [7:0] tx_txd_v, tx_en_v, tx_se0_v;
+    wire       tx_done_t, tx_under_t;
+    wire [7:0] tx_pp, tx_phen, tx_poe, tx_pdat, tx_pse0, tx_pany;
+    wire       tx_pls, tx_pact;
     usb_tx_path u_tx (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(spd), .bypass_en(byp_r), .eop_dis(eopd_r),
+        .clk(clk60), .rst_n(rst_n), .speed(spd), .bypass_en(byp_r), .eop_dis(eopd_r),
         .in_valid(f_valid), .in_ready(f_ready), .in_data(f_data), .in_last(f_last),
-        .txd(s_txd), .tx_en(s_en), .tx_se0(s_se0), .tx_speed(s_spd),
-        .busy(t_busy), .tx_done(t_done), .tx_underrun(t_under));
+        .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v), .tx_speed(s_spd),
+        .busy(t_busy), .tx_done(tx_done_t), .tx_underrun(tx_under_t));
+    // serial copy of the line vectors (bit-serial timing, testbench monitors)
+    tx_vec2ser_bm tx_v2s (
+        .clk_bit(clk_bit), .ld(ld), .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v),
+        .tx_done_t(tx_done_t), .tx_underrun_t(tx_under_t),
+        .txd(s_txd), .tx_en(s_en), .tx_se0(s_se0), .tx_done(t_done), .tx_underrun(t_under));
+
 
     always @(posedge clk_bit) begin
         if (rst_n && ce60) begin
@@ -102,13 +126,18 @@ module tb_usb_afe_tx_if;
     reg        drv_dis = 1'b0, iso_en = 1'b0;
     wire       hs_p, hs_n, hs_en, fs_oe, fs_dat, fs_se0, fs_ls, tx_act;
 
-    usb_afe_tx_if dut (
-        .clk_bit(clk_bit), .rst_n(rst_n),
-        .txd(s_txd), .tx_en(s_en), .tx_se0(s_se0), .tx_speed(s_spd),
-        .tx_lead(lead_r), .tx_lag(lag_r), .drv_dis(drv_dis), .iso_en(iso_en), .lead_first(lead_first_r),
+    usb_afe_tx_if8 dut8 (
+        .clk60(clk60), .rst_n(rst_n),
+        .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v), .tx_speed(s_spd),
+        .tx_lead(lead_r), .tx_lag(lag_r), .lead_first(lead_first_r),
+        .hs_p_v(tx_pp), .hs_en_v(tx_phen), .fs_oe_v(tx_poe), .fs_dat_v(tx_pdat), .fs_se0_v(tx_pse0),
+        .any_v(tx_pany), .fs_ls_q(tx_pls), .act(tx_pact));
+    usb_tx_piso dut (
+        .clk_bit(clk_bit), .rst_n(rst_n), .ld(ld),
+        .hs_p_v(tx_pp), .hs_en_v(tx_phen), .fs_oe_v(tx_poe), .fs_dat_v(tx_pdat), .fs_se0_v(tx_pse0),
+        .any_v(tx_pany), .fs_ls_q(tx_pls), .act(tx_pact), .drv_dis(drv_dis), .iso_en(iso_en),
         .hs_tx_p(hs_p), .hs_tx_n(hs_n), .hs_tx_en(hs_en),
-        .fs_oe(fs_oe), .fs_dat(fs_dat), .fs_se0(fs_se0), .fs_ls(fs_ls),
-        .tx_active(tx_act));
+        .fs_oe(fs_oe), .fs_dat(fs_dat), .fs_se0(fs_se0), .fs_ls(fs_ls), .tx_active(tx_act));
 
     // ---------------- analog models ----------------
     real skew_inj = 0.0;                         // ns, extra delay on TX_IN_N
@@ -156,9 +185,19 @@ module tb_usb_afe_tx_if;
     integer k, idx, D, pin_err = 0;
     integer cfg_lead = 0, cfg_lag = 0;
     reg     cfg_tb = 1'b0;
-    reg     kill_tb = 1'b0, clamp_prev = 1'b0, cl_tb = 1'b0, clamp_now, en_in, prev_en_in = 1'b0;
+    reg     cl_tb = 1'b0, en_in, prev_en_in = 1'b0;
     reg     o_hs, o_fs, hs_on;
-    reg     E_p = 1'b1, E_en = 1'b0, E_oe = 1'b0, E_dat = 1'b1, E_se0 = 1'b0, E_ls = 1'b0, E_act;
+    reg     E_p = 1'b1, E_en = 1'b0, E_oe = 1'b0, E_dat = 1'b1, E_se0 = 1'b0, E_ls = 1'b0;
+    // P6: the old single-clock pins E_* (unclamped) delayed by LAT, then the
+    // usb_tx_piso clamp: cq = drv_dis | iso_en registered, kq = cq | kq & enable
+    localparam integer LAT = 9;
+    reg [5:0] U [0:63];                          // {ls, se0, dat, oe, en, p}
+    reg [5:0] rf, rn;
+    reg       cqm = 1'b0, kqm = 1'b0, lsm = 1'b0, F;
+    integer   quiet_s = 0, quiet_p = 0, n_cl_cyc = 0;
+    integer   lead_prev = 0, lag_prev = 0;
+    integer   lead_r_age = 0;
+    reg [4:0] lead_r_prev = 5'd0, lead_q_tb;
 
     task ring_idle;
         integer j;
@@ -189,9 +228,29 @@ module tb_usb_afe_tx_if;
             pin_check("fs_dat", fs_dat, 1'b1);  pin_check("fs_se0", fs_se0, 1'b0);
             pin_check("fs_ls", fs_ls, 1'b0);    pin_check("tx_active", tx_act, 1'b0);
             ring_idle;
-            kill_tb = 1'b0; quiet_tb = 0; lead_tb = 0; lag_tb = 0; clamp_prev = 1'b0; cl_tb = 1'b0; cfg_tb = 1'b0;
+            for (k = 0; k < 64; k = k + 1) U[k] = 6'b001001;
+            quiet_tb = 0; lead_tb = 0; lag_tb = 0; cl_tb = 1'b0; cfg_tb = 1'b0;
+            cqm = 1'b0; kqm = 1'b0; lsm = 1'b0;
             E_p = 1'b1; E_ls = 1'b0;
         end else begin
+            // configuration: what the DUT uses (taken over after 16 idle ticks,
+            // checked below); the window is empty then, so the bit it applies
+            // from does not matter
+            lead_q_tb = ~dut8.nlead_b[4:0];
+            lead_tb = lead_q_tb; lag_tb = dut8.lag_q;
+            if ((lead_tb != lead_prev || lag_tb != lag_prev) && quiet_s < 110) begin
+                pin_err = pin_err + 1;
+                $display("ERROR @%0t: tx_lead / tx_lag taken over %0d cycles after a bit", $time, quiet_s);
+            end
+            lead_r_age = (lead_r == lead_r_prev) ? lead_r_age + 1 : 0;
+            lead_r_prev = lead_r;
+            if (quiet_s > 200 && lead_r_age > 200 && lead_tb != lead_r) begin
+                pin_err = pin_err + 1;
+                $display("ERROR @%0t: tx_lead not taken over while idle", $time);
+            end
+            lead_prev = lead_tb; lag_prev = lag_tb;
+            quiet_s = s_en ? 0 : quiet_s + 1;
+
             // expected pins for this edge (values set at the previous edge)
             D = lead_tb + 3;
             hs_on = 1'b0;
@@ -200,27 +259,34 @@ module tb_usb_afe_tx_if;
             idx  = (n - D) & 63;
             o_hs = H_en[idx] & H_hs[idx];
             o_fs = H_en[idx] & ~H_hs[idx];
-            if (clamp_prev) begin
-                E_p = 1'b1; E_en = 1'b0; E_oe = 1'b0; E_dat = 1'b1; E_se0 = 1'b0; E_ls = 1'b0;
-            end else begin
-                // lead start (TX_EN was low): J, or the first bit with lead_first
-                E_p   = o_hs ? H_d[idx] : (hs_on ? (E_en ? E_p : (lead_first_r ? H_d[(n - 3) & 63] : 1'b1)) : 1'b1);
-                E_en  = hs_on;
-                E_oe  = o_fs;
-                E_dat = ~o_fs | H_d[idx];
-                E_se0 = o_fs & H_se0[idx];
-                E_ls  = o_fs ? H_ls[idx] : E_ls;
-            end
-            E_act = H_en[(n - 1) & 63] | E_en | E_oe;
-            pin_check("hs_tx_p", hs_p, E_p);    pin_check("hs_tx_n", hs_n, ~E_p);
-            pin_check("hs_tx_en", hs_en, E_en); pin_check("fs_oe", fs_oe, E_oe);
-            pin_check("fs_dat", fs_dat, E_dat); pin_check("fs_se0", fs_se0, E_se0);
-            pin_check("fs_ls", fs_ls, E_ls);    pin_check("tx_active", tx_act, E_act);
+            // lead start (TX_EN was low): J, or the first bit with lead_first
+            E_p   = o_hs ? H_d[idx] : (hs_on ? (E_en ? E_p : (lead_first_r ? H_d[(n - 3) & 63] : 1'b1)) : 1'b1);
+            E_en  = hs_on;
+            E_oe  = o_fs;
+            E_dat = ~o_fs | H_d[idx];
+            E_se0 = o_fs & H_se0[idx];
+            E_ls  = o_fs ? H_ls[idx] : E_ls;
+            U[n & 63] = {E_ls, E_se0, E_dat, E_oe, E_en, E_p};
+
+            // DUT pins = old pins LAT cycles earlier, clamped
+            rf = U[(n - LAT) & 63];
+            rn = U[(n - LAT + 1) & 63];
+            F  = cqm | kqm;
+            lsm = F ? 1'b0 : (rf[2] ? rf[5] : lsm);
+            if (F) n_cl_cyc = n_cl_cyc + 1;
+            pin_check("hs_tx_p", hs_p, rf[0] | F);         pin_check("hs_tx_n", hs_n, ~rf[0] & ~F);
+            pin_check("hs_tx_en", hs_en, rf[1] & ~F);      pin_check("fs_oe", fs_oe, rf[2] & ~F);
+            pin_check("fs_dat", fs_dat, rf[3] | F);        pin_check("fs_se0", fs_se0, rf[4] & ~F);
+            pin_check("fs_ls", fs_ls, lsm);
+            // tx_active: high a cycle before every driven enable, low when quiet
+            if ((rn[1] | rn[2]) && !F && !tx_act) pin_check("tx_active", tx_act, 1'b1);
+            quiet_p = (s_en | E_en | E_oe | rf[1] | rf[2]) ? 0 : quiet_p + 1;
+            if (quiet_p > 40) pin_check("tx_active", tx_act, 1'b0);
+            kqm = cqm | (kqm & (rf[1] | rf[2]));
+            cqm = cl_tb;
 
             // history entry of this edge
-            clamp_now = cl_tb;                   // the DUT registers drv_dis | iso_en
-            if (clamp_now) ring_idle;
-            en_in = s_en & ~clamp_now & ~kill_tb;
+            en_in = s_en;
             idx = n & 63;
             H_en[idx]  = en_in;
             H_d[idx]   = ~en_in | s_txd;
@@ -229,12 +295,6 @@ module tb_usb_afe_tx_if;
             H_ls[idx]  = en_in & (s_spd == 2'b10);
             if (en_in && !prev_en_in) begin pk_lead = lead_tb; pk_lag = lag_tb; end
             prev_en_in = en_in;
-            kill_tb = clamp_now | (kill_tb & s_en);
-            if (cfg_tb) begin lead_tb = cfg_lead; lag_tb = cfg_lag; end
-            cfg_tb = (quiet_tb == 127) && !s_en;      // the DUT takes it over one edge later
-            cfg_lead = lead_r; cfg_lag = lag_r;
-            quiet_tb = s_en ? 0 : ((quiet_tb == 127) ? 127 : quiet_tb + 1);
-            clamp_prev = clamp_now;
             cl_tb = drv_dis | iso_en;
             n = n + 1;
         end
@@ -739,8 +799,9 @@ module tb_usb_afe_tx_if;
         hs_pkt(4, 0);
 
         // ---------------- summary ----------------
-        $display("    pins checked for %0d cycles, HS line samples (driver settled) %0d, packets decoded %0d",
-                 n, n_hs_smp, dec_ok);
+        $display("    pins checked for %0d cycles (%0d clamped), HS line samples (driver settled) %0d, packets decoded %0d",
+                 n, n_cl_cyc, n_hs_smp, dec_ok);
+        if (n_cl_cyc < 20) begin errors = errors + 1; $display("ERROR: clamp not exercised"); end
         errors = errors + pin_err + el_err + fs_err;
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED: %0d error(s)", errors);

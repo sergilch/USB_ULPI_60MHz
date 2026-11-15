@@ -4,7 +4,7 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -I AFE/ams -o sim_ams_link_shadow usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v usb_afe_tx_if.v \
+//            usb_tx_serializer8.v usb_tx_path.v usb_afe_tx_if8.v usb_tx_piso.v tx_vec2ser_bm.v \
 //            usb_afe_rx_if.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v usb_rx_hs_sipo.v \
 //            usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v usb_rx_datapath.v \
 //            usb_rx_status_flt.v usb_rx_status_sync.v usb_line_state.v usb_mode_term_ctrl.v \

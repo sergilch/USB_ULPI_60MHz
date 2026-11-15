@@ -4,7 +4,7 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_pwr_seq usb_pwr_seq.v usb_pll_lock_det.v usb_clk_gen.v \
-//            usb_afe_tx_if.v usb_afe_rx_if.v usb_mode_term_ctrl.v usb_rx_status_flt.v \
+//            usb_afe_tx_if8.v usb_tx_piso.v usb_afe_rx_if.v usb_mode_term_ctrl.v usb_rx_status_flt.v \
 //            usb_rx_status_sync.v usb_rx_fsls_sampler.v afe_pll_bm.v tb_usb_pwr_seq.v
 //   vvp sim_pwr_seq
 //
@@ -12,7 +12,7 @@
 //   ref_clk 24 MHz + 200 ppm -> afe_pll_bm (TAU 5 us) -> clk_bit ->
 //   usb_pll_lock_det + usb_clk_gen (clk_en = clk_en_b) and usb_pwr_seq.  On the
 //   clk_bit side, reset by core_rst_n_b and isolated by iso_en_b:
-//   usb_afe_tx_if, usb_afe_rx_if (rx_en = afe_en_b, HS), usb_mode_term_ctrl (FS
+//   usb_afe_tx_if8 (clk60) + usb_tx_piso, usb_afe_rx_if (rx_en = afe_en_b, HS), usb_mode_term_ctrl (FS
 //   peripheral: pull-up on), usb_rx_status_sync.  An isolation-cell model on the
 //   AFE side clamps every digital output to its isolated value while the iso_en
 //   pin is 1.  While VDD33 is off (from 200 ns after pwr_good falls until it
@@ -71,7 +71,7 @@ module tb_usb_pwr_seq;
 
     // ---------------- DUT chain ----------------
     wire clk_bit, pll_lock, lol, refsel_err, ce60, clkout, clk_on;
-    wire        clk60, ld;           // core clock (not used here) / island strobe
+    wire        clk60, ld;           // core clock (TX vectors) / island strobe
     wire  [3:0] phase_j;
     wire [4:0] fb_div;
     wire bias_en, ldo_en, pll_en, iso_en, core_rst_n_b, iso_en_b, afe_en_b, dir_hold_b, clk_en_b, pll_err;
@@ -93,21 +93,29 @@ module tb_usb_pwr_seq;
         .core_rst_n_b(core_rst_n_b), .iso_en_b(iso_en_b), .afe_en_b(afe_en_b),
         .dir_hold_b(dir_hold_b), .clk_en_b(clk_en_b), .state(state), .pll_err(pll_err));
 
-    // TX: idle, or a stream of HS packets while tx_on
-    reg tx_on = 1'b0, txd = 1'b1, tx_en = 1'b0;
-    always @(posedge clk_bit) begin
+    // TX: idle, or a stream of HS packets while tx_on (serializer-like vectors on clk60)
+    reg       tx_on = 1'b0;
+    reg [7:0] txd_v = 8'hFF, tx_en_v = 8'h00;
+    always @(posedge clk60) begin
         if (tx_on && core_rst_n_b) begin
-            tx_en <= ({$random} % 64) != 0 || tx_en;
-            txd   <= $random;
-            if (({$random} % 200) == 0) tx_en <= 1'b0;
+            tx_en_v <= (({$random} % 25) == 0) ? 8'h00 : 8'hFF;
+            txd_v   <= $random;
         end else begin
-            tx_en <= 1'b0; txd <= 1'b1;
+            tx_en_v <= 8'h00; txd_v <= 8'hFF;
         end
     end
+
+    wire [7:0] p_p, p_hen, p_oe, p_dat, p_se0, p_any;
+    wire       p_ls, p_act;
+    usb_afe_tx_if8 u_tx8 (.clk60(clk60), .rst_n(core_rst_n_b),
+        .txd_v(txd_v), .tx_en_v(tx_en_v), .tx_se0_v(8'h00), .tx_speed(2'b00),
+        .tx_lead(5'd10), .tx_lag(3'd0), .lead_first(1'b0),
+        .hs_p_v(p_p), .hs_en_v(p_hen), .fs_oe_v(p_oe), .fs_dat_v(p_dat), .fs_se0_v(p_se0),
+        .any_v(p_any), .fs_ls_q(p_ls), .act(p_act));
     wire hs_tx_p, hs_tx_n, hs_tx_en, fs_oe, fs_dat, fs_se0, fs_ls, tx_active;
-    usb_afe_tx_if u_tx (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .txd(txd), .tx_en(tx_en),
-        .tx_se0(1'b0), .tx_speed(2'b00), .tx_lead(5'd10), .tx_lag(3'd0), .drv_dis(1'b0),
-        .iso_en(iso_en_b), .lead_first(1'b0),
+    usb_tx_piso u_tx (.clk_bit(clk_bit), .rst_n(core_rst_n_b), .ld(ld),
+        .hs_p_v(p_p), .hs_en_v(p_hen), .fs_oe_v(p_oe), .fs_dat_v(p_dat), .fs_se0_v(p_se0),
+        .any_v(p_any), .fs_ls_q(p_ls), .act(p_act), .drv_dis(1'b0), .iso_en(iso_en_b),
         .hs_tx_p(hs_tx_p), .hs_tx_n(hs_tx_n), .hs_tx_en(hs_tx_en), .fs_oe(fs_oe), .fs_dat(fs_dat),
         .fs_se0(fs_se0), .fs_ls(fs_ls), .tx_active(tx_active));
 

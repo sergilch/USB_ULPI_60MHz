@@ -30,7 +30,7 @@ These blocks exist in RTL. All 22 RTL testbenches (plus 4 for the AFE behavioura
 | Register read data merge | `usb_ulpi_burst_mux` | Done. 2026-11-10 fix: no PHY burst starts while `rd_pend` = 1. Before, a pending RXCMD went out in the read-data cycle, ahead of the register byte. Found by `tb_usb_ulpi_phy_pads` |
 | TX Holding Reg / Ctrl | `usb_tx_holding` | Done, unit-tested |
 | Bit Stuffer | `usb_bit_stuffer` | Done, unit-tested |
-| Serializer 8:1 + EOP Gen | `usb_tx_serializer` | Done, unit-tested |
+| Serializer 8:1 + EOP Gen | `usb_tx_serializer8` (clk60, 8 bits per tick, Plan_60MHz.md P6); `usb_tx_serializer` = bit-serial reference model | Done, unit-tested (`tb_usb_tx_vec`: bit-exact against the reference) |
 | ULPI Register File (immediate map 00h–18h, mirrored at extended 00h–3Fh) | `usb_ulpi_reg_file` | Done, unit-tested. 2026-11-10 fix: extended 00h–3Fh now reach the immediate registers (ULPI 1.1 §4); before, they read 00h and ignored writes. Reads are answered in the same tick (needed for the fixed read timing). It is the only register file in the design (`u_core.u_rf`) |
 | SYNC + PID/Data Mux | `usb_tx_sync_mux` | Done, unit-tested (added 2026-11-08) |
 | NRZI Encoder | `usb_nrzi_encoder` | Done, unit-tested (added 2026-11-08) |
@@ -187,7 +187,7 @@ The boundary to the existing analog blocks (pin mapping, `TX_EN` lead / lag, dig
 
 | ID | Task |
 |---|---|
-| 6.1 | **TX data boundary**: retiming flops for `txd`, `tx_en`, `tx_se0`, driver-mode decode from `tx_speed`, clamped to idle when TX is disabled or isolated. ✅ 2026-11-10: `usb_afe_tx_if` (AFE plan A2), with the `TX_EN` lead / lag and the FS/LS driver controls; `tx_lead` / `tx_lag` / `drv_dis` / `iso_en` are ports until 6.4, 5.4 and the OpMode logic drive them. Not wired into the top level yet (8.1). |
+| 6.1 | **TX data boundary**: retiming flops for `txd`, `tx_en`, `tx_se0`, driver-mode decode from `tx_speed`, clamped to idle when TX is disabled or isolated. ✅ 2026-11-10: `usb_afe_tx_if` (AFE plan A2; since 2026-11-15 split into `usb_afe_tx_if8` on clk60 + `usb_tx_piso` on clk_bit, Plan_60MHz.md P6), with the `TX_EN` lead / lag and the FS/LS driver controls; `tx_lead` / `tx_lag` / `drv_dis` / `iso_en` are ports until 6.4, 5.4 and the OpMode logic drive them. Not wired into the top level yet (8.1). |
 | 6.2 | **RX data capture / clock buffer**: capture flops for `rxd` on the recovered clock, data gated until CDR lock (`rx_valid_lock`). ✅ 2026-11-10: capture and gating in `usb_rx_hs_frontend` (Phase 2); `usb_afe_rx_if` (AFE plan A3) adds `RX_EN` / `CDR_EN`, input isolation, `hs_cdr_lock` from a squelch-release delay (`lock_dly`) and squelch-latency compensation (`sq_comp`). Config inputs are ports until 6.4; not wired into the top level yet (8.1). |
 | 6.3 | **Termination / pull outputs**: output registers for the Phase 3 controls, safe reset defaults. |
 | 6.4 | **Trim / enable register block**: a config-bus slave reached through the ULPI extended or vendor register map (e.g. 30h–3Fh or the extended map via 2Fh). Holds trims for HS driver current, HS termination, squelch/disconnect thresholds, VBUS comparator thresholds, PLL/CDR bias and LDO; uses shadow registers with an update strobe and safe reset defaults. The register map must be agreed with the analog team. ✅ 2026-11-11: `usb_afe_trim_regs` at 30h–3Fh with the spec 6 field list as a proposal (widths and defaults wait for I11 / Q11), plus TEST (ATB select, analog loopback), PWR_STAT and lol_clr; `tb_usb_afe_trim_regs`. |

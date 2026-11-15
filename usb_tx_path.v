@@ -3,15 +3,15 @@
 //
 // Serial back end of the USB 2.0 PHY TX path (HS / FS / LS):
 //
-//   SYNC/PID mux -> [ usb_bit_stuffer -> usb_nrzi_encoder -> usb_tx_serializer ]
-//                                                              -> txd / tx_en / tx_se0
+//   SYNC/PID mux -> [ usb_bit_stuffer -> usb_nrzi_encoder -> usb_tx_serializer8 ]
+//                                                -> txd_v / tx_en_v / tx_se0_v (clk60)
 //
 // Input: the byte stream of one packet (SYNC, PID, payload, as built by
 //   usb_tx_sync_mux), ready/valid, in_last on the last byte, bit 0 sent first.
 //   Packets must have at least one byte (EOP-only packets are not supported by
 //   the bit stuffer).
-// Output: line signals as described in usb_tx_serializer (txd J = 1 / K = 0,
-//   tx_en, tx_se0, tx_speed), EOP appended by the serializer.
+// Output: line signal vectors as described in usb_tx_serializer8 (txd J = 1 /
+//   K = 0, tx_en, tx_se0 per bit, tx_speed), EOP appended by the serializer.
 //
 // Configuration (static during a packet)
 //   speed     : XcvrSelect, 00 HS, 01 FS, 10 LS, 11 sent at the FS rate;
@@ -20,11 +20,11 @@
 //               sent as line levels.  SYNC / EOP are still sent (SYNC can be
 //               disabled upstream with sync_dis).
 //   eop_dis   : 1 = no EOP at the end of the packet (OpMode 10 chirp / K
-//               signalling, see usb_tx_serializer and usb_mode_term_ctrl).
+//               signalling, see usb_tx_serializer8 and usb_mode_term_ctrl).
 //
-// Underrun (HS: the serializer did not get a word in time; it ends the packet
-//   with an EOP and pulses tx_underrun): the rest of the aborted packet is still
-//   in the stuffer or upstream.  This block discards it (drop = 1: the stuffer
+// Underrun (the serializer did not get a word in time; it ends the packet
+//   with an EOP and pulses tx_underrun for one tick): the rest of the aborted
+//   packet is still in the stuffer or upstream.  This block discards it (drop = 1: the stuffer
 //   output is drained and not passed on) up to and including the stuffer's last
 //   word of that packet, so it is not sent as a second, bogus packet.  The next
 //   packet is sent normally.
@@ -34,32 +34,25 @@
 //   packet may already enter the stuffer while the serializer is still sending
 //   the EOP of the previous one.
 //
-// Clocking (parameter SPLIT)
-//   SPLIT = 0: everything on clk_bit; the byte / word interfaces use the tick
-//     enable ce60 (one clk_bit cycle in eight, aligned with clk60).  clk60 and
-//     ld are not used.  This is the single-clock design, used by the AFE-level
-//     testbenches until P6 of Plan_60MHz.md.
-//   SPLIT = 1 (Plan_60MHz.md P2): the stuffer, the NRZI encoder and the discard
-//     logic run on clk60 (ce = 1); the serializer stays on clk_bit behind
-//     usb_tx_ser_bridge (crossings on ld only).  ce60 is not used.  The input
-//     side behaves tick for tick as with SPLIT = 0; the line outputs and the
-//     raw tx_done / tx_underrun pulses come 4 clk_bit cycles earlier
-//     (usb_tx_ser_bridge header, tb_usb_tx_path_split).  busy is a clk60-side
-//     signal; the discard logic uses the bridge's one-tick tx_underrun_t.
+// Parameters: FS_DIV / LS_DIV stay in clk_bit cycles per bit (40 / 320, must
+//   be multiples of 8); the serializer counts ticks (FS_DIV / 8, LS_DIV / 8).
+//
+// Clocking (Plan_60MHz.md P6): clk60 only (the leaves' ce tied to 1).  The
+//   serializer is usb_tx_serializer8: the line comes out as 8-bit vectors per
+//   tick (txd_v / tx_en_v / tx_se0_v, bit 0 first) for usb_afe_tx_if8 and
+//   usb_tx_piso, the only 480 MHz stage.  tx_done / tx_underrun are one-tick
+//   pulses.  The input side behaves tick for tick as the old bit-serial path
+//   (usb_tx_serializer, kept as a reference model; tb_usb_tx_vec).
 //-----------------------------------------------------------------------------
 `timescale 1ns/1ps
 
 module usb_tx_path #(
-    parameter FS_DIV = 40,
-    parameter LS_DIV = 320,
-    parameter DIV_W  = 9,
-    parameter SPLIT  = 0          // 1 = byte side on clk60, serializer bridged
+    parameter FS_DIV = 40,        // clk_bit cycles per FS bit (multiple of 8)
+    parameter LS_DIV = 320,       // clk_bit cycles per LS bit (multiple of 8)
+    parameter DIV_W  = 9          // >= clog2(LS_DIV); the serializer counts ticks (DIV_W - 3 bits)
 ) (
-    input  wire        clk_bit,
+    input  wire        clk,          // clk60
     input  wire        rst_n,
-    input  wire        ce60,         // SPLIT = 0 only
-    input  wire        clk60,        // SPLIT = 1 only
-    input  wire        ld,           // SPLIT = 1 only (usb_clk_gen)
 
     input  wire [1:0]  speed,
     input  wire        bypass_en,
@@ -70,9 +63,9 @@ module usb_tx_path #(
     input  wire [7:0]  in_data,
     input  wire        in_last,
 
-    output wire        txd,
-    output wire        tx_en,
-    output wire        tx_se0,
+    output wire [7:0]  txd_v,
+    output wire [7:0]  tx_en_v,
+    output wire [7:0]  tx_se0_v,
     output wire [1:0]  tx_speed,
 
     output wire        busy,
@@ -91,22 +84,18 @@ module usb_tx_path #(
     wire [3:0]  n_nbits;
 
     wire        ser_ready, ser_busy;
-    wire        ser_underrun;    // underrun as seen by the discard logic
 
-    reg         drop;        // discarding the rest of an underrun packet
+    reg         drop;            // discarding the rest of an underrun packet
     reg         pkt_open;        // a packet is inside the stuffer (first byte in, last word not out)
 
-    // clock / enable of the byte side (constant select)
-    wire        clk_w = SPLIT ? clk60 : clk_bit;
-    wire        ce_w  = SPLIT ? 1'b1  : ce60;
-    // SPLIT = 1: the bridge's one-tick underrun is used at once (with drop),
-    // so the discard starts on the same tick as with SPLIT = 0
-    wire        drop_now = drop | (SPLIT ? ser_underrun : 1'b0);
+    // the one-tick underrun is used at once (with drop), so the discard starts
+    // on the tick after the missing word, as in the bit-serial design
+    wire        drop_now = drop | tx_underrun;
 
     usb_bit_stuffer u_stuff (
-        .clk       (clk_w),
+        .clk       (clk),
         .rst_n     (rst_n),
-        .ce        (ce_w),
+        .ce        (1'b1),
         .stuff_dis (bypass_en),
         .in_valid  (in_valid),
         .in_ready  (in_ready),
@@ -120,9 +109,9 @@ module usb_tx_path #(
     );
 
     usb_nrzi_encoder u_nrzi (
-        .clk       (clk_w),
+        .clk       (clk),
         .rst_n     (rst_n),
-        .ce        (ce_w),
+        .ce        (1'b1),
         .bypass_en (bypass_en),
         .in_valid  (s_valid),
         .in_ready  (s_ready),
@@ -139,67 +128,38 @@ module usb_tx_path #(
     // discard gate: while drop = 1 the words are consumed here, not by the serializer
     assign n_ready = drop_now ? 1'b1 : ser_ready;
 
-    generate
-        if (SPLIT) begin : g_split
-            usb_tx_ser_bridge #(
-                .FS_DIV (FS_DIV),
-                .LS_DIV (LS_DIV),
-                .DIV_W  (DIV_W)
-            ) u_ser (
-                .clk_bit       (clk_bit),
-                .rst_n         (rst_n),
-                .ld            (ld),
-                .speed         (speed),
-                .eop_dis       (eop_dis),
-                .in_valid      (n_valid && !drop_now),
-                .in_ready      (ser_ready),
-                .in_data       (n_data),
-                .in_nbits      (n_nbits),
-                .in_last       (n_last),
-                .busy_t        (ser_busy),
-                .tx_done_t     (),
-                .tx_underrun_t (ser_underrun),
-                .txd           (txd),
-                .tx_en         (tx_en),
-                .tx_se0        (tx_se0),
-                .tx_speed      (tx_speed),
-                .tx_done       (tx_done),
-                .tx_underrun   (tx_underrun)
-            );
-        end else begin : g_single
-            usb_tx_serializer #(
-                .FS_DIV (FS_DIV),
-                .LS_DIV (LS_DIV),
-                .DIV_W  (DIV_W)
-            ) u_ser (
-                .clk_bit     (clk_bit),
-                .rst_n       (rst_n),
-                .ce60        (ce60),
-                .speed       (speed),
-                .eop_dis     (eop_dis),
-                .in_valid    (n_valid && !drop),
-                .in_ready    (ser_ready),
-                .in_data     (n_data),
-                .in_nbits    (n_nbits),
-                .in_last     (n_last),
-                .txd         (txd),
-                .tx_en       (tx_en),
-                .tx_se0      (tx_se0),
-                .tx_speed    (tx_speed),
-                .busy        (ser_busy),
-                .tx_done     (tx_done),
-                .tx_underrun (tx_underrun)
-            );
-            assign ser_underrun = tx_underrun;
-        end
-    endgenerate
+    initial if ((FS_DIV % 8) != 0 || (LS_DIV % 8) != 0)
+        $display("ERROR: usb_tx_path FS_DIV / LS_DIV must be multiples of 8");
 
-    wire in_xfer   = ce_w && in_valid && in_ready;
-    wire last_word = ce_w && n_valid && n_ready && n_last;   // stuffer released its last word
+    usb_tx_serializer8 #(
+        .FS_TK (FS_DIV / 8),
+        .LS_TK (LS_DIV / 8),
+        .TK_W  (DIV_W - 3)
+    ) u_ser (
+        .clk         (clk),
+        .rst_n       (rst_n),
+        .speed       (speed),
+        .eop_dis     (eop_dis),
+        .in_valid    (n_valid && !drop_now),
+        .in_ready    (ser_ready),
+        .in_data     (n_data),
+        .in_nbits    (n_nbits),
+        .in_last     (n_last),
+        .txd_v       (txd_v),
+        .tx_en_v     (tx_en_v),
+        .tx_se0_v    (tx_se0_v),
+        .tx_speed    (tx_speed),
+        .busy        (ser_busy),
+        .tx_done     (tx_done),
+        .tx_underrun (tx_underrun)
+    );
 
-    always @(posedge clk_w or negedge rst_n) begin
+    wire in_xfer   = in_valid && in_ready;
+    wire last_word = n_valid && n_ready && n_last;   // stuffer released its last word
+
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            drop <= 1'b0;
+            drop     <= 1'b0;
             pkt_open <= 1'b0;
         end else begin
             if (in_xfer)
@@ -209,13 +169,12 @@ module usb_tx_path #(
 
             // tx_underrun can only pulse while the packet's last word has not
             // reached the serializer, so the rest of the packet is still pending.
-            // The release has priority: with SPLIT = 1 the one-tick underrun
-            // can come on the tick on which the last word is discarded
-            // (drop_now), and then nothing is left to discard.  (SPLIT = 0:
-            // the pulse is never on an E0, so both never coincide.)
+            // The release has priority: the one-tick underrun can come on the
+            // tick on which the last word is discarded (drop_now), and then
+            // nothing is left to discard.
             if (last_word)
                 drop <= 1'b0;
-            else if (ser_underrun)
+            else if (tx_underrun)
                 drop <= 1'b1;
         end
     end

@@ -4,8 +4,8 @@
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_top usb_ulpi_input_capture.v usb_ulpi_bus_owner.v \
 //            usb_tx_holding.v usb_tx_sync_mux.v usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v usb_tx_datapath.v usb_ulpi_tx_top.v \
-//            tb_usb_ulpi_tx_top.v
+//            usb_tx_serializer8.v usb_tx_path.v usb_tx_datapath.v usb_ulpi_tx_top.v \
+//            tx_vec2ser_bm.v tb_usb_ulpi_tx_top.v
 //   vvp sim_top
 //
 // Pin level, like a real ULPI system:
@@ -71,14 +71,19 @@ module tb_usb_ulpi_tx_top;
     wire [7:0] lnk_data_o;
     wire [5:0] cmd_addr;
     wire       txd, tx_en, tx_se0;
+    // line vectors (clk60) -> serial line signals with the bit-serial timing
+    wire [7:0] txd_v, tx_en_v, tx_se0_v;
+    wire       done_t, under_t;
+    tx_vec2ser_bm u_v2s (
+        .clk_bit(clk_bit), .ld(ld), .txd_v(txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v),
+        .tx_done_t(done_t), .tx_underrun_t(under_t),
+        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_done(tx_done), .tx_underrun(tx_underrun));
     wire [1:0] tx_speed;
     wire       busy, tx_done, tx_underrun;
 
     usb_ulpi_tx_top #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
-        .clk_bit       (clk_bit),
         .rst_n         (rst_n),
         .clk60          (clk60),
-        .ld             (ld),
         .ulpi_data_in  (lk_data),
         .ulpi_stp      (lk_stp),
         .ulpi_dir      (ulpi_dir),
@@ -102,13 +107,13 @@ module tb_usb_ulpi_tx_top;
         .cmd_regr      (cmd_regr),
         .cmd_ext       (cmd_ext),
         .cmd_addr      (cmd_addr),
-        .txd           (txd),
-        .tx_en         (tx_en),
-        .tx_se0        (tx_se0),
+        .txd_v           (txd_v),
+        .tx_en_v         (tx_en_v),
+        .tx_se0_v        (tx_se0_v),
         .tx_speed      (tx_speed),
         .busy          (busy),
-        .tx_done       (tx_done),
-        .tx_underrun   (tx_underrun)
+        .tx_done       (done_t),
+        .tx_underrun   (under_t)
     );
 
     integer errors = 0;

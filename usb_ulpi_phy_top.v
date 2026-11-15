@@ -18,7 +18,7 @@
 //     termination / pull-down enables (USB3320 Table 5-1, break before make, in
 //     clk60 ticks), and the TX framing: OpMode 10 = no bit stuffing, no NRZI, no SYNC
 //     (cfg_bypass, sync_dis) and no EOP except for a host at FS / LS (resume K);
-//     OpMode 01 = drv_dis (drivers off, for usb_afe_tx_if).  iso_en (from
+//     OpMode 01 = drv_dis (drivers off, clamp of usb_tx_piso).  iso_en (from
 //     usb_pwr_seq, clk_bit side) turns all enables off.  OpMode 11 transmits like 00
 //     (not supported).
 //   * Vendor registers 30h-3Fh (usb_afe_trim_regs, AFE plan A7): AFE trims with a
@@ -27,14 +27,12 @@
 //     exported as they are: reacting to them (resetting the PHY core, entering low
 //     power and holding DIR) belongs to the blocks that are still to be written.
 //
-// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
-// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
-// serializer stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
-// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
-// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
-// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
-// than in the single-clock design; every ULPI-side event is in the same tick.
-// All other inputs and outputs are clk60-domain signals.
+// Clocking (Plan_60MHz.md P2, P6): everything runs on the 60 MHz core clock clk60
+// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Since P6 the
+// TX line leaves as 8-bit vectors per tick (txd_v / tx_en_v / tx_se0_v, bit 0
+// first, usb_tx_serializer8); the bit-rate stage (usb_afe_tx_if8 ->
+// usb_tx_piso) sits outside.  All inputs and outputs are clk60-domain signals;
+// tx_done / tx_underrun are one-tick pulses.
 //   In particular the status inputs (rx_*, linestate, host_disc, VBUS / ID,
 //   iso_en, pwr_state, pll_*, lol) must come from clk60 flops or from island
 //   registers that change on ld; the modules that produce them are still on
@@ -49,10 +47,8 @@ module usb_ulpi_phy_top #(
     parameter DIV_W    = 9,
     parameter RX_DEPTH = 8
 ) (
-    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
-    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
+    input  wire        clk60,        // core clock (usb_clk_gen)
 
     // ULPI pins
     input  wire [7:0]  ulpi_data_in,
@@ -126,9 +122,9 @@ module usb_ulpi_phy_top #(
     output wire        ana_lpbk,
 
     // transmitter side
-    output wire        txd,
-    output wire        tx_en,
-    output wire        tx_se0,
+    output wire [7:0]  txd_v,        // TX line vectors (bit 0 first)
+    output wire [7:0]  tx_en_v,
+    output wire [7:0]  tx_se0_v,
     output wire [1:0]  tx_speed,
 
     output wire        busy,
@@ -183,10 +179,8 @@ module usb_ulpi_phy_top #(
         .DIV_W    (DIV_W),
         .RX_DEPTH (RX_DEPTH)
     ) u_phy (
-        .clk_bit       (clk_bit),
         .rst_n         (rst_n),
         .clk60          (clk60),
-        .ld             (ld),
         .ulpi_data_in  (ulpi_data_in),
         .ulpi_stp      (ulpi_stp),
         .ulpi_dir      (ulpi_dir),
@@ -217,9 +211,9 @@ module usb_ulpi_phy_top #(
         .reg_wdata     (reg_wdata),
         .reg_rdata     (reg_rdata),
         .rd_valid      (rd_valid),
-        .txd           (txd),
-        .tx_en         (tx_en),
-        .tx_se0        (tx_se0),
+        .txd_v           (txd_v),
+        .tx_en_v         (tx_en_v),
+        .tx_se0_v        (tx_se0_v),
         .tx_speed      (tx_speed),
         .busy          (busy),
         .tx_done       (tx_done),

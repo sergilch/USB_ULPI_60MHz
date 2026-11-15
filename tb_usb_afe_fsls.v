@@ -3,8 +3,8 @@
 //                     (AFE_INTEGRATION_PLAN.md phase A5)
 //
 // Run (Icarus Verilog):
-//   iverilog -g2005 -o sim_afe_fsls usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer.v \
-//            usb_tx_path.v usb_afe_tx_if.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
+//   iverilog -g2005 -o sim_afe_fsls usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer8.v \
+//            usb_tx_path.v usb_afe_tx_if8.v usb_tx_piso.v tx_vec2ser_bm.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
 //            usb_rx_hs_sipo.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v \
 //            usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v usb_line_state.v \
 //            afe_line_bm.v afe_term_bm.v afe_fsls_bm.v tb_usb_afe_fsls.v
@@ -112,15 +112,31 @@ module tb_usb_afe_fsls;
     wire [1:0] d_spd;
     wire d_hp, d_hn, d_hen, d_oe, d_dat, d_fse0, d_fls, d_act;
 
+    wire [7:0] dt_txd_v, dt_en_v, dt_se0_v;
+    wire       dt_done_t, dt_under_t;
+    wire [7:0] dt_pp, dt_phen, dt_poe, dt_pdat, dt_pse0, dt_pany;
+    wire       dt_pls, dt_pact;
     usb_tx_path u_dtx (
-        .clk_bit(clk_bit), .rst_n(rst_n), .ce60(ce60), .speed(spd), .bypass_en(1'b0), .eop_dis(1'b0),
+        .clk(clk60), .rst_n(rst_n), .speed(spd), .bypass_en(1'b0), .eop_dis(1'b0),
         .in_valid(d_valid), .in_ready(d_ready), .in_data(d_data), .in_last(d_last),
-        .txd(d_txd), .tx_en(d_en), .tx_se0(d_se0), .tx_speed(d_spd),
-        .busy(d_busy), .tx_done(d_done), .tx_underrun(d_under));
-    usb_afe_tx_if u_dafe (
-        .clk_bit(clk_bit), .rst_n(rst_n),
-        .txd(d_txd), .tx_en(d_en), .tx_se0(d_se0), .tx_speed(d_spd),
-        .tx_lead(5'd10), .tx_lag(3'd0), .drv_dis(1'b0), .iso_en(1'b0), .lead_first(1'b0),
+        .txd_v(dt_txd_v), .tx_en_v(dt_en_v), .tx_se0_v(dt_se0_v), .tx_speed(d_spd),
+        .busy(d_busy), .tx_done(dt_done_t), .tx_underrun(dt_under_t));
+    // serial copy of the line vectors (bit-serial timing, testbench monitors)
+    tx_vec2ser_bm dt_v2s (
+        .clk_bit(clk_bit), .ld(ld), .txd_v(dt_txd_v), .tx_en_v(dt_en_v), .tx_se0_v(dt_se0_v),
+        .tx_done_t(dt_done_t), .tx_underrun_t(dt_under_t),
+        .txd(d_txd), .tx_en(d_en), .tx_se0(d_se0), .tx_done(d_done), .tx_underrun(d_under));
+
+    usb_afe_tx_if8 u_dafe8 (
+        .clk60(clk60), .rst_n(rst_n),
+        .txd_v(dt_txd_v), .tx_en_v(dt_en_v), .tx_se0_v(dt_se0_v), .tx_speed(d_spd),
+        .tx_lead(5'd10), .tx_lag(3'd0), .lead_first(1'b0),
+        .hs_p_v(dt_pp), .hs_en_v(dt_phen), .fs_oe_v(dt_poe), .fs_dat_v(dt_pdat), .fs_se0_v(dt_pse0),
+        .any_v(dt_pany), .fs_ls_q(dt_pls), .act(dt_pact));
+    usb_tx_piso u_dafe (
+        .clk_bit(clk_bit), .rst_n(rst_n), .ld(ld),
+        .hs_p_v(dt_pp), .hs_en_v(dt_phen), .fs_oe_v(dt_poe), .fs_dat_v(dt_pdat), .fs_se0_v(dt_pse0),
+        .any_v(dt_pany), .fs_ls_q(dt_pls), .act(dt_pact), .drv_dis(1'b0), .iso_en(1'b0),
         .hs_tx_p(d_hp), .hs_tx_n(d_hn), .hs_tx_en(d_hen),
         .fs_oe(d_oe), .fs_dat(d_dat), .fs_se0(d_fse0), .fs_ls(d_fls), .tx_active(d_act));
 
@@ -129,15 +145,31 @@ module tb_usb_afe_fsls;
     wire [1:0] h_spd;
     wire h_hp, h_hn, h_hen, h_oe, h_dat, h_fse0, h_fls, h_act;
 
+    wire [7:0] ht_txd_v, ht_en_v, ht_se0_v;
+    wire       ht_done_t, ht_under_t;
+    wire [7:0] ht_pp, ht_phen, ht_poe, ht_pdat, ht_pse0, ht_pany;
+    wire       ht_pls, ht_pact;
     usb_tx_path u_htx (
-        .clk_bit(clk_far), .rst_n(rst_n), .ce60(ce_far), .speed(spd), .bypass_en(1'b0), .eop_dis(1'b0),
+        .clk(clk60_far), .rst_n(rst_n), .speed(spd), .bypass_en(1'b0), .eop_dis(1'b0),
         .in_valid(h_valid), .in_ready(h_ready), .in_data(h_data), .in_last(h_last),
-        .txd(h_txd), .tx_en(h_en), .tx_se0(h_se0), .tx_speed(h_spd),
-        .busy(h_busy), .tx_done(h_done), .tx_underrun(h_under));
-    usb_afe_tx_if u_hafe (
-        .clk_bit(clk_far), .rst_n(rst_n),
-        .txd(h_txd), .tx_en(h_en), .tx_se0(h_se0), .tx_speed(h_spd),
-        .tx_lead(5'd10), .tx_lag(3'd0), .drv_dis(1'b0), .iso_en(1'b0), .lead_first(1'b0),
+        .txd_v(ht_txd_v), .tx_en_v(ht_en_v), .tx_se0_v(ht_se0_v), .tx_speed(h_spd),
+        .busy(h_busy), .tx_done(ht_done_t), .tx_underrun(ht_under_t));
+    // serial copy of the line vectors (bit-serial timing, testbench monitors)
+    tx_vec2ser_bm ht_v2s (
+        .clk_bit(clk_far), .ld(ld_far), .txd_v(ht_txd_v), .tx_en_v(ht_en_v), .tx_se0_v(ht_se0_v),
+        .tx_done_t(ht_done_t), .tx_underrun_t(ht_under_t),
+        .txd(h_txd), .tx_en(h_en), .tx_se0(h_se0), .tx_done(h_done), .tx_underrun(h_under));
+
+    usb_afe_tx_if8 u_hafe8 (
+        .clk60(clk60_far), .rst_n(rst_n),
+        .txd_v(ht_txd_v), .tx_en_v(ht_en_v), .tx_se0_v(ht_se0_v), .tx_speed(h_spd),
+        .tx_lead(5'd10), .tx_lag(3'd0), .lead_first(1'b0),
+        .hs_p_v(ht_pp), .hs_en_v(ht_phen), .fs_oe_v(ht_poe), .fs_dat_v(ht_pdat), .fs_se0_v(ht_pse0),
+        .any_v(ht_pany), .fs_ls_q(ht_pls), .act(ht_pact));
+    usb_tx_piso u_hafe (
+        .clk_bit(clk_far), .rst_n(rst_n), .ld(ld_far),
+        .hs_p_v(ht_pp), .hs_en_v(ht_phen), .fs_oe_v(ht_poe), .fs_dat_v(ht_pdat), .fs_se0_v(ht_pse0),
+        .any_v(ht_pany), .fs_ls_q(ht_pls), .act(ht_pact), .drv_dis(1'b0), .iso_en(1'b0),
         .hs_tx_p(h_hp), .hs_tx_n(h_hn), .hs_tx_en(h_hen),
         .fs_oe(h_oe), .fs_dat(h_dat), .fs_se0(h_fse0), .fs_ls(h_fls), .tx_active(h_act));
 

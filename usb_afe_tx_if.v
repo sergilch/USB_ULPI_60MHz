@@ -1,6 +1,11 @@
 //-----------------------------------------------------------------------------
 // usb_afe_tx_if.v - TX data boundary to the analog front end (HS TX + FS/LS)
 //
+// REFERENCE MODEL since Plan_60MHz.md P6: the design uses usb_afe_tx_if8 (clk60)
+// + usb_tx_piso (clk_bit), whose pins equal this module's LAT = 9 cycles later
+// (tb_usb_tx_vec, without the clamp, which moved to usb_tx_piso).  Not
+// instantiated in any top level.
+//
 // WORK_PLAN 6.1, AFE_INTEGRATION_PLAN.md 3.1 / phase A2, pin list and timing in
 // DOC/afe_interface_spec.md 3.1, 3.4 and 4.1.  Position:
 //

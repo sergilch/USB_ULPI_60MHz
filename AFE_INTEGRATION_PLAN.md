@@ -48,6 +48,7 @@ Signals on the analog side keep the analog team's names; `_A` marks the AFE-inte
 
 ```
 usb_tx_path ─txd,tx_en,tx_se0,tx_speed─► usb_afe_tx_if (new, digital, clk_bit) ─► level shift 1.8→3.3 V ─► HS TX
+   (since Plan_60MHz.md P6: usb_tx_path ─8-bit vectors, clk60─► usb_afe_tx_if8 ─► usb_tx_piso (clk_bit) ─► pins)
                                           · TX_IN_P = txd_r, TX_IN_N = ~txd_r, from two flops on the same clk_bit edge
                                           · TX_EN lead / lag around the packet (programmable, in bit times)
                                           · idle clamp: TX_IN_P/N static, TX_EN low, when disabled or isolated
@@ -147,7 +148,7 @@ These extend `WORK_PLAN.md`; the phase numbers in brackets point there.
 
 | Module (proposed) | Function | Work plan |
 |---|---|---|
-| `usb_afe_tx_if` | Retiming of the TX bit stream into `TX_IN_P/N` (complementary flops), programmable `TX_EN` lead / lag (shift-register delay of the data), HS vs. FS/LS driver select, FS/LS driver controls (`FS_OE`, `FS_DAT`, `FS_SE0`, `FS_LS`), chirp mode, idle clamp. | 6.1, 3.4, 3.5 |
+| `usb_afe_tx_if` (since Plan_60MHz.md P6: `usb_afe_tx_if8` on `clk60` + PISO `usb_tx_piso` on `clk_bit`; pins 9 bit times later, spec 4.1) | Retiming of the TX bit stream into `TX_IN_P/N` (complementary flops), programmable `TX_EN` lead / lag (shift-register delay of the data), HS vs. FS/LS driver select, FS/LS driver controls (`FS_OE`, `FS_DAT`, `FS_SE0`, `FS_LS`), chirp mode, idle clamp. | 6.1, 3.4, 3.5 |
 | `usb_afe_rx_if` | Maps the CDR clock / data and the squelch output onto `usb_rx_datapath`; generates `hs_cdr_lock` from a squelch-release delay; RX enable / power-down per speed. | 6.2 |
 | `usb_pll_lock_det` | Digital PLL lock / loss-of-lock detector (frequency count of `clk_bit` against the reference), plus a CDR sanity check (`clk_rx` frequency within a window while squelched). | 5.3 |
 | `usb_rx_status_sync` | Synchronizers and glitch filters for squelch, disconnect, `rxdp`, `rxdm`, `rxrcv`, VBUS / ID comparators. | 3.1, 4.1 |

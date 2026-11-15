@@ -14,9 +14,10 @@
 //
 //   registers xs / ts / om / dpd / dmd (set_regs) -> usb_mode_term_ctrl
 //     -> dp_pullup_en, dm_pullup_en, hs_term_en, dp/dm_pulldown_en
-//   byte feeder (load_pkt / load_pattern / go / wait_tx) -> usb_tx_path
-//     (bypass / eop_dis from usb_mode_term_ctrl) -> usb_afe_tx_if
-//     -> hs_tx_p/n, hs_tx_en, fs_oe/dat/se0/ls
+//   byte feeder (load_pkt / load_pattern / go / wait_tx) -> usb_tx_path (clk60;
+//     bypass / eop_dis from usb_mode_term_ctrl) -> usb_afe_tx_if8 (clk60)
+//     -> usb_tx_piso (clk) -> hs_tx_p/n, hs_tx_en, fs_oe/dat/se0/ls
+//     (tx_vec2ser_bm gives the serial txd / tx_en / tx_done for the monitors)
 //   clk_rx, hs_rxd_a, squelch_a -> usb_afe_rx_if (lock_dly 2) -> usb_rx_datapath
 //     (HS_ZMIN 4); rx_en_hs, cdr_en back to the AFE
 //   rxdp_a, rxdm_a, rxrcv_a -> usb_rx_datapath (FS/LS sampler) -> ls_* ->
@@ -162,16 +163,31 @@ module ams_phy_end #(
     // ---------------- TX ----------------
     wire txd, tx_en, tx_se0, tx_busy, tx_done, tx_under, tx_act;
     wire [1:0] tx_spd;
+    wire [7:0] tx_txd_v, tx_en_v, tx_se0_v;
+    wire       tx_done_t, tx_under_t;
+    wire [7:0] tx_pp, tx_phen, tx_poe, tx_pdat, tx_pse0, tx_pany;
+    wire       tx_pls, tx_pact;
     usb_tx_path u_tx (
-        .clk_bit(clk), .rst_n(rst_n), .ce60(ce60), .clk60(1'b0), .ld(1'b0),       // SPLIT = 0
-        .speed(xs), .bypass_en(byp), .eop_dis(edis),
+        .clk(clk60), .rst_n(rst_n), .speed(xs), .bypass_en(byp), .eop_dis(edis),
         .in_valid(in_valid), .in_ready(in_ready), .in_data(in_data), .in_last(in_last),
-        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_speed(tx_spd),
-        .busy(tx_busy), .tx_done(tx_done), .tx_underrun(tx_under));
-    usb_afe_tx_if u_afe_tx (
-        .clk_bit(clk), .rst_n(rst_n),
-        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_speed(tx_spd),
-        .tx_lead(5'd10), .tx_lag(3'd0), .drv_dis(ddis), .iso_en(1'b0), .lead_first(byp),
+        .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v), .tx_speed(tx_spd),
+        .busy(tx_busy), .tx_done(tx_done_t), .tx_underrun(tx_under_t));
+    // serial copy of the line vectors (bit-serial timing, testbench monitors)
+    tx_vec2ser_bm tx_v2s (
+        .clk_bit(clk), .ld(ld), .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v),
+        .tx_done_t(tx_done_t), .tx_underrun_t(tx_under_t),
+        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_done(tx_done), .tx_underrun(tx_under));
+
+    usb_afe_tx_if8 u_afe_tx8 (
+        .clk60(clk60), .rst_n(rst_n),
+        .txd_v(tx_txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v), .tx_speed(tx_spd),
+        .tx_lead(5'd10), .tx_lag(3'd0), .lead_first(byp),
+        .hs_p_v(tx_pp), .hs_en_v(tx_phen), .fs_oe_v(tx_poe), .fs_dat_v(tx_pdat), .fs_se0_v(tx_pse0),
+        .any_v(tx_pany), .fs_ls_q(tx_pls), .act(tx_pact));
+    usb_tx_piso u_afe_tx (
+        .clk_bit(clk), .rst_n(rst_n), .ld(ld),
+        .hs_p_v(tx_pp), .hs_en_v(tx_phen), .fs_oe_v(tx_poe), .fs_dat_v(tx_pdat), .fs_se0_v(tx_pse0),
+        .any_v(tx_pany), .fs_ls_q(tx_pls), .act(tx_pact), .drv_dis(ddis), .iso_en(1'b0),
         .hs_tx_p(hs_tx_p), .hs_tx_n(hs_tx_n), .hs_tx_en(hs_tx_en),
         .fs_oe(fs_oe), .fs_dat(fs_dat), .fs_se0(fs_se0), .fs_ls(fs_ls), .tx_active(tx_act));
     always @(posedge clk) if (tx_under) begin

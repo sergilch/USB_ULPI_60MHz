@@ -3,10 +3,10 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_afe_hs_chain usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
+//            usb_tx_serializer8.v usb_tx_path.v usb_rx_elastic_buffer.v usb_rx_hs_frontend.v \
 //            usb_rx_hs_sipo.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v usb_rx_decoder8.v \
 //            usb_rx_datapath.v afe_line_bm.v afe_term_bm.v afe_hs_tx_bm.v afe_hs_rx_bm.v \
-//            afe_squelch_bm.v afe_cdr_bm.v tb_afe_hs_chain.v
+//            afe_squelch_bm.v afe_cdr_bm.v tx_vec2ser_bm.v tb_afe_hs_chain.v
 //   vvp sim_afe_hs_chain
 //
 // Purpose: the open A0 point "false-SYNC check for HS_ZMIN = 4 with a CDR that
@@ -67,6 +67,13 @@ module tb_afe_hs_chain;
     wire ce60 = (ce_cnt == 3'd7), ce60_far = (fce_cnt == 3'd7);
     always @(posedge clk_bit) ce_cnt  <= ce_cnt + 3'd1;
     always @(posedge clk_far) fce_cnt <= fce_cnt + 3'd1;
+    // far-end clk60 / ld from clk_far (CLAUDE.md TB convention)
+    reg  clk60_far = 1'b0;
+    wire ld_far = (fce_cnt == 3'd3);
+    always @(posedge clk_far) begin
+        if (fce_cnt == 3'd7) clk60_far = 1'b1;
+        if (fce_cnt == 3'd3) clk60_far = 1'b0;
+    end
     // clk60 / ld for the RX datapath (clk60 rises with a blocking assignment on
     // the clk_bit edge where ce60 was high, ld = phase 3; Plan_60MHz.md P4)
     reg  clk60 = 1'b0;
@@ -84,11 +91,18 @@ module tb_afe_hs_chain;
     wire       f_ready, f_txd, f_tx_en, f_tx_se0, f_busy, f_done, f_under;
     wire [1:0] f_tx_speed;
 
+    // far-end line vectors -> serial line (bit-serial timing, tx_vec2ser_bm)
+    wire [7:0] f_txd_v, f_tx_en_v, f_tx_se0_v;
+    wire       f_done_t, f_under_t;
+    tx_vec2ser_bm u_far_v2s (
+        .clk_bit(clk_far), .ld(ld_far), .txd_v(f_txd_v), .tx_en_v(f_tx_en_v), .tx_se0_v(f_tx_se0_v),
+        .tx_done_t(f_done_t), .tx_underrun_t(f_under_t),
+        .txd(f_txd), .tx_en(f_tx_en), .tx_se0(f_tx_se0), .tx_done(f_done), .tx_underrun(f_under));
     usb_tx_path u_far (
-        .clk_bit(clk_far), .rst_n(rst_n), .ce60(ce60_far), .speed(2'b00), .bypass_en(1'b0), .eop_dis(1'b0),
+        .clk(clk60_far), .rst_n(rst_n), .speed(2'b00), .bypass_en(1'b0), .eop_dis(1'b0),
         .in_valid(f_valid), .in_ready(f_ready), .in_data(f_data), .in_last(f_last),
-        .txd(f_txd), .tx_en(f_tx_en), .tx_se0(f_tx_se0), .tx_speed(f_tx_speed),
-        .busy(f_busy), .tx_done(f_done), .tx_underrun(f_under));
+        .txd_v(f_txd_v), .tx_en_v(f_tx_en_v), .tx_se0_v(f_tx_se0_v), .tx_speed(f_tx_speed),
+        .busy(f_busy), .tx_done(f_done_t), .tx_underrun(f_under_t));
 
     always @(posedge clk_far) begin
         if (rst_n && ce60_far) begin

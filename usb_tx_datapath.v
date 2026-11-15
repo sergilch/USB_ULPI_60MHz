@@ -7,17 +7,15 @@
 //
 //   usb_ulpi_input_capture -> usb_tx_holding  (TX Holding Reg / Ctrl, NXT pacing)
 //                          -> usb_tx_sync_mux (SYNC + PID/Data Mux)
-//                          -> usb_tx_path     (Bit Stuffer -> NRZI -> Serializer + EOP)
-//                          -> txd / tx_en / tx_se0 (to the AFE interface / transmitter)
+//                          -> usb_tx_path     (Bit Stuffer -> NRZI -> Serializer8 + EOP)
+//                          -> txd_v / tx_en_v / tx_se0_v (8 bits per tick, to
+//                             usb_afe_tx_if8 -> usb_tx_piso -> transmitter)
 //
-// Clocking (Plan_60MHz.md P2): everything runs on the 60 MHz core clock clk60
-// (usb_clk_gen; the leaves keep their ce port, tied to 1).  Only the TX
-// serializer (in usb_tx_path, SPLIT = 1) stays on clk_bit (480 MHz), behind usb_tx_ser_bridge: words and
-// status cross on the island strobe ld (usb_clk_gen boundary rule), and the
-// line outputs txd / tx_en / tx_se0 / tx_speed / tx_done / tx_underrun are
-// clk_bit signals.  On the line, a packet leaves 4 clk_bit cycles earlier
-// than in the single-clock design; every ULPI-side event is in the same tick.
-// All other inputs and outputs are clk60-domain signals.
+// Clocking (Plan_60MHz.md P2, P6): everything runs on the 60 MHz core clock
+// clk60 (usb_clk_gen; the leaves keep their ce port, tied to 1).  The line
+// leaves as vectors (usb_tx_serializer8); the only bit-rate stage is
+// usb_tx_piso behind usb_afe_tx_if8, outside this block.  All inputs and
+// outputs are clk60-domain signals; tx_done / tx_underrun are one-tick pulses.
 //
 // Link-side hookup (all from usb_ulpi_input_capture / usb_ulpi_bus_owner):
 //   cmd_tx, cmd_pid, lnk_valid, lnk_data, lnk_stp : captured and decoded Link signals
@@ -39,10 +37,8 @@ module usb_tx_datapath #(
     parameter LS_DIV = 320,
     parameter DIV_W  = 9
 ) (
-    input  wire        clk_bit,      // 480 MHz: TX serializer island only
     input  wire        rst_n,
-    input  wire        clk60,        // core clock (usb_clk_gen), everything except the serializer
-    input  wire        ld,           // island strobe (usb_clk_gen): serializer bridge
+    input  wire        clk60,        // core clock (usb_clk_gen)
 
     input  wire [1:0]  speed,
     input  wire        bypass_en,
@@ -61,10 +57,10 @@ module usb_tx_datapath #(
     output wire        nxt_n,
     output wire        hold_busy,
 
-    // transmitter side
-    output wire        txd,
-    output wire        tx_en,
-    output wire        tx_se0,
+    // transmitter side (vectors, bit 0 first)
+    output wire [7:0]  txd_v,
+    output wire [7:0]  tx_en_v,
+    output wire [7:0]  tx_se0_v,
     output wire [1:0]  tx_speed,
 
     output wire        busy,
@@ -133,14 +129,10 @@ module usb_tx_datapath #(
     usb_tx_path #(
         .FS_DIV (FS_DIV),
         .LS_DIV (LS_DIV),
-        .DIV_W  (DIV_W),
-        .SPLIT  (1)
+        .DIV_W  (DIV_W)
     ) u_path (
-        .clk_bit     (clk_bit),
+        .clk         (clk60),
         .rst_n       (rst_n),
-        .ce60        (1'b0),
-        .clk60        (clk60),
-        .ld           (ld),
         .speed       (speed),
         .bypass_en   (bypass_en),
         .eop_dis     (eop_dis),
@@ -148,9 +140,9 @@ module usb_tx_datapath #(
         .in_ready    (m_ready),
         .in_data     (m_data),
         .in_last     (m_last),
-        .txd         (txd),
-        .tx_en       (tx_en),
-        .tx_se0      (tx_se0),
+        .txd_v       (txd_v),
+        .tx_en_v     (tx_en_v),
+        .tx_se0_v    (tx_se0_v),
         .tx_speed    (tx_speed),
         .busy        (path_busy),
         .tx_done     (tx_done),

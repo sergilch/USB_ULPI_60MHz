@@ -13,7 +13,7 @@ The analog front end and the line-state, VBUS and ID detectors are **not** part 
 - **Interface protection:** ULPI holding state. While STP is high outside a transfer, no command is taken and DIR stays low; the RXCMD changes meanwhile go out as one RXCMD when STP falls.
 - **Register file:** Vendor/Product ID, Function Control, Interface Control, OTG Control, USB Interrupt Enable Rising/Falling, Status, Latch, Debug and Scratch, with SET/CLR aliases. Extended addresses 00h–3Fh mirror the immediate set (ULPI 1.1 §4). The vendor registers 30h–3Fh hold the AFE trims (a shadow set taken over by an UPDATE strobe), the analog test controls and the power status. VID/PID default to the USB3320 values (0424h / 0007h).
 - **Pad wrapper:** `usb_ulpi_phy_pads` puts the ULPI pins (CLK, DATA[7:0], DIR, NXT, STP) and RESETB on X-FAB xh018 `BBSUD8F` digital I/O cells, with the ULPI interface-protection pulls (STP pull-up, DATA pull-downs, switched by Interface Control bit 7), a RESETB synchronizer and a NAND-tree chain.
-- **TX path:** 4-byte holding FIFO → SYNC/PID mux → bit stuffer → NRZI encoder → serializer + EOP.
+- **TX path:** 4-byte holding FIFO → SYNC/PID mux → bit stuffer → NRZI encoder → serializer + EOP (8 line bits per 60 MHz clock, `usb_tx_serializer8`) → AFE TX boundary (`usb_afe_tx_if8` on 60 MHz, `usb_tx_piso` 8:1 at 480 MHz).
   - HS, FS and LS bit rates selected by XcvrSelect, sampled at packet start.
   - HS EOP is 8 bit times at the inverted level. FS/LS EOP is SE0 for 2 bits, then J.
   - HS underrun detection (`tx_underrun`).
@@ -39,8 +39,8 @@ usb_ulpi_phy_top            phy_if + register file; maps comparators -> VbusStat
 └── usb_ulpi_phy_if
     ├── usb_ulpi_core
     │   ├── usb_ulpi_input_capture   registers pins, decodes TXCMD / RegWrite / RegRead / ext (AFh/EFh)
-    │   ├── usb_tx_datapath          holding -> SYNC/PID mux -> usb_tx_path (bit stuffer -> NRZI -> serializer+EOP;
-    │   │                            SPLIT = 1: clk60 byte side, serializer on clk_bit behind usb_tx_ser_bridge)
+    │   ├── usb_tx_datapath          holding -> SYNC/PID mux -> usb_tx_path (bit stuffer -> NRZI ->
+    │   │                            usb_tx_serializer8 + EOP), all clk60; out: 8-bit line vectors
     │   │   └── usb_tx_holding       4-byte FIFO, paces the Link with NXT, ends packet on STP
     │   ├── usb_ulpi_reg_access      register read/write FSM toward reg_*
     │   ├── usb_ulpi_burst_mux       merges register read data with PHY bursts
@@ -61,7 +61,7 @@ Each module's header comment holds its detailed spec: pipeline position, timing 
 
 ### Clocking and conventions
 
-- **Clocks (migration in progress, `Plan_60MHz.md`):** the ULPI core (`usb_ulpi_phy_top` and below, `usb_ulpi_tx_top`, `usb_ulpi_phy_pads`) runs on the 60 MHz core clock `clk60` from `usb_clk_gen`; only the TX serializer stays on `clk_bit` (480 MHz) behind `usb_tx_ser_bridge`. `usb_rx_datapath` and `usb_line_state` also run on `clk60`, with small 480 MHz islands (FS/LS sampler on `clk_bit`, HS front end and SIPO on the CDR clock `clk_rx`). The blocks not moved yet (status sync, AFE interfaces, lock detector, power sequencer) run on `clk_bit` with the clock enable `ce60`, high for one `clk_bit` cycle in eight (8-cycle multicycle paths).
+- **Clocks (migration in progress, `Plan_60MHz.md`):** the ULPI core (`usb_ulpi_phy_top` and below, `usb_ulpi_tx_top`, `usb_ulpi_phy_pads`) runs on the 60 MHz core clock `clk60` from `usb_clk_gen`; the TX path leaves it as 8-bit line vectors, which `usb_afe_tx_if8` (60 MHz) and the PISO `usb_tx_piso` (`clk_bit`, 480 MHz) put on the AFE pins. `usb_rx_datapath` and `usb_line_state` also run on `clk60`, with small 480 MHz islands (FS/LS sampler on `clk_bit`, HS front end and SIPO on the CDR clock `clk_rx`). The blocks not moved yet (status sync, `usb_afe_rx_if`, lock detector, power sequencer) run on `clk_bit` with the clock enable `ce60`, high for one `clk_bit` cycle in eight (8-cycle multicycle paths).
 - **Reset:** active-low asynchronous `rst_n`.
 - **Speed encoding** follows ULPI XcvrSelect: `00` HS, `01` FS, `10` LS, `11` sent at FS rate.
 - **Line encoding:** `txd` J = 1 / K = 0, LSB first. `tx_en` and `tx_se0` go to the transmitter.
@@ -107,11 +107,11 @@ Every testbench checks its own results and ends with `TEST PASSED`, `TEST FAILED
 | Testbench                     | Sources                                              |
 |-------------------------------|------------------------------------------------------|
 | `tb_usb_bit_stuffer.v`        | `usb_bit_stuffer.v`                                  |
-| `tb_usb_tx_serializer.v`      | `usb_tx_serializer.v`                                |
+| `tb_usb_tx_serializer.v`      | `usb_tx_serializer.v` (bit-serial reference model)  |
 | `tb_usb_tx_sync_mux.v`        | `usb_tx_sync_mux.v`                                  |
 | `tb_usb_nrzi_encoder.v`       | `usb_nrzi_encoder.v`                                 |
-| `tb_usb_tx_path.v`            | `usb_bit_stuffer.v` `usb_nrzi_encoder.v` `usb_tx_serializer.v` `usb_tx_path.v` |
-| `tb_usb_tx_path_split.v`      | as `tb_usb_tx_path.v` plus `usb_tx_ser_bridge.v`: `SPLIT = 1` against `SPLIT = 0`, same ticks, line 4 `clk_bit` earlier |
+| `tb_usb_tx_path.v`            | `usb_bit_stuffer.v` `usb_nrzi_encoder.v` `usb_tx_serializer8.v` `usb_tx_path.v` `tx_vec2ser_bm.v` |
+| `tb_usb_tx_vec.v`             | `usb_tx_serializer8.v` `usb_afe_tx_if8.v` `usb_tx_piso.v` against the bit-serial `usb_tx_serializer.v` + `usb_afe_tx_if.v`: vectors bit for bit, pins cycle for cycle (LAT = 9), random speed / lead / lag / clamp, underruns |
 | `tb_usb_clk_gen.v`            | `usb_clk_gen.v`                                      |
 | `tb_usb_tx_holding.v`         | `usb_ulpi_input_capture.v` `usb_tx_holding.v`        |
 | `tb_usb_ulpi_input_capture.v` | `usb_ulpi_input_capture.v`                           |
@@ -157,7 +157,7 @@ The analog front end is not part of this repository, but its behaviour is modell
 
 Their testbenches: `tb_afe_line` (USB 2.0 levels: HS 400 mV, chirp 800 mV, SE0, FS / LS idle, rise times), `tb_afe_hs_rx` (receiver, squelch, disconnect), `tb_afe_cdr` (CDR lock time and tracking statistics) and `tb_afe_hs_chain` (the full HS receive chain into two `usb_rx_datapath` instances with `HS_ZMIN` 6 / 4, packets with shortened SYNC as behind hubs, checked with the Link's PID and CRC16 checks).
 
-`tb_usb_afe_tx_if` (phase A2) runs the TX path into the analog TX boundary `usb_afe_tx_if` and on through `afe_hs_tx_bm`, `afe_fsls_bm`, terminations and the line model. It checks the AFE pins cycle by cycle against a reference model (`TX_EN` lead / lag, driver select, idle clamp, reset values), the line levels and polarity at HS / FS / LS, and decodes every packet from the line again. A lead sweep shows which `TX_LEAD` puts the whole SYNC on the line for a given driver settling time.
+`tb_usb_afe_tx_if` (phase A2) runs the TX path into the analog TX boundary (`usb_afe_tx_if8` + `usb_tx_piso`) and on through `afe_hs_tx_bm`, `afe_fsls_bm`, terminations and the line model. It checks the AFE pins cycle by cycle against a reference model (`TX_EN` lead / lag, driver select, idle clamp, reset values), the line levels and polarity at HS / FS / LS, and decodes every packet from the line again. A lead sweep shows which `TX_LEAD` puts the whole SYNC on the line for a given driver settling time.
 
 `tb_usb_afe_rx_if` (phase A3) drives HS packets from a far transmitter through the line, the HS receiver and squelch models and either an ideal or the bang-bang CDR model into six `usb_afe_rx_if` + `usb_rx_datapath` pairs with different SYNC thresholds, lock delays and squelch compensation. It checks the boundary pins against a reference model and measures how many wrong bits the CDR may deliver at the start of a 12-bit SYNC, and how slow the squelch detector may be.
 
@@ -165,7 +165,7 @@ For the mixed-signal simulation with the analog blocks (phase A8), `AFE/veriloga
 
 `tb_usb_pll_lock_det` (phase A4) runs the lock detector and the CLKOUT generator on the clock of a PLL model: lock time after enable, loss of lock on a frequency error, a missing reference or a dead VCO, the REFSEL settings, and the CLKOUT pulse shape and its glitch-free stop / start.
 
-`tb_usb_afe_fsls` (phase A5) is an FS / LS loopback through the AFE models: a device (the PHY) and a host on a ppm-offset clock, each with `usb_tx_path` → `usb_afe_tx_if` → `afe_fsls_bm` on one line with the pull-up and pull-downs. The device receives through `usb_rx_status_sync` into `usb_line_state` and `usb_rx_datapath`. Packets go both ways at FS and LS with D+ / D− skew; each must arrive intact, the sender must not receive its own packet, and LineState must follow the line voltages without skew glitches and within the latency limits, ending every packet with SE0 → J.
+`tb_usb_afe_fsls` (phase A5) is an FS / LS loopback through the AFE models: a device (the PHY) and a host on a ppm-offset clock, each with `usb_tx_path` → `usb_afe_tx_if8` → `usb_tx_piso` → `afe_fsls_bm` on one line with the pull-up and pull-downs. The device receives through `usb_rx_status_sync` into `usb_line_state` and `usb_rx_datapath`. Packets go both ways at FS and LS with D+ / D− skew; each must arrive intact, the sender must not receive its own packet, and LineState must follow the line voltages without skew glitches and within the latency limits, ending every packet with SE0 → J.
 
 `tb_usb_afe_chirp` (phase A6) puts two PHY ends, a device and a host, on one line with all AFE models (terminations, HS and FS drivers, HS receiver, squelch, CDR, FS receivers) and runs ULPI Link models on top of them: attach, bus reset, the HS handshake (device chirp K, host K-J chirps, both ends switching their terminations), HS packets both ways, disconnect detection, suspend, remote wake-up and resume. The long USB timers are scaled down; the checks cover the line levels (chirp 700 / 400 mV, no J inside a chirp), LineState at both ends, the termination order and every packet.
 
@@ -176,7 +176,7 @@ Copy the integration testbenches' file lists from their headers.
 ## Project status
 
 - ✅ The TX path and the RX datapath are complete. All 42 testbenches (36 for the RTL, 2 Icarus shadows of the Spectre AMS testbenches, 4 for the AFE behavioural models) pass with Icarus Verilog.
-- ✅ TX data boundary to the AFE (`usb_afe_tx_if`: retiming, HS / FS / LS driver select, `TX_EN` lead / lag, idle clamp), verified through the AFE models; not wired into the top level yet.
+- ✅ TX data boundary to the AFE (`usb_afe_tx_if8` on 60 MHz: HS / FS / LS driver select, `TX_EN` lead / lag; `usb_tx_piso` on 480 MHz: 8:1 shift, idle clamp), verified through the AFE models; not wired into the top level yet.
 - ✅ HS receive boundary to the AFE (`usb_afe_rx_if`: RX / CDR enables, isolation, squelch-based CDR lock, squelch-latency compensation), with the lock-time margin measured through the AFE models; not wired into the top level yet.
 - ✅ Clocking: `ce60` / CLKOUT generator (`usb_clk_gen`, glitch-free start / stop; since `Plan_60MHz.md` P1 also the 60 MHz core clock `clk60` and the island strobe `ld`) and the digital PLL lock detector (`usb_pll_lock_det`, REFSEL decode, loss-of-lock and dead-clock detection), verified with a PLL model; not wired into the top level yet.
 - ✅ Receiver status sync and glitch filters (`usb_rx_status_sync`: squelch, disconnect, VBUS / ID debounce; the FS/LS receivers are sampled by `usb_rx_fsls_sampler` in `usb_rx_datapath`) and LineState / HostDisconnect detection (`usb_line_state`: FS / LS skew filter, HS squelch, chirp), verified in an FS / LS loopback through the AFE models; not wired into the top level yet.

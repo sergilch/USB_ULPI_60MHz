@@ -288,7 +288,7 @@ blocks), so that wiring is done once, on the new clock structure.
 | K1 | Parallel unstuffer / SYNC detector longer than expected at the slow corner. | P3 measures it first; fallback: pipeline the decoder by one tick (latency only). **P3: happened** (a direct unrolling: 33.6 ns); closed with closed-form per-bit logic in three stages, 13.7 ns (8.5). |
 | K2 | ULPI hold time once the core uses its own `clk60` tree instead of a `clk_bit` edge. | 3.4: CLKOUT launch selectable in `clk_bit` steps; check in STA with pad delays. |
 | K3 | PISO load phase and `clk60` edge misaligned after CTS. | Generate both from the same ÷8 counter; constrain with `create_generated_clock`; the multicycle covers up to 7 `clk_bit` cycles of skew in data, not the clock itself. |
-| K4 | TX start latency grows beyond the USB / ULPI budget. | Recompute in P6; the lead delay line already costs `tx_lead` bits, the PISO adds ≤ 8. |
+| K4 | TX start latency grows beyond the USB / ULPI budget. | Recompute in P6; the lead delay line already costs `tx_lead` bits, the PISO adds ≤ 8. **P6:** +9 bit times against the single-clock chain (+13 against P2), data `tx_lead` + 12 after the serializer bit (spec 4.1, 8.8); check against the budget with the full chain. |
 | K5 | `clk_rxw` from a CDR clock that glitches when the CDR re-locks. | Confirm D1 (free-running, glitch-free) with the analog team in P0; the FIFO is reset while squelched. |
 | K6 | Many TBs depend on `clk_bit`-cycle counts. | Change them per step, keep line-level oracles fixed, and document every changed constant in the TB header. |
 | K7 | LS LineState latency limit (124 `clk_bit`, measured 117) with the new sampler path. | The sampler adds ≤ 8 + 2 cycles; recheck in `tb_usb_afe_fsls`. If it is too slow, take LineState from the newest sample in the vector (bit 7, not the word register). |
@@ -305,7 +305,8 @@ blocks), so that wiring is done once, on the new clock structure.
 | P3 | ✅ 2026-11-14, see 8.5. New `usb_rx_decoder8` (3-stage parallel RX bit chain, one instance for HS and FS/LS) + `tb_usb_rx_decoder8` (event-for-event against `usb_rx_decoder`, exact backpressure). Slow corner: 13.7 ns worst path (+2.9 ns slack at 16.7 ns), typ +9.8 ns. Equivalent on the 1000-packet default run and in mutation tests; exit criterion met: 10⁵ packets (seeds 11 and 22, 5·10⁴ each, 0 errors; 4989 two-event ticks incl. 768 END+START). Wired in for FS/LS in P4; HS in P5. |
 | P4 | ✅ 2026-11-14, see 8.6. New `usb_rx_fsls_sampler` (clk_bit island, 54 flops) + `usb_rx_fsls_dpll` (clk60); FS/LS half of `usb_rx_datapath` = sampler → DPLL → `usb_rx_decoder8` → 4-entry event FIFO; output stage and hold-off on clk60; `usb_line_state` on clk60 fed from the sampler; `rxdp` / `rxdm` / `rxrcv` out of `usb_rx_status_sync`. `tb_usb_rx_fsls_frontend` rewritten (sample-exact against the old front end), `tb_usb_rx_datapath`, `tb_usb_afe_fsls`, `tb_usb_afe_chirp` pass with unchanged packet counts; LineState J/K latency 19 cycles (≤ 3 ticks). |
 | P5 | ✅ 2026-11-15, see 8.7. New `usb_rx_hs_sipo` (`clk_rx` island: `usb_rx_hs_frontend` unchanged, 1:8 SIPO, Johnson word clock `clk_rxw`, write gate) + word FIFO (`usb_rx_elastic_buffer` W 16 / AW 3, `clk_rxw` → `clk60`); one `usb_rx_decoder8` for HS and FS/LS, generalized to `ZMIN_HS` 4..8 (two SYNCs / four events per tick, K11 closed); 8-entry event FIFO with four write ports and a direct output path. Serial HS decoder and HS event buffer removed from the datapath. A3 sweep (`tb_usb_afe_rx_if`) and `tb_afe_hs_chain`, `tb_usb_afe_chirp`, AMS shadow: output identical to before P5. HS RX latency +2 ticks (K12). |
-| P6–P9 | Not started. |
+| P6 | ✅ 2026-11-15, see 8.8. New `usb_tx_serializer8` (clk60, 8 line bits per tick, HS EOP splice, FS/LS tick bit timer), `usb_afe_tx_if8` (clk60: driver select, 40-bit lead window, lag dilation, pin vectors) and `usb_tx_piso` (clk_bit: 8:1 shift loaded on `ld`, idle clamp, 68 flops). `usb_tx_path` is clk60 only (`SPLIT` and `usb_tx_ser_bridge` removed); the ULPI tops lose `clk_bit` / `ld` and output `txd_v` / `tx_en_v` / `tx_se0_v`. New `tb_usb_tx_vec`: bit-exact against the bit-serial chain, pins LAT = 9 cycles later. All 42 TBs pass with unchanged packet checks; the bit-serial `usb_tx_serializer` / `usb_afe_tx_if` stay as reference models. |
+| P7–P9 | Not started. |
 
 ### 8.1 P1 notes
 
@@ -395,7 +396,7 @@ Before P2: −16.06 / −4461 / 477 and −12.17 / −989 / 169. By path class i
 | K11 | *(new, P4)* `usb_rx_decoder8` needs `ZMIN_HS` ≥ 6 (two events per tick), but the AFE spec recommends `HS_ZMIN` = 4 (`tb_usb_afe_chirp`, AMS). With 4, a squelch glitch can give END, START, END in one tick. | **Closed in P5:** stage 3 handles two SYNCs per tick and four event slots (BYTE END START END / START END START END at `ZMIN_HS` = 4); `tb_usb_rx_decoder8` runs at `ZMIN_HS` 4, 5, 6 and covers every 3- and 4-event tick; long runs 2026-11-15: 25 000 packets each at `ZMIN_HS` 4 (seed 11: 120 three-event and 116 four-event ticks, 10 ticks with two drops) and 6 (seed 22), 0 errors. |
 | K12 | *(new, P5)* HS receive latency vs ULPI 1.1 Table 9 (RX Start / End Delay 3–8 clocks; UTMI+ RxEndDelay ≤ 63 HS bit times). `tb_usb_rx_datapath`, ideal CDR, far-end EOP end → RxActive low (`usb_ulpi_rx_handler`): before P5 32.8–61.0 bit times, after 49.8–75.8; first SYNC bit → RxActive high 64.6–72.4 → 81.6–89.1 (incl. the 32-bit SYNC; already above 64 before P5). Cost: word assembly (≤ 8 + 4 bits) and 3 decoder ticks instead of 5 bits. | Already cut in P5: no decoder input register, direct output path (−3 ticks of the first version). Options left: first word-FIFO synchronizer flop on the falling `clk60` edge (−½ tick), write pointer on `clk_rx` (−½ tick), merging two decoder stages after sizing (−1 tick, needs sized STA). Decide with the full PHY chain once the RX datapath is wired into `usb_ulpi_phy_top` (the RXCMD path and the CDR latency add to it). |
 | K10 | Island → core paths
-| K10 | Island → core paths have half a tick (8.3 ns, E4 → E0). The bridge's `acc_q` / `tx_underrun_t` feed the whole combinational ready chain of the stuffer / NRZI encoder: 12.9 ns unsized, of which 6.6 ns is one unbuffered net with fan-out 34 (≈ +0.5 ns slack with a buffer tree). | Interim only: the bridge goes away in P6 (the 60 MHz serializer and the PISO boundary carry data only). Rule for P3–P6: an island register read by the core feeds a clk60 flop or only shallow logic. |
+| K10 | Island → core paths have half a tick (8.3 ns, E4 → E0). The bridge's `acc_q` / `tx_underrun_t` feed the whole combinational ready chain of the stuffer / NRZI encoder: 12.9 ns unsized, of which 6.6 ns is one unbuffered net with fan-out 34 (≈ +0.5 ns slack with a buffer tree). | Interim only: the bridge goes away in P6 (the 60 MHz serializer and the PISO boundary carry data only). Rule for P3–P6: an island register read by the core feeds a clk60 flop or only shallow logic. **Closed in P6** (8.8): bridge removed, no TX signal crosses clk_bit → clk60. |
 
 ### 8.5 P3 notes (`usb_rx_decoder8`)
 
@@ -519,4 +520,56 @@ Typ corner: `usb_rx_datapath` +0.06 (P4: −2.98), fast +0.42; `usb_rx_decoder8`
 `usb_rx_datapath` 41.2 k → 53.0 k, 464 → 533 flops (the decoder keeps its HS logic, which P4 pruned
 with `hs` = 0; word FIFO 128 and event FIFO 80 flops; the serial HS decoder and the 16-entry HS
 event buffer are gone).
+
+### 8.8 P6 notes (TX on `clk60`)
+
+- **`usb_tx_serializer8`** (clk60): states IDLE / RUN / EOP / REL; vector of tick T = the bits the
+  bit-serial serializer (ce60 on the clk60 edges) puts out after `clk_bit` edges 8T + 2 + i.
+  HS: a last word with n bits carries n EOP bits into the next vector, release at that position;
+  a release at bit ≥ 6 needs one more not-ready tick (REL). Underrun: an all-EOP vector (or idle
+  with `eop_dis`). FS/LS: bit timer in ticks (`FS_TK` = `FS_DIV` / 8 = 5, `LS_TK` = 40; `FS_DIV` /
+  `LS_DIV` must be multiples of 8), all 8 vector bits equal. `in_ready`, `busy`, `tx_speed`,
+  `tx_done`, `tx_underrun` (one-tick pulses) equal the old ones tick for tick.
+- **`usb_afe_tx_if8`** (clk60): the lead is a 40-bit window (this vector + 4 previous) read at
+  offset `tx_lead`, one 32:1 mux per output bit; the lag dilates the delayed HS enable with the
+  previous vector; `hs_tx_p` during lead / lag and the first-bit level are 8-step chains with a carry
+  from the previous tick. `tx_lead` / `tx_lag` are taken over after 16 idle ticks (128 bits, window
+  empty; the old block: 128 idle bits). The lead register is kept as 8 copies (`nlead_b`, own
+  `(* keep *)` process, so `opt_merge` does not fold them): with one copy `lead_q[0]` had fan-out 114
+  and the block failed by −8.5 ns unsized; now +1.53 ns slow.
+- **`usb_tx_piso`** (clk_bit): 7 shift registers (P and N separate), loaded on `ld` = E4, bit i on the
+  pin after E5 + i; the clamp moved here completely: `cq` = `drv_dis | iso_en` registered, pins
+  idle from the second edge, then dropped (`kq`) until the packet's enables have fallen;
+  `fq` = `cq | kq` has its own flop so every pin flop has one gate. `fs_ls` 0 under the clamp, held
+  until the next FS/LS bit. **Behaviour change:** the 60 MHz side does not see the clamp, and
+  `tx_active` (`act` of `usb_afe_tx_if8` sampled on `ld`, or a driven enable) stays high until the
+  interrupted packet would have ended (the old block cleared it with the dropped bits).
+- **Latency (K4):** pins LAT = 9 `clk_bit` cycles after the single-clock chain (data
+  `tx_lead` + 12 bit times after the serial-equivalent serializer bit), +13 against the P2
+  interim (the bridge was 4 bits early). Spec 4.1 updated.
+- **K10 closed:** the bridge is gone; only data vectors and `act` cross clk60 → clk_bit (E4, 4 / 3
+  multicycle), nothing crosses back.
+- **Testbenches:** `tb_usb_tx_vec` (new): the old serializer + `usb_afe_tx_if` as reference,
+  3000 packets, random speed, lead / lag (> 100 configurations), random clamp pulses (> 1000),
+  FS/LS underruns; vectors bit for bit, pins cycle for cycle; seeds 1–5 pass. TBs that check the
+  serial line use the TB-only `tx_vec2ser_bm` (vectors → serial `txd` / `tx_en` / `tx_se0` with the
+  old timing), so their line oracles are unchanged; `tb_usb_afe_tx_if`'s pin model shifts the old
+  pins by LAT and applies the PISO clamp, and reads the DUT's lead register for takeover (checked
+  separately: no change within 110 bits of a packet, taken over while idle); mutants LAT = 8 and a
+  PISO without `kq` are caught. AFE-level TBs and `ams_phy_end.v` moved from `SPLIT = 0` +
+  `usb_afe_tx_if` to the new chain. Regression: 42 TBs pass (316 s).
+
+STA (unsized, as 8.2):
+
+| Top | Before P6 | After P6, slow | typ / fast | Remaining violations |
+|---|---|---|---|---|
+| `usb_ulpi_phy_top` | −8.37 / −484 / 137 (8.4) | −1.44 / −60 / 64 | +8.01 / +9.67 | `clk60` only: the register-read path (K9); no `clk_bit` logic left in the core |
+| `usb_ulpi_tx_top` | −5.20 / −334 / 89 (8.4) | −0.89 / −1.8 / 2 | +7.95 / +9.73 | one unbuffered net, fan-out 34 (7.3 ns), sync mux → holding → bus owner; +2.24 in another mapping of the same RTL |
+| `usb_afe_tx_if8` (replaces `usb_afe_tx_if`) | −3.29 / −258 / 157 | +1.53 | +9.40 / +11.16 | — |
+| `usb_tx_piso` | — | −0.45 / −2.4 / 34 | +0.76 / +1.14 | K8: `fq` (2 gates) −0.45, pins with the clamp gate −0.36, every load-mux shift flop −0.03 (flop + one MUX2 does not fit 2.08 ns unsized at slow) |
+
+Area: `usb_afe_tx_if8` 25.5 k, 205 flops (old `usb_afe_tx_if` 13.3 k, 162; 35 of the new flops are
+the lead copies) + `usb_tx_piso` 5.1 k, 68 flops at 480 MHz (the old TX had ≈ 160 + the serializer at
+480 MHz). K8 stays open for the PISO: decide with sized numbers whether the load-mux PISO is kept
+or replaced by a mux-free structure (K8 options).
 

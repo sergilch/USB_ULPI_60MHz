@@ -3,12 +3,14 @@
 //
 // Run (Icarus Verilog):
 //   iverilog -g2005 -o sim_path usb_bit_stuffer.v usb_nrzi_encoder.v \
-//            usb_tx_serializer.v usb_tx_path.v tb_usb_tx_path.v
+//            usb_tx_serializer8.v usb_tx_path.v tx_vec2ser_bm.v tb_usb_tx_path.v
 //   vvp sim_path
 //
 // A byte source (one byte per ce60 tick at most, in_last on the last byte)
-// feeds the DUT.  A line decoder rebuilds every packet from txd / tx_en /
-// tx_se0 independently of the DUT: bit timing (HS 1, FS 40, LS 320 clk_bit
+// feeds the DUT (clk60, Plan_60MHz.md P6).  tx_vec2ser_bm turns the DUT's line
+// vectors back into txd / tx_en / tx_se0 with the bit-serial timing (bit i of
+// tick T after clk_bit edge 8T + 2 + i).  A line decoder rebuilds every packet
+// from those independently of the DUT: bit timing (HS 1, FS 40, LS 320 clk_bit
 // cycles per bit, tx_en high for exactly n bit times), EOP (HS 8 bits at the
 // inverted level, FS/LS SE0 SE0 J), NRZI decode from J, de-stuffing (a 0 must
 // follow every run of six 1s, also at the end of the packet), a whole number of
@@ -17,8 +19,9 @@
 // tx_en must drop right after the last data bit.  Also checked:
 //   * tx_speed of every packet;
 //   * tx_underrun never pulses, except in the directed underrun case;
-//   * busy: high from the first accepted byte of a packet until its tx_done,
-//     high whenever tx_en is high, low at the end of every run;
+//   * busy (clk60, checked before every clk60 edge): high from the first
+//     accepted byte of a packet until its tx_done, high whenever tx_en is
+//     high, low at the end of every run;
 //   * one tx_done per packet;
 //   * underrun (HS, the source pauses inside a packet): tx_underrun pulses once,
 //     the line packet is cut short (EOP still correct, the decoded bytes are a
@@ -46,6 +49,13 @@ module tb_usb_tx_path;
         if (!rst_n) ce_cnt <= 3'd0;
         else        ce_cnt <= ce_cnt + 3'd1;
     end
+    // clk60 / ld as usb_clk_gen, blocking on the ce60 edge (CLAUDE.md TB convention)
+    reg  clk60 = 1'b0;
+    wire ld = (ce_cnt == 3'd3);
+    always @(posedge clk_bit) begin
+        if (ce_cnt == 3'd7) clk60 = 1'b1;
+        if (ce_cnt == 3'd3) clk60 = 1'b0;
+    end
 
     // ---------------- DUT ----------------
     reg  [1:0] speed     = 2'b00;
@@ -56,12 +66,13 @@ module tb_usb_tx_path;
     reg        in_last   = 1'b0;
     wire       in_ready;
     wire       txd, tx_en, tx_se0, busy, tx_done, tx_underrun;
+    wire [7:0] txd_v, tx_en_v, tx_se0_v;
+    wire       done_t, under_t;
     wire [1:0] tx_speed;
 
     usb_tx_path #(.FS_DIV(FS_DIV), .LS_DIV(LS_DIV), .DIV_W(9)) dut (
-        .clk_bit     (clk_bit),
+        .clk         (clk60),
         .rst_n       (rst_n),
-        .ce60        (ce60),
         .speed       (speed),
         .bypass_en   (bypass_en),
         .eop_dis     (eop_dis),
@@ -69,14 +80,18 @@ module tb_usb_tx_path;
         .in_ready    (in_ready),
         .in_data     (in_data),
         .in_last     (in_last),
-        .txd         (txd),
-        .tx_en       (tx_en),
-        .tx_se0      (tx_se0),
+        .txd_v       (txd_v),
+        .tx_en_v     (tx_en_v),
+        .tx_se0_v    (tx_se0_v),
         .tx_speed    (tx_speed),
         .busy        (busy),
-        .tx_done     (tx_done),
-        .tx_underrun (tx_underrun)
+        .tx_done     (done_t),
+        .tx_underrun (under_t)
     );
+    tx_vec2ser_bm u_v2s (
+        .clk_bit(clk_bit), .ld(ld), .txd_v(txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v),
+        .tx_done_t(done_t), .tx_underrun_t(under_t),
+        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_done(tx_done), .tx_underrun(tx_underrun));
 
     integer errors = 0;
     integer seed   = 32'h7E57_0001;
@@ -275,13 +290,13 @@ module tb_usb_tx_path;
                 errors = errors + 1;
                 $display("ERROR @%0t: tx_se0 while tx_en = 0", $time);
             end
-            if (tx_en && !busy) begin
+            if (ce60 && tx_en && !busy) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: tx_en high while busy = 0", $time);
             end
             // busy must cover every packet from its first byte to its tx_done
             if (tx_done) pend = pend - 1;
-            if ((pend > 0) && !busy) begin
+            if (ce60 && (pend > 0) && !busy) begin
                 errors = errors + 1;
                 $display("ERROR @%0t: busy low with %0d packet(s) in flight", $time, pend);
             end

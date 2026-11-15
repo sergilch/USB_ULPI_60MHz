@@ -6,12 +6,12 @@
 //   iverilog -g2005 -DDISPLAY_PD_PU_EN -o sim_pads X-FAB/VLG_PRIMITIVES.v X-FAB/BBSUD8F.v \
 //            usb_ulpi_input_capture.v usb_ulpi_bus_owner.v usb_ulpi_reg_access.v \
 //            usb_ulpi_burst_mux.v usb_tx_holding.v usb_tx_sync_mux.v usb_bit_stuffer.v \
-//            usb_nrzi_encoder.v usb_tx_serializer.v usb_tx_ser_bridge.v usb_tx_path.v usb_tx_datapath.v \
+//            usb_nrzi_encoder.v usb_tx_serializer8.v usb_tx_path.v usb_tx_datapath.v \
 //            usb_ulpi_core.v usb_ulpi_rx_handler.v usb_ulpi_rxcmd_gen.v \
 //            usb_ulpi_out_arbiter.v usb_ulpi_rx_path.v usb_ulpi_phy_if.v \
 //            usb_ulpi_reg_file.v usb_afe_trim_regs.v usb_mode_term_ctrl.v usb_ulpi_phy_top.v \
 //            usb_ulpi_phy_pads.v \
-//            tb_usb_ulpi_phy_pads.v
+//            tx_vec2ser_bm.v tb_usb_ulpi_phy_pads.v
 //   vvp sim_pads
 // Without -DDISPLAY_PD_PU_EN the pads do not model their pulls: the test runs the same,
 // the bus floats (X) in turnaround cycles and the pull checks are skipped.
@@ -115,6 +115,13 @@ module tb_usb_ulpi_phy_pads;
     wire       termselect, suspendm, soft_reset, cfg_bypass;
     wire [7:0] ifc_ctrl, otg_ctrl;
     wire       txd, tx_en, tx_se0, busy, tx_done, tx_underrun, rx_active, rx_err, rx_overrun;
+    // line vectors (clk60) -> serial line signals with the bit-serial timing
+    wire [7:0] txd_v, tx_en_v, tx_se0_v;
+    wire       done_t, under_t;
+    tx_vec2ser_bm u_v2s (
+        .clk_bit(clk_bit), .ld(ld), .txd_v(txd_v), .tx_en_v(tx_en_v), .tx_se0_v(tx_se0_v),
+        .tx_done_t(done_t), .tx_underrun_t(under_t),
+        .txd(txd), .tx_en(tx_en), .tx_se0(tx_se0), .tx_done(tx_done), .tx_underrun(tx_underrun));
     wire       nand_tree_out;
 
     usb_ulpi_phy_pads dut (
@@ -124,9 +131,7 @@ module tb_usb_ulpi_phy_pads;
         .PAD_ULPI_NXT  (PAD_ULPI_NXT),
         .PAD_ULPI_STP  (PAD_ULPI_STP),
         .PAD_RESETB    (PAD_RESETB),
-        .clk_bit       (clk_bit),
         .clk60         (clk60),
-        .ld            (ld),
         .clkout        (clkout),
         .core_rst_n    (core_rst_n),
         .rx_start      (1'b0),
@@ -156,13 +161,13 @@ module tb_usb_ulpi_phy_pads;
         .otg_ctrl      (otg_ctrl),
         .cfg_speed     (cfg_speed),
         .cfg_bypass    (cfg_bypass),
-        .txd           (txd),
-        .tx_en         (tx_en),
-        .tx_se0        (tx_se0),
+        .txd_v           (txd_v),
+        .tx_en_v         (tx_en_v),
+        .tx_se0_v        (tx_se0_v),
         .tx_speed      (tx_speed),
         .busy          (busy),
-        .tx_done       (tx_done),
-        .tx_underrun   (tx_underrun),
+        .tx_done       (done_t),
+        .tx_underrun   (under_t),
         .rx_active     (rx_active),
         .rx_err        (rx_err),
         .rx_overrun    (rx_overrun),
