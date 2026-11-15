@@ -1,12 +1,12 @@
 # PLL — `afe_pll` (`AFE/veriloga/afe_pll.va`)
 
-*Idealized model of the lower loop of the analog team's PLL-assisted CDR block. It generates the 480 MHz `clk_bit` of the whole digital core. Status: written 2026-11-11, not simulated yet (see `AFE/README.md`).*
+*Idealized model of the lower loop of the analog team's PLL-assisted CDR block. It generates the 480 MHz `clk_bit` of the whole digital core and a 60 MHz copy divided by 8 (`CLK60_A`, added 2026-11-15). Status: written 2026-11-11, not simulated yet (see `AFE/README.md`).*
 
 ## Function
 
 ```
 CDR_FREF ─► PFD ─UP/DN─► charge pump ─► loop filter ─CDR_CH_OUT_PLL─► ring VCO ─┬─► CLK_BIT_A (480 MHz)
-              ▲          (icp)          C4 ‖ (R2 + C3)        │                  │
+              ▲          (icp)          C4 ‖ (R2 + C3)        │                  ├─► ÷div60 (8) ─► CLK60_A (60 MHz)
               └────────────── ÷N (20, or 25 / 20 from REFSEL) ◄┼──────────────────┘
                                                                └─► CDR_V_IN_2 of afe_cdr (coarse tuning)
 CDR_FREF ─► buffer ─► REF_DIG (to the digital lock detector)
@@ -25,7 +25,8 @@ CDR_FREF ─► buffer ─► REF_DIG (to the digital lock detector)
 | 1 0 | 26 MHz | `div_10` = 20 | `refsel_err` = 1: 480 / 26 is not an integer and needs a fractional divider (Q6). With ÷20 the VCO runs into `f_max`, so the digital never sees lock, as in `tb_usb_pll_lock_det`. |
 | 1 1 | reserved | `div_11` = 20 | `refsel_err` = 1, treated as 24 MHz |
 
-- **`PLL_EN` = 0, or `VDD18A` below `vdd_min`:** `CLK_BIT_A` stops low, the PFD and charge pump are reset, and the loop filter is discharged through `r_dis`. The VCO restarts at `f_min`, as in `afe_pll_bm` (`F_START` = 400 MHz). The digital must stop CLKOUT before it drops `PLL_EN` (`usb_clk_gen` `clk_on` = 0, spec 4.3). The model itself just stops the clock.
+- **Output divider (`CLK60_A`):** a ÷`div60` counter (8) clocked by the VCO's rising edges. `CLK60_A` is high for `div60` / 2 VCO periods and low for the rest (50 % duty), and every rising edge comes with a rising `CLK_BIT_A` edge (delay `t_d60`, default 0). The VCO state and the counter are reset when the PLL turns off, so the first `CLK_BIT_A` rising edge after `PLL_EN` (or supply-good) is also a `CLK60_A` rising edge: the phase of `CLK60_A` against `CLK_BIT_A` is known. The edges carry the same period jitter as `CLK_BIT_A`. The loop does not see this divider.
+- **`PLL_EN` = 0, or `VDD18A` below `vdd_min`:** `CLK_BIT_A` and `CLK60_A` stop low, the PFD and charge pump are reset, and the loop filter is discharged through `r_dis`. The VCO restarts at `f_min`, as in `afe_pll_bm` (`F_START` = 400 MHz). The digital must stop CLKOUT before it drops `PLL_EN` (`usb_clk_gen` `clk_on` = 0, spec 4.3). The model itself just stops the clock.
 - **`REF_DIG`:** a buffered copy of `CDR_FREF` (delay `t_ref_dly`). It runs whenever `VDD18A` is up, independent of `PLL_EN`, because the lock detector's heartbeat check needs the reference while the PLL is off or dead (proposed pin, Q7).
 
 ## Pins
@@ -36,6 +37,7 @@ CDR_FREF ─► buffer ─► REF_DIG (to the digital lock detector)
 | `PLL_EN` | in | `pll_en` | 1 = PLL on (proposed pin, spec 3.3) |
 | `REFSEL1`, `REFSEL0` | in | `refsel[1:0]` | Divider select, static. Ignored when `prog_div` = 0 |
 | `CLK_BIT_A` | out | `clk_bit` | 480 MHz clock into the digital clock tree |
+| `CLK60_A` | out | `clk60` (proposed, not wired) | 60 MHz clock = `CLK_BIT_A` / 8, 50 % duty, rising edges with rising `CLK_BIT_A` edges. Today the digital makes `clk60` itself (`usb_clk_gen`); see "Alignment with the digital side" |
 | `REF_DIG` | out | `ref_clk` of `usb_pll_lock_det` | Buffered reference |
 | `CDR_CH_OUT_PLL` | inout | — | Control voltage. Connect it to `CDR_V_IN_2` of `afe_cdr` |
 | `VDD18A`, `VSS18A` | supply | — | 1.8 V analog supply (from `afe_ldo`) |
@@ -51,8 +53,9 @@ CDR_FREF ─► buffer ─► REF_DIG (to the digital lock detector)
 | `v_cp_marg` | 0.1 V | Charge-pump compliance to the rails |
 | `r_dis` | 1 kΩ | Filter discharge while off |
 | `prog_div`, `div_00` … `div_11` | 1, 25 / 20 / 20 / 20 | Divider (see the table above) |
+| `div60` | 8 | Output divider for `CLK60_A` (even; `afe_pll_bm`: `P_DIV60`) |
 | `vth_logic`, `vdd_min` | 0.9 V, 1.5 V | Logic threshold, supply-good threshold |
-| `t_rf`, `t_ref_dly` | 50 ps, 0.2 ns | Output edges, reference buffer delay |
+| `t_rf`, `t_ref_dly`, `t_d60` | 50 ps, 0.2 ns, 0 | Output edges, reference buffer delay, `CLK_BIT_A` → `CLK60_A` delay |
 | `pts` | 10 | Time steps per VCO period (`$bound_step`) |
 | `f_err` | 0 | Fault injection: `CLK_BIT_A` = N · f_ref · (1 + `f_err`), as with a broken feedback path. 3e-3 reproduces the +0.3 % loss-of-lock case of `tb_usb_pll_lock_det`. |
 | `jit_rms`, `seed0` | 0, 7 | Gaussian period jitter of `CLK_BIT_A`. It is not seen by the loop, so the output phase wanders slowly against the reference; the digital only needs the per-period figure. |
@@ -82,10 +85,11 @@ These values exist so that the model closes its loop. The transistor-level value
 | 26 MHz with ÷20 must not lock | `tb_usb_pll_lock_det` | VCO limit `f_max` = 500 MHz < 520 MHz |
 | Clock stops low when the PLL is off; restart from `f_min` | `afe_pll_bm` | Yes |
 | Reference keeps running for the dead-clock check | `usb_pll_lock_det` heartbeat | `REF_DIG` does not depend on `PLL_EN` |
+| A 60 MHz clock with known phase against `clk_bit` | `Plan_60MHz.md` (core on `clk60`, 60↔480 boundary rule) | `CLK60_A` = `CLK_BIT_A` / 8, rising edges on rising `CLK_BIT_A` edges, divider restarts with the VCO. **Not wired yet:** `usb_clk_gen` derives `clk60` and `ld` from `clk_bit` itself. If the digital uses `CLK60_A` as `clk60`, its ÷8 counter (`ld` = phase 3, E4) must be aligned to `CLK60_A` (e.g. started together with it), and the `clk_bit` → `clk60` skew budget of the SDC applies to the pin |
 
 ## Not modelled
 
-Phase noise beyond white period jitter, reference spurs, charge-pump mismatch and leakage, the PFD reset pulse, VCO gain variation over the range, supply sensitivity, the divider's own delay, and a lock-detect output (lock is judged digitally).
+Phase noise beyond white period jitter, the delay of the ÷8 divider and its buffer (only the fixed `t_d60`), reference spurs, charge-pump mismatch and leakage, the PFD reset pulse, VCO gain variation over the range, supply sensitivity, the divider's own delay, and a lock-detect output (lock is judged digitally).
 
 ## Testbench
 
@@ -97,5 +101,6 @@ Phase noise beyond white period jitter, reference spurs, charge-pump mismatch an
 | `PLL_EN` = 0 | `CLK_BIT_A` low and without edges; 48 ± 1 `REF_DIG` edges in 2 µs; control voltage < 50 mV |
 | 19.2 MHz, REFSEL 00 | settled within 30 µs; windows 6400 ± 1; 480 MHz |
 | 26 MHz, REFSEL 10 | no window inside 4726 ± 5; `CLK_BIT_A` at 500 MHz (VCO limit) |
+| All phases (`chk60` = 1) | `CLK60_A` sampled on every falling `CLK_BIT_A` edge: high and low for exactly 4 cycles each; first cycle after each enable high; every rising edge half a period after a falling `CLK_BIT_A` edge (on a rising one) |
 
-Checker parameters: `ppm_ref` (reference offset), `t_set_24`, `t_set_19`, `t_run`. Not simulated yet.
+Checker parameters: `ppm_ref` (reference offset), `t_set_24`, `t_set_19`, `t_run`, `chk60` / `div60` / `t_d60` (`CLK60_A`; `tb_afe_pll_tr.scs` sets `chk60` = 0, the transistor netlist has no ÷8 output yet). The Icarus counterpart of the `CLK60_A` checks runs on `afe_pll_bm` in `tb_usb_pll_lock_det`. Not simulated yet.

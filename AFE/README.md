@@ -36,6 +36,7 @@ The Verilog-A models are the analog-simulator counterpart of the event-driven Ve
             └─ PWR_GOOD, POR_N ────┘──► pwr_good, por_n (power sequencer, rst_n of usb_clk_gen / usb_pll_lock_det)
 
  24 MHz ──CDR_FREF──► afe_pll ──CLK_BIT_A──► clk_bit (whole digital core; usb_clk_gen → ce60, CLKOUT)
+                        │  ├─────CLK60_A───► 60 MHz (CLK_BIT_A / 8, proposed clk60 source, not wired)
                         │  ├─────REF_DIG───► ref_clk of usb_pll_lock_det
              PLL_EN, REFSEL1/0 ◄─────────────── pll_en, refsel (digital)
                         │
@@ -86,7 +87,7 @@ LDOA  (vdd33 vdd18a 0 ldo_en pg_a      porn_a)  afe_ldo
 COD   (vdd18  0) capacitor c=1u
 COA   (vdd18a 0) capacitor c=1u
 XO    (fref 0) vsource type=pulse val0=0 val1=1.8 period=41.6667n width=20.8333n rise=0.5n fall=0.5n
-PLL   (fref pll_en refsel1 refsel0 clk_bit ref_dig vctl_pll vdd18a 0) afe_pll
+PLL   (fref pll_en refsel1 refsel0 clk_bit clk60_a ref_dig vctl_pll vdd18a 0) afe_pll
 CDR   (rx_out_p cdr_en vctl_pll clk_rx hs_rxd_a vctl_cdr vdd18a 0)   afe_cdr
 RX    (dp dm rx_en_hs vref_rx rx_out_p rx_out_n squelch_a host_disc vdd33 0 vdd18) afe_receiver
 XCVR  (hs_tx_p hs_tx_n hs_tx_en i5u vref_tx tx_cap_p tx_cap_n \

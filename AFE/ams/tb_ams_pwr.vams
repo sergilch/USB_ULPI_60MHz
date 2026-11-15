@@ -59,6 +59,7 @@ module tb_ams_pwr;
     always #(T_XO / 2.0) xo = ~xo;
     wire refsel1 = 1'b0, refsel0 = 1'b1;
     wire clk_bit, ref_clk;
+    wire clk60_a;                    // PLL 60 MHz output (CLK60_A, not used here)
     wire pll_lock, lol, refsel_err, ce60, clkout, clk_on;
     wire        clk60, ld;           // core clock / island strobe (not used here)
     wire  [3:0] phase_j;
@@ -67,7 +68,7 @@ module tb_ams_pwr;
     wire [3:0] state;
 
     afe_pll PLL (.CDR_FREF(xo), .PLL_EN(pll_en), .REFSEL1(refsel1), .REFSEL0(refsel0),
-                 .CLK_BIT_A(clk_bit), .REF_DIG(ref_clk), .CDR_CH_OUT_PLL(vctl),
+                 .CLK_BIT_A(clk_bit), .CLK60_A(clk60_a), .REF_DIG(ref_clk), .CDR_CH_OUT_PLL(vctl),
                  .VDD18A(vdd18a), .VSS18A(gnd));
 
     // ---------------- digital ----------------

@@ -18,6 +18,10 @@
 //     cycle before a clk_bit edge with ce60 = 1; ce60 exactly every 8 cycles;
 //     no rising edge unless clk_en was 1 at the decision point; clk_on = 0 only
 //     while clkout is low (safe point to stop the PLL).
+//   * clk60_a (afe_pll_bm clk60_out, CLK60_A of afe_pll.va): clk_bit / 8,
+//     high and low for exactly 4 clk_bit cycles each; each rising edge with
+//     a rising clk_bit edge (half a period after the falling one); after every
+//     clock start (pll_en, dead clock over) the first clk_bit cycle is high.
 //   * pll_lock never rises while the PLL ratio was grossly off (> 0.3 %) in the
 //     last 3 windows (the window in which an error ends can still average
 //     inside the tolerance), and never while it is off by more than 0.12 % now.
@@ -65,7 +69,8 @@ module tb_usb_pll_lock_det;
     wire [4:0] fb_div;
     wire       clk_en = pll_lock & !clk_susp;
 
-    afe_pll_bm u_pll (.CDR_FREF(ref_clk), .PLL_EN(pll_en), .clk_out(clk_bit));
+    wire       clk60_a;
+    afe_pll_bm u_pll (.CDR_FREF(ref_clk), .PLL_EN(pll_en), .clk_out(clk_bit), .clk60_out(clk60_a));
     always @(fb_div) if (fb_div != 5'd0) u_pll.DIV = fb_div;
 
     usb_pll_lock_det dut (
@@ -75,6 +80,35 @@ module tb_usb_pll_lock_det;
     usb_clk_gen u_cg (.clk_bit(clk_bit), .rst_n(rst_n), .clk_en(clk_en),
                       .clk60(clk60), .phase_j(phase_j), .ld(ld),
                       .ce60(ce60), .clkout(clkout), .clk_on(clk_on));
+
+    // ---------------- 60 MHz PLL output (clk60_a) ----------------
+    // sampled on falling clk_bit edges (mid-cycle); a gap > 3 ns is a restart
+    real    t_bf = -1.0e9, t_bper = 2.0;
+    reg     l60 = 1'b0;
+    integer r60 = 0, n60_runs = 0, n60_starts = 0;
+    always @(negedge clk_bit) begin
+        if ($realtime - t_bf > 3.0) begin
+            n60_starts = n60_starts + 1;
+            if (clk60_a !== 1'b1) begin errors = errors + 1; $display("ERROR @%0t: clk60_a not high in the first clk_bit cycle", $time); end
+            l60 = 1'b1; r60 = 1;
+        end else begin
+            t_bper = $realtime - t_bf;
+            if (clk60_a === l60) r60 = r60 + 1;
+            else begin
+                if (r60 != 4) begin errors = errors + 1; $display("ERROR @%0t: clk60_a %b for %0d clk_bit cycles", $time, l60, r60); end
+                n60_runs = n60_runs + 1;
+                l60 = clk60_a; r60 = 1;
+            end
+        end
+        t_bf = $realtime;
+    end
+    always @(posedge clk60_a)
+        if ($realtime - t_bf <= 3.0 && ($realtime - t_bf < 0.4 * t_bper || $realtime - t_bf > 0.6 * t_bper)) begin
+            errors = errors + 1; $display("ERROR @%0t: clk60_a rises away from a rising clk_bit edge", $time);
+        end
+    always @(clk60_a) if (clk60_a === 1'b1 && clk_bit !== 1'b1) begin
+        errors = errors + 1; $display("ERROR @%0t: clk60_a high with clk_bit low", $time);
+    end
 
     // window length in ns at the nominal reference
     function real W; input dummy; W = 256.0 * 1000.0 / f_ref; endfunction
@@ -341,6 +375,9 @@ module tb_usb_pll_lock_det;
 
         $display("    CLKOUT pulses checked: %0d", n_pulse);
         errors = errors + ck_err + lk_err;
+        if (n60_runs < 1000 || n60_starts < 3) begin
+            errors = errors + 1; $display("ERROR: clk60_a check not exercised (%0d runs, %0d starts)", n60_runs, n60_starts);
+        end
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED: %0d error(s)", errors);
         $finish;

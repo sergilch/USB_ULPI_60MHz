@@ -8,31 +8,37 @@
 //     phase runs, the time of the last block outside +-0.08 % of N * f_ref is
 //     the settling time (spec 4.3: <= 45 us at 24 MHz, <= 30 us at 19.2 MHz);
 //   * the digital lock criterion of usb_pll_lock_det: CLK_BIT_A edges per 256
-//     REF_DIG periods (5120 / 6400 / 4726 for 24 / 19.2 / 26 MHz).
+//     REF_DIG periods (5120 / 6400 / 4726 for 24 / 19.2 / 26 MHz);
+//   * CLK60_A (chk60 = 1): sampled on every falling CLK_BIT_A edge, it is high
+//     and low for exactly div60 / 2 cycles each, the first cycle after each
+//     enable is high, and every rising edge lies half a CLK_BIT_A period
+//     (+ t_d60) after a falling CLK_BIT_A edge, i.e. on a rising one.
 //
 // Sequence
 //   1  24 MHz, REFSEL = 01, PLL_EN = 1 for t_run: settling, window counts
-//      exact to +-1 after settling, 480 MHz, control voltage near 0.9 V
-//   2  PLL_EN = 0: CLK_BIT_A low and quiet, REF_DIG keeps running, loop
-//      filter discharged
+//      exact to +-1 after settling, 480 MHz, control voltage near 0.9 V,
+//      CLK60_A = CLK_BIT_A / 8 (60 MHz)
+//   2  PLL_EN = 0: CLK_BIT_A and CLK60_A low and quiet, REF_DIG keeps
+//      running, loop filter discharged
 //   3  19.2 MHz, REFSEL = 00 (/25): the same checks, 6400 counts
 //   4  26 MHz, REFSEL = 10 (/20, no fractional divider): never a window
 //      inside 4726 +- 5 (the digital never reports lock), VCO at its 500 MHz
 //      limit (f26_lo / f26_hi; vc_lo / vc_hi set the 24 MHz control-voltage
 //      window; both exist for the transistor netlist, tb_afe_pll_tr.scs)
 // ppm_ref offsets the reference (crystal tolerance); the expected clock moves
-// with it, the window counts do not.
+// with it, the window counts do not.  chk60 = 0 skips the CLK60_A checks (a
+// DUT without that pin; tie the node to ground with a resistor).
 //-----------------------------------------------------------------------------
 `include "constants.vams"
 `include "disciplines.vams"
 `include "tb_afe_common.vams"
 
-module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
+module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, CLK60_A, REF_DIG,
                        CDR_CH_OUT_PLL, VDD18A, VSS18A);
     output     CDR_FREF, PLL_EN, REFSEL1, REFSEL0;
-    input      CLK_BIT_A, REF_DIG, CDR_CH_OUT_PLL;
+    input      CLK_BIT_A, CLK60_A, REF_DIG, CDR_CH_OUT_PLL;
     inout      VDD18A, VSS18A;
-    electrical CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
+    electrical CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, CLK60_A, REF_DIG,
                CDR_CH_OUT_PLL, VDD18A, VSS18A;
 
     parameter real ppm_ref  = 0.0;
@@ -44,10 +50,15 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
     parameter real vc_hi    = 0.95;
     parameter real f26_lo   = 499e6;     // CLK_BIT_A with 26 MHz and /20: at the model's
     parameter real f26_hi   = 501e6;     // 500 MHz limit; a real VCO may lock to 520 MHz
+    parameter integer chk60  = 1;        // check CLK60_A
+    parameter integer div60  = 8;        // expected CLK_BIT_A / CLK60_A ratio
+    parameter real    t_d60  = 0.0;      // expected CLK_BIT_A -> CLK60_A delay
 
     real    f_ref, phr, t_step, dt, t_en, t_set, t_viol, f_meas, err, t_blk0, t_win0, f_exp;
     integer errors, reported, step, en, rs1, rs0, rq, mode, n_exp;
     integer nclk, nblk, nref, nref_tot, nwin_clk0, cnt, win_dev, n_win, n_good26, nclk_off, nref0;
+    real    t_bf, t_bper;
+    integer l60, r60, st60, n60, n60_runs, n60_off, bad60_run, bad60_first, bad60_al;
 
     analog begin
         @(initial_step) begin
@@ -56,6 +67,8 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
             nclk = 0; nblk = 0; nref = 0; nref_tot = 0; nwin_clk0 = 0;
             win_dev = 0; n_win = 0; n_good26 = 0; f_meas = 0.0;
             t_en = 0.0; t_set = t_set_24; t_viol = 0.0; t_blk0 = 0.0; t_win0 = 0.0;
+            t_bf = 0.0; t_bper = 0.0; l60 = 0; r60 = 0; st60 = 1; n60 = 0; n60_runs = 0;
+            n60_off = 0; bad60_run = 0; bad60_first = 0; bad60_al = 0;
         end
 
         // ---- stimulus ----
@@ -84,6 +97,29 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
             end
         end
 
+        // ---- CLK60_A: levels sampled mid-cycle (falling CLK_BIT_A edges) ----
+        @(cross(V(CLK_BIT_A, VSS18A) - 0.9, -1)) begin
+            if (st60) begin                                // first cycle after enable
+                if (chk60 && V(CLK60_A, VSS18A) < 0.9) bad60_first = bad60_first + 1;
+                l60 = 1; r60 = 1; st60 = 0;
+            end else begin
+                t_bper = $abstime - t_bf;
+                if ((V(CLK60_A, VSS18A) > 0.9) == l60) r60 = r60 + 1;
+                else begin
+                    if (chk60 && r60 != div60 / 2) bad60_run = bad60_run + 1;
+                    n60_runs = n60_runs + 1;
+                    l60 = !l60; r60 = 1;
+                end
+            end
+            t_bf = $abstime;
+        end
+        @(cross(V(CLK60_A, VSS18A) - 0.9, +1)) begin
+            n60 = n60 + 1;
+            if (chk60 && !st60 && t_bper > 0.0
+                && abs($abstime - t_bf - 0.5 * t_bper - t_d60) > 0.1 * t_bper)
+                bad60_al = bad60_al + 1;
+        end
+
         // ---- digital lock criterion: CLK_BIT_A edges per 256 REF_DIG periods ----
         @(cross(V(REF_DIG, VSS18A) - 0.9, +1)) begin
             nref = nref + 1;
@@ -106,7 +142,7 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
             case (step)
                 0: dt = 1e-6;
                 1: begin                                   // lock at 24 MHz
-                    en = 1; mode = 1; n_exp = 20; t_set = t_set_24;
+                    en = 1; mode = 1; n_exp = 20; t_set = t_set_24; st60 = 1; t_bper = 0.0;
                     t_en = $abstime; t_viol = $abstime; nblk = 0; t_blk0 = $abstime;
                     win_dev = 0; n_win = 0;
                     dt = t_run;
@@ -123,18 +159,22 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
                 end
                 3: begin                                   // disabled
                     `TB_RNG("CLK_BIT_A level 50 ns after PLL_EN = 0 [V]", V(CLK_BIT_A, VSS18A), -0.01, 0.1)
-                    nclk_off = nclk; nref0 = nref_tot;
+                    if (chk60) begin
+                        `TB_RNG("CLK60_A level 50 ns after PLL_EN = 0 [V]", V(CLK60_A, VSS18A), -0.01, 0.1)
+                    end
+                    nclk_off = nclk; nref0 = nref_tot; n60_off = n60;
                     dt = 2e-6;
                 end
                 4: begin
                     `TB_CHK(nclk == nclk_off, "CLK_BIT_A toggles while PLL_EN = 0")
+                    `TB_CHK(n60 == n60_off, "CLK60_A toggles while PLL_EN = 0")
                     `TB_RNG("REF_DIG edges in 2 us while PLL_EN = 0", nref_tot - nref0, 47, 49)
                     `TB_RNG("control voltage while PLL_EN = 0 [V]", V(CDR_CH_OUT_PLL, VSS18A), -0.01, 0.05)
                     f_ref = 19.2e6; rs1 = 0; rs0 = 0;
                     dt = 1e-6;
                 end
                 5: begin                                   // lock at 19.2 MHz, /25
-                    en = 1; mode = 2; n_exp = 25; t_set = t_set_19;
+                    en = 1; mode = 2; n_exp = 25; t_set = t_set_19; st60 = 1; t_bper = 0.0;
                     t_en = $abstime; t_viol = $abstime; nblk = 0; t_blk0 = $abstime;
                     win_dev = 0; n_win = 0;
                     dt = t_run;
@@ -150,12 +190,18 @@ module tb_afe_pll_chk (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG,
                     dt = 1e-6;
                 end
                 7: begin                                   // 26 MHz with /20: must not lock
-                    en = 1; mode = 3; t_en = $abstime; n_good26 = 0;
+                    en = 1; mode = 3; t_en = $abstime; n_good26 = 0; st60 = 1; t_bper = 0.0;
                     dt = 60e-6;
                 end
                 8: begin
                     `TB_CHK(n_good26 == 0, "26 MHz with /20: a window inside 4726 +- 5 (digital would lock)")
                     `TB_RNG("26 MHz with /20: f(CLK_BIT_A) [Hz]", f_meas, f26_lo, f26_hi)
+                    if (chk60) begin
+                        `TB_RNG("CLK60_A: high / low runs not div60 / 2 cycles", bad60_run, 0, 0)
+                        `TB_RNG("CLK60_A: first cycle after enable not high", bad60_first, 0, 0)
+                        `TB_RNG("CLK60_A: rising edges away from a CLK_BIT_A rising edge", bad60_al, 0, 0)
+                        `TB_CHK(n60_runs > 10000, "CLK60_A: too few edges checked")
+                    end
                     `TB_FINISH
                     $finish;
                 end

@@ -16,6 +16,11 @@
 //   * f_off adds a relative frequency error on top (loss-of-lock injection,
 //     e.g. 0.003 = +0.3 %); dead = 1 stops the output while PLL_EN = 1 (VCO
 //     failure).
+//   * clk60_out (CLK60_A of afe_pll.va): clk_out / P_DIV60, 50 % duty.  It
+//     rises together with every P_DIV60-th rising clk_out edge (same time
+//     step, assigned right after clk_out).  The divider restarts with the
+//     clock: the first clk_out edge after PLL_EN = 1 (or after dead) is also
+//     a clk60_out rising edge.  Low while the clock is stopped.
 //   * DIV, TAU, f_off, dead are module variables: testbenches set them
 //     hierarchically.  f_now (MHz) is the current output frequency.
 //-----------------------------------------------------------------------------
@@ -26,11 +31,13 @@ module afe_pll_bm #(
     parameter real P_TAU   = 5000.0,    // ns, settling time constant
     parameter real F_MIN   = 400.0,     // MHz, VCO range
     parameter real F_MAX   = 500.0,     // MHz
-    parameter real F_START = 400.0      // MHz, VCO at enable
+    parameter real F_START = 400.0,     // MHz, VCO at enable
+    parameter integer P_DIV60 = 8       // clk60_out = clk_out / P_DIV60 (even)
 ) (
     input  wire CDR_FREF,
     input  wire PLL_EN,
-    output reg  clk_out
+    output reg  clk_out,
+    output reg  clk60_out
 );
     real DIV   = P_DIV;
     real TAU   = P_TAU;
@@ -40,6 +47,7 @@ module afe_pll_bm #(
     real f_now = F_START;               // MHz
     real f_tgt = F_START;
     real t_ref = -1.0e9, t_ref_per = 41.667, per;
+    integer cnt60 = 0;
 
     // reference period and target
     always @(posedge CDR_FREF) begin
@@ -50,10 +58,12 @@ module afe_pll_bm #(
         if (f_tgt < F_MIN) f_tgt = F_MIN;
     end
 
-    initial clk_out = 1'b0;
+    initial begin clk_out = 1'b0; clk60_out = 1'b0; end
     always begin
         if ((PLL_EN !== 1'b1) || dead) begin
-            clk_out = 1'b0;
+            clk_out   = 1'b0;
+            clk60_out = 1'b0;
+            cnt60     = 0;
             if (PLL_EN !== 1'b1) f_now = F_START;
             wait ((PLL_EN === 1'b1) && !dead);
         end
@@ -63,6 +73,9 @@ module afe_pll_bm #(
         if (f_now > F_MAX) f_now = F_MAX;
         if (f_now < F_MIN) f_now = F_MIN;
         clk_out = 1'b1;
+        if (cnt60 == 0)                clk60_out = 1'b1;
+        else if (cnt60 == P_DIV60 / 2) clk60_out = 1'b0;
+        cnt60 = (cnt60 + 1) % P_DIV60;
         #(per / 2.0);
         clk_out = 1'b0;
         #(per / 2.0);

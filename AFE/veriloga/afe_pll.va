@@ -4,7 +4,7 @@
 // Verilog-A, for the mixed-signal simulation of the USB 2.0 PHY (phase A8 of
 // AFE_INTEGRATION_PLAN.md).  Documentation: AFE/doc/pll.md.  Pin list and
 // timing: DOC/afe_interface_spec.md 2, 3.3, 4.3.  Digital counterparts:
-// usb_pll_lock_det (lock detector, REFSEL decode), usb_clk_gen (ce60 / CLKOUT).
+// usb_pll_lock_det (lock detector, REFSEL decode), usb_clk_gen (clk60 / CLKOUT).
 // Same behaviour as the frequency-only Verilog model afe_pll_bm.v, but with a
 // real phase loop.
 //
@@ -14,6 +14,7 @@
 //            -> ring VCO, f = f_min + kvco * (V - v_fmin), limited to
 //               [f_min, f_max]                                -> CLK_BIT_A
 //            -> feedback divider N (fixed /20, or from REFSEL) -> PFD
+//            -> output divider /div60 (8)                     -> CLK60_A
 //   CDR_CH_OUT_PLL is a pin: it drives the coarse input CDR_V_IN_2 of the CDR
 //   VCO (afe_cdr.va), which has the same tuning curve (matched replica).
 //
@@ -31,6 +32,13 @@
 //                        the digital flags refsel_err), 11 -> div_11 (20)
 //                        prog_div = 0: fixed /div_01 (today's analog design)
 //   CLK_BIT_A       out  480 MHz clock to the digital (clk_bit), 0 / VDD18A
+//   CLK60_A         out  60 MHz clock to the digital: CLK_BIT_A / div60, 50 %
+//                        duty (high for div60 / 2 VCO periods).  Each rising
+//                        edge comes with a rising CLK_BIT_A edge (t_d60 later,
+//                        default 0).  The divider restarts with the VCO: the
+//                        first CLK_BIT_A edge after PLL_EN (or supply-good) is
+//                        also a CLK60_A rising edge, so the phase against
+//                        CLK_BIT_A is known.  Low while the PLL is off.
 //   REF_DIG         out  buffered CDR_FREF for the digital lock detector (Q7);
 //                        runs whenever the supply is up, independent of PLL_EN
 //   CDR_CH_OUT_PLL  io   loop filter node (control voltage)
@@ -44,12 +52,13 @@
 `include "constants.vams"
 `include "disciplines.vams"
 
-module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_OUT_PLL,
-                VDD18A, VSS18A);
+module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, CLK60_A, REF_DIG,
+                CDR_CH_OUT_PLL, VDD18A, VSS18A);
     input        CDR_FREF, PLL_EN, REFSEL1, REFSEL0;
-    output       CLK_BIT_A, REF_DIG;
+    output       CLK_BIT_A, CLK60_A, REF_DIG;
     inout        CDR_CH_OUT_PLL, VDD18A, VSS18A;
-    electrical   CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_OUT_PLL, VDD18A, VSS18A;
+    electrical   CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, CLK60_A, REF_DIG,
+                 CDR_CH_OUT_PLL, VDD18A, VSS18A;
     electrical   n_z;                                   // R2 / C3 midpoint
 
     // VCO tuning curve (keep equal to afe_cdr.va: matched replica)
@@ -70,11 +79,14 @@ module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_O
     parameter integer div_01    = 20      from [1:inf);
     parameter integer div_10    = 20      from [1:inf);
     parameter integer div_11    = 20      from [1:inf);
+    // output divider for CLK60_A (even)
+    parameter integer div60     = 8       from [2:inf);
     // interface
     parameter real    vth_logic = 0.9;                    // V, logic input threshold
     parameter real    vdd_min   = 1.5;                    // V, supply-good threshold
     parameter real    t_rf      = 50e-12  from (0:inf);   // output edges
     parameter real    t_ref_dly = 0.2e-9  from [0:inf);   // CDR_FREF -> REF_DIG
+    parameter real    t_d60     = 0.0     from [0:inf);   // CLK_BIT_A -> CLK60_A edges
     parameter integer pts       = 10      from [4:inf);   // time steps per VCO period
     // fault injection / non-idealities
     parameter real    f_err     = 0.0     from (-0.5:0.5);
@@ -82,11 +94,12 @@ module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_O
     parameter integer seed0     = 7;
 
     real    vdd, vc, freq, f_run, fc_up, fc_dn, phase, phase_fb, dt_j;
-    integer en, sup_ok, en_pin, up, dn, clk_q, ref_q, n_div, seed;
+    integer en, sup_ok, en_pin, up, dn, clk_q, ref_q, n_div, seed, cnt60, clk60_q;
 
     analog begin
         @(initial_step) begin
             up = 0; dn = 0; clk_q = 0; dt_j = 0.0; seed = seed0;
+            cnt60 = 0; clk60_q = 0;
         end
 
         vdd = V(VDD18A, VSS18A);
@@ -120,6 +133,10 @@ module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_O
         @(cross(phase + 0.25, +1)) begin                // VCO rising edge
             clk_q = 1;
             if (jit_rms > 0.0) dt_j = jit_rms * $rdist_normal(seed, 0.0, 1.0);
+            // output divider: high on counts 0 .. div60/2 - 1
+            if (cnt60 == 0)              clk60_q = 1;
+            else if (cnt60 == div60 / 2) clk60_q = 0;
+            cnt60 = (cnt60 + 1) % div60;
         end
         @(cross(phase - 0.25, +1)) clk_q = 0;           // VCO falling edge
 
@@ -136,6 +153,9 @@ module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_O
         end
         @(cross(V(PLL_EN, VSS18A) - vth_logic, -1) or cross(vdd - vdd_min, -1)) begin
             up = 0; dn = 0;
+            // VCO and output divider restart from a known state: the first
+            // rising CLK_BIT_A edge after enable is a rising CLK60_A edge
+            clk_q = 0; cnt60 = 0; clk60_q = 0;
         end
 
         // ---- REF_DIG buffer state ----
@@ -159,6 +179,7 @@ module afe_pll (CDR_FREF, PLL_EN, REFSEL1, REFSEL0, CLK_BIT_A, REF_DIG, CDR_CH_O
 
         // ---- outputs ----
         V(CLK_BIT_A, VSS18A) <+ vdd * transition((en && clk_q) ? 1.0 : 0.0, 0, t_rf);
+        V(CLK60_A, VSS18A)   <+ vdd * transition((en && clk60_q) ? 1.0 : 0.0, t_d60, t_rf);
         V(REF_DIG, VSS18A)   <+ vdd * transition((sup_ok && ref_q) ? 1.0 : 0.0,
                                                  t_ref_dly, t_rf);
     end
