@@ -1,0 +1,111 @@
+//-----------------------------------------------------------------------------
+// tb_ams_mouse.vams - Spectre AMS system test: USB host enumeration of a
+//                     low-speed HID mouse through the PHY's ULPI interface
+//
+// Run from the repository root (AFE/ams/run_ams_tests.sh mouse does this and
+// puts the output into build/ams/tb_ams_mouse/):
+//   xrun -ams -timescale 1ns/1ps -access +r -incdir AFE/ams -incdir "Tests/USB ULPI Mouse" \
+//        -analogcontrol AFE/ams/amscf_mouse.scs -amsconnrules usb_cr \
+//        AFE/ams/lib/usb_connect.vams AFE/ams/lib/ams_prims.va AFE/ams/lib/ams_ls_mouse.va \
+//        AFE/veriloga/afe_transceiver.va AFE/veriloga/afe_receiver.va AFE/veriloga/afe_cdr.va \
+//        usb_clk_gen.v usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer8.v \
+//        usb_tx_path.v usb_tx_holding.v usb_tx_sync_mux.v usb_tx_datapath.v \
+//        usb_ulpi_input_capture.v usb_ulpi_reg_access.v usb_ulpi_reg_file.v \
+//        usb_ulpi_burst_mux.v usb_ulpi_bus_owner.v usb_ulpi_core.v usb_ulpi_rx_handler.v \
+//        usb_ulpi_rxcmd_gen.v usb_ulpi_out_arbiter.v usb_ulpi_rx_path.v usb_ulpi_phy_if.v \
+//        usb_afe_trim_regs.v usb_mode_term_ctrl.v usb_ulpi_phy_top.v \
+//        usb_afe_tx_if8.v usb_tx_piso.v usb_afe_rx_if.v usb_rx_elastic_buffer.v \
+//        usb_rx_hs_frontend.v usb_rx_hs_sipo.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v \
+//        usb_rx_decoder8.v usb_rx_datapath.v usb_rx_status_flt.v usb_rx_status_sync.v \
+//        usb_line_state.v \
+//        AFE/ams/ams_ulpi_phy.v AFE/ams/tb_ams_mouse.vams -top tb_ams_mouse
+//
+// Structure (from Tests/USB ULPI Mouse/tb_usb3300_enum.vams, with this
+//   repository's PHY in place of the USB3300 model):
+//     ulpi_link_bfm (Link, digital; Tests/USB ULPI Mouse/ulpi_tb_template.v)
+//       --ULPI-->  ams_ulpi_phy (digital RTL: ULPI top, TX / RX datapaths,
+//                  clock generator; AFE/ams/ams_ulpi_phy.v)
+//       --AFE pins-->  afe_transceiver + afe_receiver + afe_cdr (Verilog-A)
+//       --DP / DM (electrical)-->  usb_ls_mouse (Verilog-A,
+//                  Tests/USB ULPI Mouse/usb_ls_mouse.v, through lib/ams_ls_mouse.va)
+//   Every digital <-> electrical net gets a connect module from usb_cr
+//   (AFE/ams/lib/usb_connect.vams): 1.8 V, threshold 0.9 V.  The host
+//   transceiver's 1.5 kOhm pull-up pin stays off (host); a host has no DM
+//   pull-up pin (dm_pullup_en is left unconnected at the AFE).
+//   The Link model, host sequence and checks are AFE/ams/ams_mouse_seq.vh,
+//   shared with the Icarus shadow tb_ams_mouse_shadow.v (same PHY,
+//   afe_*_bm.v models, ls_mouse_bm.v), which runs in every ./run_tests.sh.
+//
+// Supplies: VDD33 3.3 V, VDD18 / VDD18A 1.8 V (ideal), TX_VREF / RX_VREF 1.2 V,
+//   CDR coarse input 0.9 V, as tb_ams_link.vams.
+//
+// Result line: TEST PASSED / TEST FAILED: <n> error(s) / TEST FAILED: timeout
+//   (watchdog 20 ms).  Simulated time about 3.5 ms.
+// Status: not run yet (no AMS simulator on the development machine); the
+//   digital half and the sequence pass in tb_ams_mouse_shadow.v.
+//-----------------------------------------------------------------------------
+`include "disciplines.vams"
+`timescale 1ns/1ps
+`include "ulpi_tb_template.v"
+
+module tb_ams_mouse;
+    parameter real HALF = 1.0416667;            // clk_bit 480 MHz
+
+    reg clk_bit = 1'b0;
+    always #(HALF) clk_bit = ~clk_bit;
+    reg por_n = 1'b0, resetb = 1'b0;
+
+    wire       ulpi_clk, ulpi_dir, ulpi_nxt, ulpi_stp;
+    wire [7:0] ulpi_data;
+
+    // ---------------- supplies, line ----------------
+    electrical gnd;
+    ground     gnd;
+    electrical vdd33, vdd18, vdd18a, vref12, vcoarse;
+    electrical dp, dm;
+    ams_vdc #(.dc(3.3)) V33  (.p(vdd33), .n(gnd));
+    ams_vdc #(.dc(1.8)) V18  (.p(vdd18), .n(gnd));
+    ams_vdc #(.dc(1.8)) V18A (.p(vdd18a), .n(gnd));
+    ams_vdc #(.dc(1.2)) VREF (.p(vref12), .n(gnd));
+    ams_vdc #(.dc(0.9)) VCO  (.p(vcoarse), .n(gnd));
+
+    wire fs_rx_en = 1'b1;          // FS / LS receivers always on
+
+    // ---------------- host PHY ----------------
+    wire h_pu, h_pum, h_hst, h_pdp, h_pdm, h_hp, h_hn, h_hen, h_foe, h_fdat, h_fse0, h_fls;
+    wire h_rxen, h_cdren, h_clkrx, h_rxd, h_sq, h_disc, h_rdp, h_rdm, h_rcv;
+    electrical h_rx_p, h_rx_n, h_cdr_ch;
+    ams_ulpi_phy u_phy (
+        .clk_bit(clk_bit), .por_n(por_n), .resetb(resetb),
+        .ulpi_clk(ulpi_clk), .ulpi_data(ulpi_data), .ulpi_dir(ulpi_dir), .ulpi_nxt(ulpi_nxt),
+        .ulpi_stp(ulpi_stp),
+        .dp_pullup_en(h_pu), .dm_pullup_en(h_pum), .hs_term_en(h_hst),
+        .dp_pulldown_en(h_pdp), .dm_pulldown_en(h_pdm),
+        .hs_tx_p(h_hp), .hs_tx_n(h_hn), .hs_tx_en(h_hen),
+        .fs_oe(h_foe), .fs_dat(h_fdat), .fs_se0(h_fse0), .fs_ls(h_fls),
+        .rx_en_hs(h_rxen), .cdr_en(h_cdren),
+        .clk_rx(h_clkrx), .hs_rxd_a(h_rxd), .squelch_a(h_sq), .disc_a(h_disc),
+        .rxdp_a(h_rdp), .rxdm_a(h_rdm), .rxrcv_a(h_rcv));
+    afe_transceiver H_XCVR (
+        .TX_IN_P(h_hp), .TX_IN_N(h_hn), .TX_EN(h_hen), .TX_I_5U(gnd), .TX_VREF(vref12),
+        .TX_CAP_P(dp), .TX_CAP_N(dm),
+        .FS_OE_A(h_foe), .FS_DAT_A(h_fdat), .FS_SE0_A(h_fse0), .FS_LS_A(h_fls), .FS_RX_EN_A(fs_rx_en),
+        .RXRCV_A(h_rcv), .RXDP_A(h_rdp), .RXDM_A(h_rdm),
+        .DP_PULLUP_EN_A(h_pu), .HS_TERM_EN_A(h_hst), .PD_EN_A0(h_pdp), .PD_EN_A1(h_pdm),
+        .DP(dp), .DM(dm), .VDD33(vdd33), .VDD18(vdd18), .GND(gnd));
+    afe_receiver H_RX (
+        .RX_IN_P(dp), .RX_IN_N(dm), .RX_EN(h_rxen), .RX_VREF(vref12),
+        .RX_OUT_P(h_rx_p), .RX_OUT_N(h_rx_n), .SQUELCH_A(h_sq), .DISC_A(h_disc),
+        .RX_VDD(vdd33), .RX_GND(gnd), .RX_VDDO(vdd18));
+    afe_cdr H_CDR (
+        .CDR_DATA(h_rx_p), .CDR_EN(h_cdren), .CDR_V_IN_2(vcoarse), .CLK_RX(h_clkrx),
+        .HS_RXD(h_rxd), .CDR_CH_OUT(h_cdr_ch), .VDD18A(vdd18a), .VSS18A(gnd));
+
+    // ---------------- device: HID mouse (Verilog-A) ----------------
+    usb_ls_mouse u_mouse (.dp(dp), .dm(dm));
+
+    // line voltages for the shared sequence (Cadence AMS system function)
+    `define AMS_VDP $cds_get_analog_value("tb_ams_mouse.dp")
+    `define AMS_VDM $cds_get_analog_value("tb_ams_mouse.dm")
+    `include "ams_mouse_seq.vh"
+endmodule

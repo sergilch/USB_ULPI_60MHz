@@ -1,0 +1,15 @@
+// amscf_mouse.scs - analog control file of tb_ams_mouse (xrun -analogcontrol)
+//
+// The digital sequence ends the run with $finish (about 3.5 ms); the tran stop
+// time is only an upper bound (the sequence's watchdog is 20 ms).  The line
+// runs at low speed (75-300 ns edges); HS is only on during the 10 us bus reset
+// (XcvrSelect 00: HS receiver, squelch and CDR enabled, nothing transmitted),
+// where the step control follows the CDR's 480 MHz VCO by itself.  maxstep
+// 2 ns resolves the LS edges and the mouse's 83 ns sample timer.  Saved: the
+// line only.
+simulator lang=spectre
+
+opts options temp=27 reltol=1e-4 vabstol=1e-6 iabstol=1e-12
+tran tran stop=20m errpreset=moderate maxstep=2n write="spectre.ic" annotate=status
+
+save tb_ams_mouse.dp tb_ams_mouse.dm

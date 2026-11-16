@@ -37,6 +37,8 @@ AFE/ams/run_ams_tests.sh [link|pwr]   # Spectre AMS (xrun -ams); no simulator he
 - `afe_*_bm.v` — testbench-only, real-valued AFE behavioural models (line, terminations, HS TX/RX, squelch, CDR, FS/LS, PLL). Not synthesizable; must never be named `usb_*`.
 - `ref_*.v` — testbench-only reference models: the single-clock bit-serial blocks the `clk60` design replaced (`ref_tx_serializer`, `ref_afe_tx_if`, `ref_rx_decoder` with `ref_rx_nrzi_decoder` / `_sync_detect` / `_bit_unstuffer` / `_deserializer` / `_eop_check`, `ref_rx_fsls_frontend`; Plan_60MHz.md P9). Not read by synthesis; their own tests are `tb_ref_*.v`.
 - `tx_vec2ser_bm.v` — testbench-only helper: turns the `clk60` TX line vectors back into serial `txd/tx_en/tx_se0` (+ `tx_done`/`tx_underrun` pulses) with the old bit-serial timing, so line checkers keep their cycle numbers. Not the hardware PISO.
+- `AFE/ams/ams_ulpi_phy.v` — complete PHY (ULPI pins ↔ AFE pins) for system testbenches, a testbench assembly of the WORK_PLAN 8.1 wiring; used by `tb_ams_mouse` / `tb_ams_mouse_shadow` (LS HID mouse enumeration over ULPI).
+- `Tests/USB ULPI Mouse/` — the ULPI Link BFM template (`ulpi_tb_template.v`), the Verilog-A LS mouse (`usb_ls_mouse.v`, CP1251 comments; not RTL despite the name, outside the root so synthesis never reads it) and its Icarus port `ls_mouse_bm.v` (keep in sync).
 - `AFE/veriloga/` Verilog-A models with the same pins/defaults as the `_bm` models; `AFE/spice/` transistor-level references; `AFE/ams/` AMS testbenches.
 - Each module's header comment is its detailed spec (pipeline position, timing, corner cases). Read it before changing a module and keep it in sync.
 

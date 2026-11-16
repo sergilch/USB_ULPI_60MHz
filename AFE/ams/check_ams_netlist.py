@@ -8,6 +8,7 @@ simulator:
   * the xrun command in the header: every listed source file exists, and
     -analogcontrol / -top / -amsconnrules are given;
   * every instance in the top whose module is defined in one of those files
+    or in a file they `include (found through -incdir)
     (Verilog-A .va, Verilog .v, Verilog-AMS .vams): it uses named port
     connections only, names only ports the module has, connects each port at
     most once, and leaves no port unconnected;
@@ -16,6 +17,7 @@ Exit status 0 when everything passes.  run_ams_tests.sh runs it first.
 """
 import os
 import re
+import shlex
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -29,7 +31,7 @@ def strip_comments(text):
 def header_cmd(path):
     """xrun command from the header comment (lines '//   xrun ...' + continuations)."""
     lines, on = [], False
-    for line in open(path):
+    for line in open(path, errors="replace"):
         m = re.match(r"^//\s+(xrun\b.*)$", line) if not on else re.match(r"^//\s+(.*)$", line)
         if not on and m:
             on = True
@@ -43,11 +45,32 @@ def header_cmd(path):
     return " ".join(lines)
 
 
+def with_includes(files, incdirs):
+    """The files plus every `include they reach through the -incdir paths
+    (and their own directory); includes that are not found (simulator headers
+    such as disciplines.vams) are skipped."""
+    out, todo = [], list(files)
+    while todo:
+        f = todo.pop(0)
+        if f in out:
+            continue
+        out.append(f)
+        raw = open(os.path.join(ROOT, f), errors="replace").read()
+        for name in re.findall(r'^\s*`include\s+"([^"]+)"', raw, re.M):
+            for d in [os.path.dirname(f)] + incdirs:
+                cand = os.path.normpath(os.path.join(d, name))
+                if os.path.exists(os.path.join(ROOT, cand)):
+                    todo.append(cand)
+                    break
+    return out
+
+
 def module_ports(files):
     """{module: [ports]} for module / connectmodule headers in the files."""
     mods, rules = {}, set()
     for f in files:
-        text = strip_comments(open(os.path.join(ROOT, f)).read())
+        # errors='replace': sources may carry non-UTF-8 comments (e.g. CP1251)
+        text = strip_comments(open(os.path.join(ROOT, f), errors="replace").read())
         for m in re.finditer(r"\b(?:module|connectmodule)\s+(\w+)\s*(?:#\s*\(.*?\)\s*)?\((.*?)\)\s*;", text, re.S):
             ports = [p.strip() for p in m.group(2).split(",") if p.strip()]
             # ANSI headers: keep the last identifier of each declaration
@@ -73,7 +96,7 @@ def check(top):
     cmd = header_cmd(top)
     if not cmd:
         return ["no xrun command in the header"]
-    toks = cmd.split()
+    toks = shlex.split(cmd)          # quoted paths may contain spaces
     srcs = [t for t in toks if re.search(r"\.(v|va|vams|sv)$", t)]
     for opt in ("-analogcontrol", "-top", "-amsconnrules"):
         if opt not in toks:
@@ -82,7 +105,8 @@ def check(top):
         if not os.path.exists(os.path.join(ROOT, f)):
             errs.append("missing file " + f)
     srcs = [f for f in srcs if os.path.exists(os.path.join(ROOT, f))]
-    mods, rules = module_ports(srcs)
+    incdirs = [toks[i + 1] for i, t in enumerate(toks[:-1]) if t == "-incdir"]
+    mods, rules = module_ports(with_includes(srcs, incdirs))
     if "-amsconnrules" in toks:
         r = toks[toks.index("-amsconnrules") + 1]
         if r not in rules:
@@ -90,7 +114,7 @@ def check(top):
     rel = os.path.relpath(os.path.abspath(top), ROOT)
     if rel not in srcs:
         errs.append("the top itself is not in its command (%s)" % rel)
-    text = strip_comments(open(top).read())
+    text = strip_comments(open(top, errors="replace").read())
     n = 0
     for mod, inst, conn in instances(text, mods):
         n += 1

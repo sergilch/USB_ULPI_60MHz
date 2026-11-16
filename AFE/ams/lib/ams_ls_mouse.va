@@ -1,0 +1,9 @@
+// ams_ls_mouse.va - compiles the low-speed mouse model as Verilog-A
+//
+// Tests/USB ULPI Mouse/usb_ls_mouse.v is Verilog-A (module usb_ls_mouse, analog
+// block) in a file with a .v extension, which xrun would hand to the digital
+// Verilog compiler.  Listing this .va file instead makes xrun compile it with
+// the analog (Verilog-A) compiler; the model itself stays in one place.
+// Needs -incdir "Tests/USB ULPI Mouse" on the xrun command (tb_ams_mouse.vams).
+// The model's comments are Windows-1251 (Russian) text; compilers ignore them.
+`include "usb_ls_mouse.v"

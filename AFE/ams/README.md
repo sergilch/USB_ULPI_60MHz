@@ -15,6 +15,10 @@ These testbenches co-simulate the digital RTL of the repository (`usb_*.v`) with
 | `tb_ams_link.vams` + `amscf_link.scs` | Two ends (device, host +400 ppm), each with `afe_transceiver`, `afe_receiver`, `afe_cdr` on one DP / DM: attach, FS packets both ways, reset, device chirp K (0.65–0.75 V, no J), host chirps, switch to HS (0.36–0.44 V), HS packets both ways. About 85 µs |
 | `ams_pwr_seq.vh` | Stimulus and checks of the power-up test |
 | `tb_ams_pwr.vams` + `amscf_pwr.scs` | VDD33 ramp → two `afe_ldo` (VDD18 with POR_N, VDD18A enabled by the sequencer) → `afe_pll` → `usb_pwr_seq`, `usb_pll_lock_det`, `usb_clk_gen`: POR, PG18A and VDD18A level, lock within 100 µs, CLKOUT 60 MHz ± 0.1 % with 4 + 4 cycles, low power with CLKOUT and PLL stopped, wake and relock. About 450 µs |
+| `ams_ulpi_phy.v` | The complete PHY for system tests: ULPI pins ↔ AFE pins (`usb_ulpi_phy_top`, `usb_afe_tx_if8` + `usb_tx_piso`, `usb_afe_rx_if`, `usb_rx_datapath`, `usb_rx_status_sync`, `usb_line_state`, `usb_clk_gen` for `clk60` / CLKOUT, the pad reset synchronizers, ULPI pad delays from the SDC placeholders). Testbench assembly of WORK_PLAN 8.1, plain Verilog-2005 |
+| `ams_mouse_seq.vh` | Host sequence of the mouse test: `ulpi_link_bfm` (from `Tests/USB ULPI Mouse/ulpi_tb_template.v`), host / control-transfer tasks and checks adapted from `Tests/USB ULPI Mouse/tb_usb3300_enum.vams` |
+| `tb_ams_mouse.vams` + `amscf_mouse.scs` | Host PHY (`ams_ulpi_phy` + `afe_transceiver`, `afe_receiver`, `afe_cdr`) and the Verilog-A low-speed HID mouse `usb_ls_mouse` on one DP / DM: PHY IDs, attach (LineState, line levels), bus reset by the 45 Ω terminations (SE0 checked on the line), full enumeration over ULPI (GET_DESCRIPTOR device / configuration / HID report, SET_ADDRESS, SET_CONFIGURATION, SET_IDLE; CRC16, DATA toggles, descriptor fields), three interrupt reports. About 3.5 ms |
+| `lib/ams_ls_mouse.va` | `` `include``s `Tests/USB ULPI Mouse/usb_ls_mouse.v` (Verilog-A in a `.v` file) so xrun compiles it as Verilog-A |
 | `check_ams_netlist.py` | Static check of the AMS tops: the header command's files exist, every instance uses named ports that its module has, each port once, none left open, the connect rules exist |
 | `run_ams_tests.sh` | Runner: static check, then the header `xrun` command of each `tb_ams_*.vams` in parallel |
 
@@ -24,6 +28,7 @@ The Icarus shadows are in the repository root, next to the other testbenches:
 |---|---|---|
 | `tb_ams_link_shadow.v` | `tb_ams_link.vams`: same `ams_phy_end` instances, same `ams_link_seq.vh` | AFE = `afe_term_bm`, `afe_hs_tx_bm`, `afe_fsls_bm`, `afe_hs_rx_bm`, `afe_squelch_bm`, `afe_cdr_bm` on `afe_line_bm` |
 | `tb_ams_pwr_shadow.v` | `tb_ams_pwr.vams`: same DUT chain, same `ams_pwr_seq.vh` | PLL = `afe_pll_bm`; the LDOs are delays with the `afe_ldo.va` default timing |
+| `tb_ams_mouse_shadow.v` | `tb_ams_mouse.vams`: same `ams_ulpi_phy`, same `ams_mouse_seq.vh` | AFE = the `afe_*_bm` models on `afe_line_bm`; mouse = `Tests/USB ULPI Mouse/ls_mouse_bm.v`, the event-driven port of `usb_ls_mouse.v` (keep both in sync). About 80 s in Icarus; `+dump` writes a VCD |
 
 So a failure that shows only in Spectre AMS points at the Verilog-A models, the connect modules or the AMS netlist, not at the RTL or the sequence. The sequence files access the line through macros (`` `AMS_VDP`` / `` `AMS_VDM`` / `` `AMS_V18A``): `$cds_get_analog_value("top.net")` in AMS, the models' real buses in the shadows.
 
@@ -53,6 +58,7 @@ Notes for the first run:
 
 - **Disciplines.** The RTL has no discipline declarations, so AMS Designer resolves them. If elaboration complains about nets without a discipline between the RTL and the models, add a default discipline for the digital files (the xrun option for it depends on the release) or `` `default_discipline logic`` in front of the RTL files.
 - **Connect rules.** If the site prefers Cadence's own `connectLib` (`ConnRules_18V_full_fast` or an `amsd { ie vsup=1.8 ... }` block in the control file), replace `-amsconnrules usb_cr` and drop `lib/usb_connect.vams`. Keep the 0.9 V threshold.
+- **Mouse model.** `usb_ls_mouse.v` is compiled through `lib/ams_ls_mouse.va` with `-incdir "Tests/USB ULPI Mouse"`. If the analog compiler does not take that include path, list the model with the release's option for a Verilog-A file with another extension instead. Its comments are Windows-1251 text.
 - **Run time.** Most of it is the 480 Mbit/s edges (`tb_ams_link`, HS part) and the 480 MHz VCO (`tb_ams_pwr`, 450 µs). `maxstep` in `amscf_link.scs` can be raised if the CDR still locks.
 
 ## Adding an AMS testbench

@@ -1,0 +1,210 @@
+===============================================================================
+ Mouse enumeration test (tb_ams_mouse) - files for Cadence AMS in ADE XL
+===============================================================================
+
+Test:      USB host (ULPI Link model) enumerates a low-speed HID mouse
+           (Verilog-A) through the PHY's ULPI interface; mouse on DP / DM.
+Top cell:  tb_ams_mouse   (file AFE/ams/tb_ams_mouse.vams)
+Simulator: AMS (Spectre AMS Designer, xrun based), connect rules usb_cr
+Pass:      last result line in the log (xrun.log / ADE output log):
+             TEST PASSED
+           otherwise   TEST FAILED: <n> error(s)   or   TEST FAILED: timeout
+Run time:  about 3.5 ms simulated (the digital $finish ends the run)
+Status:    not run in Cadence yet (no AMS simulator on the development
+           machine). The same sequence passes in Icarus with the behavioural
+           models (tb_ams_mouse_shadow.v, 84 checks).
+
+All paths below are relative to the repository root
+    /home/Projects/USB_60
+47 files in total: 44 compiled, 3 only `include'd.
+
+
+-------------------------------------------------------------------------------
+ 1. Verilog-A models and connect modules (6 files)
+-------------------------------------------------------------------------------
+AFE/ams/lib/usb_connect.vams      connect modules usb_l2e, usb_e2l, usb_bidir;
+                                  connect rule set usb_cr (1.8 V, thr. 0.9 V)
+AFE/ams/lib/ams_prims.va          ams_vdc (supply sources)
+AFE/ams/lib/ams_ls_mouse.va       wrapper: `include "usb_ls_mouse.v", so the
+                                  mouse compiles as Verilog-A (see 8.1)
+AFE/veriloga/afe_transceiver.va   host transceiver (FS/LS driver + receivers,
+                                  HS driver, terminations)
+AFE/veriloga/afe_receiver.va      host HS receiver, squelch, disconnect
+AFE/veriloga/afe_cdr.va           host CDR
+
+
+-------------------------------------------------------------------------------
+ 2. Digital RTL of the PHY (35 files, repository root), Verilog-2005
+-------------------------------------------------------------------------------
+usb_clk_gen.v
+usb_bit_stuffer.v
+usb_nrzi_encoder.v
+usb_tx_serializer8.v
+usb_tx_path.v
+usb_tx_holding.v
+usb_tx_sync_mux.v
+usb_tx_datapath.v
+usb_ulpi_input_capture.v
+usb_ulpi_reg_access.v
+usb_ulpi_reg_file.v
+usb_ulpi_burst_mux.v
+usb_ulpi_bus_owner.v
+usb_ulpi_core.v
+usb_ulpi_rx_handler.v
+usb_ulpi_rxcmd_gen.v
+usb_ulpi_out_arbiter.v
+usb_ulpi_rx_path.v
+usb_ulpi_phy_if.v
+usb_afe_trim_regs.v
+usb_mode_term_ctrl.v
+usb_ulpi_phy_top.v
+usb_afe_tx_if8.v
+usb_tx_piso.v
+usb_afe_rx_if.v
+usb_rx_elastic_buffer.v
+usb_rx_hs_frontend.v
+usb_rx_hs_sipo.v
+usb_rx_fsls_sampler.v
+usb_rx_fsls_dpll.v
+usb_rx_decoder8.v
+usb_rx_datapath.v
+usb_rx_status_flt.v
+usb_rx_status_sync.v
+usb_line_state.v
+
+None of these files `include anything.
+
+
+-------------------------------------------------------------------------------
+ 3. PHY assembly and testbench top (2 files)
+-------------------------------------------------------------------------------
+AFE/ams/ams_ulpi_phy.v            module ams_ulpi_phy: complete PHY,
+                                  ULPI pins <-> AFE pins (Verilog-2005)
+AFE/ams/tb_ams_mouse.vams         module tb_ams_mouse (Verilog-AMS): supplies,
+                                  PHY, host AFE, mouse on DP / DM, Link model
+
+
+-------------------------------------------------------------------------------
+ 4. Analog control file (1 file) - command-line runs only
+-------------------------------------------------------------------------------
+AFE/ams/amscf_mouse.scs           tran stop=20m maxstep=2n errpreset=moderate,
+                                  save DP / DM
+In ADE XL the analog control file is generated from the ADE setup; enter
+the same settings there (see 7). Do not add this file to ADE XL.
+
+
+-------------------------------------------------------------------------------
+ 5. Include files (3 files) - NOT compiled, found through include paths
+-------------------------------------------------------------------------------
+Tests/USB ULPI Mouse/ulpi_tb_template.v   included by tb_ams_mouse.vams
+                                          (module ulpi_link_bfm)
+Tests/USB ULPI Mouse/usb_ls_mouse.v       included by ams_ls_mouse.va
+                                          (module usb_ls_mouse, Verilog-A)
+AFE/ams/ams_mouse_seq.vh                  included inside tb_ams_mouse
+                                          (host sequence and checks)
+
+Include directories:
+    /home/Projects/USB_60/AFE/ams
+    /home/Projects/USB_60/Tests/USB ULPI Mouse
+
+disciplines.vams and constants.vams come from the Cadence installation.
+
+
+-------------------------------------------------------------------------------
+ 6. Files NOT to add
+-------------------------------------------------------------------------------
+Tests/USB ULPI Mouse/ls_mouse_bm.v        Icarus-only copy of the mouse
+Tests/USB ULPI Mouse/tb_usb3300_enum.vams original template (USB3300 based)
+usb3300.v                                 USB3300 model, replaced by our PHY
+tb_ams_mouse_shadow.v                     Icarus version of this test
+afe_*_bm.v                                Icarus behavioural AFE models
+
+
+-------------------------------------------------------------------------------
+ 7. ADE XL setup
+-------------------------------------------------------------------------------
+Menu and field names differ between IC releases; check them against your
+version.
+
+7.1 Library and cellviews
+    Create a library (e.g. USB_MOUSE_TB) and bring the sources in as
+    text cellviews (File > Import > Verilog for the digital files, or create
+    each cellview and load the file text):
+      cell                 view          source file
+      -------------------  ------------  --------------------------------
+      tb_ams_mouse         verilogams    AFE/ams/tb_ams_mouse.vams
+      ams_ulpi_phy         functional    AFE/ams/ams_ulpi_phy.v
+      usb_* (35 cells)     functional    the files of section 2
+      afe_transceiver      veriloga      AFE/veriloga/afe_transceiver.va
+      afe_receiver         veriloga      AFE/veriloga/afe_receiver.va
+      afe_cdr              veriloga      AFE/veriloga/afe_cdr.va
+      ams_vdc              veriloga      module ams_vdc of AFE/ams/lib/ams_prims.va
+      usb_ls_mouse         veriloga      Tests/USB ULPI Mouse/usb_ls_mouse.v
+    The connect library (AFE/ams/lib/usb_connect.vams) is not a design cell:
+    compile it as a text file (7.3).
+    usb_ls_mouse: importing it directly as a veriloga cellview replaces the
+    wrapper ams_ls_mouse.va (do not use both: the module would be defined
+    twice). The file's comments are Windows-1251 text; the compiler ignores
+    them, but the cellview editor may show them garbled.
+    ulpi_link_bfm is defined in the `include'd ulpi_tb_template.v, not as a
+    cell: leave it out of the library and keep the include path (7.3).
+
+7.2 Config view
+    Create a config view of tb_ams_mouse (Hierarchy Editor):
+      view list: verilogams functional veriloga behavioral
+      stop list: veriloga
+    Check that every instance resolves (u_phy -> ams_ulpi_phy, H_XCVR,
+    H_RX, H_CDR, u_mouse, the five ams_vdc sources).
+
+7.3 ADE XL test
+    Design:       USB_MOUSE_TB / tb_ams_mouse / config
+    Simulator:    ams
+    Connect rules: Setup > Connect Rules: use the user rule usb_cr compiled
+                  from AFE/ams/lib/usb_connect.vams (not the built-in
+                  ConnRules_* sets).
+    Include paths (xrun -incdir), e.g. in the AMS simulator options /
+    additional xrun arguments:
+        -incdir /home/Projects/USB_60/AFE/ams
+        -incdir "/home/Projects/USB_60/Tests/USB ULPI Mouse"
+    Timescale:    -timescale 1ns/1ps
+    Analysis:     tran, stop time 20m, maxstep 2n, errpreset moderate
+                  (accuracy "moderate"); options reltol 1e-4, vabstol 1e-6,
+                  iabstol 1e-12, temp 27
+    Outputs:      save tb_ams_mouse.dp and tb_ams_mouse.dm (plot DP / DM);
+                  digital signals as needed (ulpi_* in tb_ams_mouse)
+    Pass/fail:    the log's last TEST PASSED / TEST FAILED line. An ADE XL
+                  output can grep the log for it if you want a pass/fail
+                  column; the waveforms alone do not show the result.
+
+7.4 Points to watch on the first run
+    - Space in the folder name "USB ULPI Mouse": some ADE fields split
+      arguments on spaces. If the include path is not found, make a link
+      without spaces and use that path instead, e.g.
+          ln -s "/home/Projects/USB_60/Tests/USB ULPI Mouse" \
+                /home/Projects/USB_60/Tests/usb_ulpi_mouse
+          -incdir /home/Projects/USB_60/Tests/usb_ulpi_mouse
+    - Hierarchical names: the testbench reads the line voltages with
+          $cds_get_analog_value("tb_ams_mouse.dp")  /  ("tb_ams_mouse.dm")
+      (macros AMS_VDP / AMS_VDM in tb_ams_mouse.vams). If the cell is
+      renamed, or ADE netlists it under another top-level name, change these
+      two strings to the actual path of the dp / dm nets, or the check_line
+      checks (attach J level, SE0 during bus reset) read wrong values.
+    - The run ends with the digital $finish (about 3.5 ms). If ADE reports
+      the end of simulation as an error, that is this $finish; the result is
+      the TEST PASSED / FAILED line before it.
+    - Watchdog: TEST FAILED: timeout after 20 ms simulated.
+
+
+-------------------------------------------------------------------------------
+ 8. Notes
+-------------------------------------------------------------------------------
+8.1 usb_ls_mouse.v is Verilog-A in a .v file; tools treat .v as digital
+    Verilog. Either import it as a veriloga cellview (7.1) or, for command-
+    line runs, compile it through AFE/ams/lib/ams_ls_mouse.va.
+8.2 Command-line reference (same test without ADE, from the repository
+    root): AFE/ams/run_ams_tests.sh mouse, or the xrun command in the header
+    of AFE/ams/tb_ams_mouse.vams. Output in build/ams/tb_ams_mouse/.
+8.3 Test settings: device address 5; debounce, bus reset, recovery and
+    SET_ADDRESS recovery scaled to 10 us each; bus reset by the 45 Ohm HS
+    terminations (Function Control 50h); Product ID checked = 0007h.
+===============================================================================
