@@ -18,11 +18,11 @@ Sources: `usb_clk_gen.v`, `usb_rx_hs_sipo.v`, `usb_pll_lock_det.v`, `usb_pwr_seq
                     AFE (analog)                         |                  Digital (this repo)
                                                          |
  Crystal / REFCLK ── CDR_FREF 24 MHz ──┬─> PLL (×20) ── CLK_BIT_A = clk_bit 480 MHz ──┬─> usb_clk_gen (÷8 Johnson)
-                                       │      ┊ coarse loop                           │      ├─ clk60   60 MHz ──> core (≈1 500 FF)
+                                       │      ┊ coarse loop                           │      ├─ clk60   60 MHz ──> core (1 137 FF)
                                        │      ┊                                       │      ├─ ld / phase_j  ──> clk_bit islands
                                        │      ▼                                       │      └─ clkout 60 MHz ─> CLK pad ─> Link
-                                       │   CDR VCO ── clk_rx 480 MHz ±1000 ppm ──┐    └─> clk_bit islands (≈160 FF)
-                                       │                                         └─> usb_afe_rx_if + usb_rx_hs_sipo (≈110 FF)
+                                       │   CDR VCO ── clk_rx 480 MHz ±1000 ppm ──┐    └─> clk_bit islands (165 FF)
+                                       │                                         └─> usb_afe_rx_if + usb_rx_hs_sipo (112 FF)
                                        │                                                   └─ clk_rxw = clk_rx/8 ─> HS word FIFO write
                                        └─> REF_DIG buffer ── ref_clk 24 MHz ──> usb_pwr_seq, usb_pll_lock_det window
 ```
@@ -97,6 +97,41 @@ Register counts are from the sized STA of each top level (`Plan_60MHz.md` 8.11, 
 | Sink | Function |
 |---|---|
 | `usb_ulpi_phy_pads` `u_pad_clk` (BBSUD8F) → `PAD_ULPI_CLK` | ULPI CLK to the Link (output-clock mode, ULPI 1.1). Stops low in clock suspend / before PLL lock; `clk_on` tells `usb_pwr_seq` when it has stopped. |
+
+### 3.7 Flip-flop count per clock
+
+Per-clock register counts (`all_registers -clock`) from `./run_sta.sh`, slow corner, 2026-11-16.
+No double counting: `usb_afe_trim_regs` / `usb_mode_term_ctrl` are inside `usb_ulpi_phy_top`,
+`usb_rx_decoder8` is inside `usb_rx_datapath`; the older reduced top `usb_ulpi_tx_top` is left
+out. `usb_ulpi_phy_pads` is not in the STA run: its 4 flops are the Yosys flop count of
+`usb_ulpi_phy_pads` (507) minus that of `usb_ulpi_phy_top` (503). Most blocks are counted
+standalone (not wired into the chip top yet), so the final counts can change slightly.
+
+| Clock | Frequency | Source | Flip-flops |
+|---|---|---|---:|
+| `clk60` | 60 MHz | `clk_bit` ÷ 8 (`usb_clk_gen`) | 1 137 |
+| `clk_rxw` | 60 MHz ±1000 ppm | `clk_rx` ÷ 8 (`usb_rx_hs_sipo`) | 148 |
+| **Subtotal 60 MHz** | | | **1 285 (79 %)** |
+| `clk_bit` | 480 MHz | PLL | 165 |
+| `clk_rx` | 480 MHz ±1000 ppm | CDR | 112 |
+| **Subtotal 480 MHz** | | | **277 (17 %)** |
+| `ref_clk` | 24 MHz | REF_DIG | 61 (4 %) |
+| **Total** | | | **1 623** |
+
+| Module | `clk60` | `clk_rxw` | `clk_bit` | `clk_rx` | `ref_clk` | Total |
+|---|---:|---:|---:|---:|---:|---:|
+| `usb_ulpi_phy_top` (ULPI core, register files, TX byte path, `usb_afe_trim_regs`, `usb_mode_term_ctrl`) | 503 | | | | | 503 |
+| `usb_ulpi_phy_pads` (RESETB sync / `bit_rst_n` sync) | 2 | | 2 | | | 4 |
+| `usb_rx_datapath` (decoder, DPLL, FS/LS sampler, HS SIPO, word FIFO) | 278 | 148 | 56 | 58 | | 540 |
+| `usb_afe_tx_if8` | 205 | | | | | 205 |
+| `usb_tx_piso` | | | 68 | | | 68 |
+| `usb_afe_rx_if` | 1 | | | 54 | | 55 |
+| `usb_clk_gen` | | | 11 | | | 11 |
+| `usb_pll_lock_det` | 37 | | 17 | | 21 | 75 |
+| `usb_rx_status_sync` | 86 | | 7 | | | 93 |
+| `usb_line_state` | 17 | | 2 | | | 19 |
+| `usb_pwr_seq` | 8 | | 2 | | 40 | 50 |
+| **Total** | **1 137** | **148** | **165** | **112** | **61** | **1 623** |
 
 ## 4. Clock relationships and crossings
 
