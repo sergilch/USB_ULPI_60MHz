@@ -1,0 +1,190 @@
+===============================================================================
+ USB 2.0 ULPI PHY (digital half) - files for synthesis in Cadence Genus
+===============================================================================
+ Status: Plan_60MHz.md P9 (2026-11-15), 2026-11-16.
+ All paths relative to the repository root.
+ Module lists per top were taken from the elaborated hierarchy
+ (yosys "hierarchy -top <top>", same set of files as ./run_synth.sh).
+
+-------------------------------------------------------------------------------
+ 0. IMPORTANT: what "the digital portion" is today
+-------------------------------------------------------------------------------
+ There is no single top level yet that contains the whole digital design.
+ The chip-level top usb_ulpi_phy_pads (-> usb_ulpi_phy_top) contains the ULPI
+ core, register files, TX byte path and mode / termination control, but NOT
+ yet (WORK_PLAN 8.1):
+     usb_clk_gen, usb_rx_datapath, usb_afe_rx_if, usb_afe_tx_if8, usb_tx_piso,
+     usb_pll_lock_det, usb_rx_status_sync, usb_line_state, usb_pwr_seq.
+ These are synthesized as separate top levels (section 3).  Read the full RTL
+ list of section 1 in every run; elaborate only the top you want.
+
+-------------------------------------------------------------------------------
+ 1. RTL source files (Verilog-2005, synthesizable) - 39 files, 1 module each
+-------------------------------------------------------------------------------
+ No `include files, no `define / `ifdef needed.  Order: leaves first.
+
+ 1.1 Clock / power / status
+     usb_clk_gen.v              480 MHz -> clk60, ld, phase_j, CLKOUT
+     usb_pll_lock_det.v         PLL lock detector (clk_bit / clk60 / ref_clk)
+     usb_pwr_seq.v              power-up / suspend sequencer (ref_clk)
+     usb_rx_status_flt.v        filter leaf of usb_rx_status_sync
+     usb_rx_status_sync.v       squelch / disconnect / VBUS / ID sync + filters
+     usb_line_state.v           LineState (clk60 + clk_bit capture)
+
+ 1.2 TX path
+     usb_bit_stuffer.v
+     usb_nrzi_encoder.v
+     usb_tx_serializer8.v       8 line bits per clk60 tick + EOP
+     usb_tx_path.v              bit stuffer -> NRZI -> serializer8
+     usb_tx_holding.v           4-byte TX FIFO, NXT pacing
+     usb_tx_sync_mux.v
+     usb_tx_datapath.v
+     usb_afe_tx_if8.v           driver select, lead / lag window (clk60)
+     usb_tx_piso.v              8:1 PISO to the AFE pins (clk_bit)
+
+ 1.3 RX path
+     usb_rx_hs_frontend.v       HS front end (clk_rx)
+     usb_rx_hs_sipo.v           HS 1:8 SIPO, generates clk_rxw (clk_rx)
+     usb_rx_elastic_buffer.v    HS word FIFO (clk_rxw -> clk60)
+     usb_rx_fsls_sampler.v      FS/LS sampler + 1:8 SIPO (clk_bit)
+     usb_rx_fsls_dpll.v         FS/LS DPLL (clk60)
+     usb_rx_decoder8.v          NRZI / SYNC / unstuff / EOP, 8 bits per tick
+     usb_rx_datapath.v          RX datapath top
+     usb_afe_rx_if.v            AFE RX interface (clk_rx island + clk60 enables)
+
+ 1.4 ULPI core
+     usb_ulpi_input_capture.v
+     usb_ulpi_reg_access.v
+     usb_ulpi_reg_file.v
+     usb_ulpi_burst_mux.v
+     usb_ulpi_bus_owner.v
+     usb_ulpi_core.v
+     usb_ulpi_rx_handler.v
+     usb_ulpi_rxcmd_gen.v
+     usb_ulpi_out_arbiter.v
+     usb_ulpi_rx_path.v
+     usb_ulpi_phy_if.v
+
+ 1.5 Tops, register / control blocks
+     usb_afe_trim_regs.v        vendor registers 30h-3Fh
+     usb_mode_term_ctrl.v       mode / termination control
+     usb_ulpi_phy_top.v         PHY digital top (without pads)
+     usb_ulpi_phy_pads.v        chip top with BBSUD8F pads, RESETB sync, NAND tree
+     usb_ulpi_tx_top.v          OLDER REDUCED TOP - not part of the product,
+                                only needed if this top is synthesized
+
+-------------------------------------------------------------------------------
+ 2. Files that must NOT be read by synthesis
+-------------------------------------------------------------------------------
+     tb_*.v                     testbenches
+     afe_*_bm.v                 real-valued AFE behavioural models
+     ref_*.v                    testbench-only reference models
+     tx_vec2ser_bm.v            testbench helper
+     AFE/veriloga/*, AFE/spice/*, AFE/ams/*   analog models / AMS benches
+     X-FAB/BBSUD8F.v, X-FAB/IO_CELLS_JIF3V.v, X-FAB/VLG_PRIMITIVES.v,
+     X-FAB/xh018_v/*.v          simulation models only (use the Liberty views)
+
+-------------------------------------------------------------------------------
+ 3. Files per top level (elaborated hierarchy)
+-------------------------------------------------------------------------------
+ usb_ulpi_phy_pads   (chip top, 22 RTL files + pad cell BBSUD8F)
+     usb_ulpi_phy_pads.v usb_ulpi_phy_top.v usb_ulpi_phy_if.v usb_ulpi_core.v
+     usb_ulpi_input_capture.v usb_ulpi_reg_access.v usb_ulpi_reg_file.v
+     usb_ulpi_burst_mux.v usb_ulpi_bus_owner.v usb_ulpi_rx_path.v
+     usb_ulpi_rx_handler.v usb_ulpi_rxcmd_gen.v usb_ulpi_out_arbiter.v
+     usb_tx_datapath.v usb_tx_holding.v usb_tx_sync_mux.v usb_tx_path.v
+     usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer8.v
+     usb_afe_trim_regs.v usb_mode_term_ctrl.v
+     + BBSUD8F (13 instances) -> needs the IO-cell Liberty (section 4.2)
+
+ usb_ulpi_phy_top    (21 RTL files): as usb_ulpi_phy_pads without usb_ulpi_phy_pads.v
+
+ usb_rx_datapath     (7 files)
+     usb_rx_datapath.v usb_rx_hs_sipo.v usb_rx_hs_frontend.v
+     usb_rx_elastic_buffer.v usb_rx_fsls_sampler.v usb_rx_fsls_dpll.v
+     usb_rx_decoder8.v
+
+ usb_rx_status_sync  (2 files)  usb_rx_status_sync.v usb_rx_status_flt.v
+
+ Single-file tops (1 file each):
+     usb_clk_gen.v  usb_pll_lock_det.v  usb_pwr_seq.v  usb_line_state.v
+     usb_afe_rx_if.v  usb_afe_tx_if8.v  usb_tx_piso.v  usb_rx_decoder8.v
+     usb_mode_term_ctrl.v  usb_afe_trim_regs.v
+
+ usb_ulpi_tx_top     (older reduced top, 10 files)
+     usb_ulpi_tx_top.v usb_ulpi_input_capture.v usb_ulpi_bus_owner.v
+     usb_tx_datapath.v usb_tx_holding.v usb_tx_sync_mux.v usb_tx_path.v
+     usb_bit_stuffer.v usb_nrzi_encoder.v usb_tx_serializer8.v
+
+ Same top list as run_synth.sh (TOPS) / run_sta.sh.
+
+-------------------------------------------------------------------------------
+ 4. Technology files (X-FAB xh018) - CONFIDENTIAL, never commit / publish
+-------------------------------------------------------------------------------
+ 4.1 Standard cells D_CELLS_JIHD (Liberty, timing / power)
+     X-FAB/xh018_lib/D_CELLS_JIHD_LPMOS_slow_1_62V_125C.lib   setup corner (MMMC max)
+     X-FAB/xh018_lib/D_CELLS_JIHD_LPMOS_typ_1_80V_25C.lib     typical
+     X-FAB/xh018_lib/D_CELLS_JIHD_LPMOS_fast_1_98V_m40C.lib   hold corner (MMMC min)
+
+ 4.2 IO cells BBSUD8F (IO_CELLS_JIF3V)            *** MISSING IN THIS CHECKOUT ***
+     Liberty of the IO library (BBSUD8F) for slow / typ / fast is needed to
+     synthesize usb_ulpi_phy_pads.  Only the simulation model X-FAB/BBSUD8F.v
+     is present.  Alternative: mark BBSUD8F as a black box / don't-touch and
+     synthesize usb_ulpi_phy_top.
+
+ 4.3 Physical views (only for physical-aware synthesis: syn_opt -spatial /
+     Genus physical mode)
+     X-FAB/xh018_lef/xh018_xx31_HD_MET3_METMID.lef            technology LEF
+     X-FAB/xh018_lef/xh018_D_CELLS_JIHD.lef                    cell LEF
+     X-FAB/xh018_lef/xh018_xx31_MET3_METMID_D_CELLS_JIHD_mprobe.lef (only if needed)
+     *** MISSING ***: QRC tech file or cap table for the xh018 metal stack
+     (xx31 = 3 metal, METMID); IO-cell LEF.
+
+ 4.4 Not needed for synthesis (simulation of the mapped netlist only)
+     X-FAB/xh018_v/D_CELLS_JIHD.v, X-FAB/xh018_v/VLG_PRIMITIVES.v
+
+-------------------------------------------------------------------------------
+ 5. Constraints
+-------------------------------------------------------------------------------
+     constraints/usb_phy.sdc
+         Clocks clk_bit 480 MHz, clk60 = clk_bit/8 (generated), clkout,
+         clk_rx 480 MHz +1000 ppm, clk_rxw = clk_rx/8, ref_clk 24 MHz,
+         virtual ulpi_clk; 60<->480 multicycles 4/3, async groups, ULPI and
+         AFE I/O delays.  Placeholder pad / CDR delays (Plan_60MHz.md P9-O2).
+
+     Notes for Genus (the SDC was written and checked with OpenSTA 3.1):
+       * Its three tool-specific queries (port direction, driver pin of a net,
+         driver cells of nets) are procs usb_port_is_input / usb_net_driver /
+         usb_driver_cells that the SDC only defines if the caller has not.
+         syn/genus_synth.tcl defines get_db versions before read_sdc.
+       * It matches nets by name in a flattened design with "." as hierarchy
+         separator (Yosys names): clk60, clkout, clk_rxw, rst_rx_m_n,
+         rst_rx_m2_n, *u_piso.cq.  syn/genus_synth.tcl flattens with
+         ungroup_separator "." before read_sdc and checks the clocks.
+       * CKO_LEAD in the SDC must equal the usb_clk_gen parameter (default 2).
+
+-------------------------------------------------------------------------------
+ 6. Settings the RTL relies on
+-------------------------------------------------------------------------------
+     * Verilog-2005, read with read_hdl (Verilog, e.g. -language v2001 or -sv).
+     * Top-level parameters: keep the defaults (usb_ulpi_phy_pads: FS_DIV 40,
+       LS_DIV 320, DIV_W 9, RX_DEPTH 8; usb_clk_gen: CKO_LEAD 2).
+     * (* keep *) attributes on duplicated flops (reset copies, fan-out
+       replicas in the clk_rx islands, CLAUDE.md "Reset") must be honoured:
+       disable sequential merging for them (e.g. set_db optimize_merge_flops
+       false, or preserve on those instances), otherwise the 2-cycle reset
+       recovery copies collapse.
+     * No latches are expected (run_synth.sh asserts none) - check
+       check_design / report latches.
+     * Reset: active-low asynchronous; scan insertion is not planned in the RTL.
+
+-------------------------------------------------------------------------------
+ 7. Reference
+-------------------------------------------------------------------------------
+     run_genus.sh                Genus flow over these tops (syn/genus_synth.tcl,
+                                 which holds the same list as section 1)
+     run_synth.sh / run_sta.sh   Yosys / OpenSTA flow that reads the same files
+     build/synth_<top>.v         Yosys netlists for comparison (after ./run_synth.sh)
+     Plan_60MHz.md 8.11          registers per clock and sized STA results
+     DOC/Diagram/Clocktree/      clock tree description and diagram
+===============================================================================

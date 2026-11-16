@@ -15,6 +15,7 @@ Synthesizable Verilog-2005 RTL for the digital, PHY-side half of a USB 2.0 ULPI 
 ./run_synth.sh usb_ulpi_phy_top   # one top level
 CORNER=slow ./run_synth.sh        # Liberty corner typ (default) / slow / fast
 ./run_sta.sh [top ...]            # OpenSTA with constraints/usb_phy.sdc, CORNER=slow (default) / typ / fast
+./run_genus.sh [top ...]          # Cadence Genus (syn/genus_synth.tcl), CORNER=slow (default) / typ / fast; SKIPPED without genus
 make test | synth | sta | all | clean   # same, with TB= TOPS= CORNER= STA_CORNER= JOBS=
 AFE/ams/run_ams_tests.sh [link|pwr]   # Spectre AMS (xrun -ams); no simulator here, only the static netlist check runs
 ```
@@ -25,6 +26,7 @@ AFE/ams/run_ams_tests.sh [link|pwr]   # Spectre AMS (xrun -ams); no simulator he
 - `tb_usb_ulpi_phy_pads` needs `-DDISPLAY_PD_PU_EN` for the pull checks; testbenches/tops that reference `X-FAB/` are skipped when that directory is absent.
 - `run_synth.sh` reads every `usb_*.v` and fails on inferred latches or any `check -assert` problem (undriven, multiply driven, loops). With `X-FAB/xh018_lib` present it also maps to D_CELLS_JIHD and requires no generic cells left. New top levels must be added to the `TOPS` list in `run_synth.sh` (and of `run_sta.sh`).
 - `run_sta.sh` maps each top for delay (X1 flops; gates with ABC buffering + sizing, `SIZE=0` for the plain unsized X1 mapping), runs OpenSTA with `constraints/usb_phy.sdc` and prints WNS/TNS/#violations and the register count per clock; reports in `build/sta/`. Ideal clocks, no parasitics, placeholder pad / CDR delays in the SDC: estimates, not sign-off. Timing violations do not fail the script.
+- `run_genus.sh` / `syn/genus_synth.tcl` read the explicit RTL list of `DOC/genus_file_list.txt` (kept in the Tcl as `RTL_FILES`; a new `usb_*.v` must be added to both). The Tcl flattens with separator `.` and defines Genus versions of the SDC query procs (`usb_port_is_input`, `usb_net_driver`, `usb_driver_cells`) before `read_sdc`; the SDC only defines its OpenSTA versions when they are missing, so tool-specific queries go into those procs. Not run in this environment (no Genus).
 - Outputs go to `build/`.
 
 ## File naming (all in repo root)

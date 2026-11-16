@@ -51,12 +51,37 @@ set T_RX    [expr {$T_BIT / 1.001}]
 set T_60    [expr {8.0 * $T_BIT}]
 set T_REF   41.6667
 
-# Driver pin of a net (the flop output in a flattened netlist), or "" if the
-# net does not exist.
-proc usb_net_driver {net} {
-    set n [get_nets -quiet $net]
-    if {[llength $n] == 0} { return "" }
-    return [get_pins -of_objects $n -filter "direction == output"]
+# Tool-specific design queries.  These are the OpenSTA versions; a flow can
+# define its own procs with the same names before it reads this file, and
+# they are then kept (Genus: syn/genus_synth.tcl, get_db versions).
+#   usb_net_driver net       driver pin of a net (the flop output in a
+#                            flattened netlist), or "" if the net does not exist
+#   usb_port_is_input port   1 if the port exists and is an input
+#   usb_driver_cells pats    one element per net matching the patterns
+#                            (hierarchical search) that has a driver pin: the
+#                            driving cell(s)
+if {[info procs usb_net_driver] eq ""} {
+    proc usb_net_driver {net} {
+        set n [get_nets -quiet $net]
+        if {[llength $n] == 0} { return "" }
+        return [get_pins -of_objects $n -filter "direction == output"]
+    }
+}
+if {[info procs usb_port_is_input] eq ""} {
+    proc usb_port_is_input {port} {
+        if {[llength [get_ports -quiet $port]] == 0} { return 0 }
+        return [expr {[get_property [get_ports $port] direction] == "input"}]
+    }
+}
+if {[info procs usb_driver_cells] eq ""} {
+    proc usb_driver_cells {pats} {
+        set res {}
+        foreach n [get_nets -quiet -hierarchical $pats] {
+            set drv [get_pins -quiet -of_objects $n -filter "direction == output"]
+            if {[llength $drv]} { lappend res [get_cells -of_objects $drv] }
+        }
+        return $res
+    }
 }
 
 set has_bit 0
@@ -66,7 +91,7 @@ if {[llength [get_ports -quiet clk_bit]]} {
 }
 
 set has_60 0
-if {[llength [get_ports -quiet clk60]] && [get_property [get_ports clk60] direction] == "input"} {
+if {[usb_port_is_input clk60]} {
     create_clock -name clk60 -period $T_60 [get_ports clk60]
     set has_60 1
 } elseif {$has_bit} {
@@ -161,13 +186,9 @@ if {[llength $rx_grp]} {
 #   that lands one edge late cannot change them: recovery / removal as a
 #   2-cycle path from that flop.  The fan-out of rst_rx_m_n (up to ~25) at
 #   480 MHz does not fit one cycle even with an ideal buffer tree.
-foreach n [get_nets -quiet -hierarchical {rst_rx_m_n *.rst_rx_m_n rst_rx_m2_n *.rst_rx_m2_n}] {
-    set drv [get_pins -quiet -of_objects $n -filter "direction == output"]
-    if {[llength $drv]} {
-        set c [get_cells -of_objects $drv]
-        set_multicycle_path -setup 2 -from $c
-        set_multicycle_path -hold  1 -from $c
-    }
+foreach c [usb_driver_cells {rst_rx_m_n *.rst_rx_m_n rst_rx_m2_n *.rst_rx_m2_n}] {
+    set_multicycle_path -setup 2 -from $c
+    set_multicycle_path -hold  1 -from $c
 }
 
 # ---------------------------------------------------------------------------
@@ -176,13 +197,9 @@ foreach n [get_nets -quiet -hierarchical {rst_rx_m_n *.rst_rx_m_n rst_rx_m2_n *.
 #   single cycle (undo the 4 / 3 boundary multicycle for this endpoint).  Only
 #   matters in a top level that has both clk60 logic and the PISO.
 if {$has_60 && $has_bit} {
-    foreach n [get_nets -quiet -hierarchical {*u_piso.cq cq}] {
-        set drv [get_pins -quiet -of_objects $n -filter "direction == output"]
-        if {[llength $drv]} {
-            set c [get_cells -of_objects $drv]
-            set_multicycle_path -setup -end 1 -from [get_clocks clk60] -to $c
-            set_multicycle_path -hold  -end 0 -from [get_clocks clk60] -to $c
-        }
+    foreach c [usb_driver_cells {*u_piso.cq cq}] {
+        set_multicycle_path -setup -end 1 -from [get_clocks clk60] -to $c
+        set_multicycle_path -hold  -end 0 -from [get_clocks clk60] -to $c
     }
 }
 
