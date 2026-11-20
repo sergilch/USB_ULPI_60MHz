@@ -26,6 +26,9 @@
 //   Register write : cmd (until nxt) -> data (until nxt) -> STP cycle w/ data=00
 //   Register read  : cmd (until nxt) -> PHY dir=1 -> turnaround -> data -> dir=0
 //   USB transmit   : TXCMD (until nxt) -> bytes (advance on nxt) -> STP cycle
+//   TXCMD aborted  : the PHY asserts dir before nxt in the TXCMD cycle (RX CMD
+//                    or USB receive): the Link BFM retries the TXCMD when the
+//                    bus is idle again (link_cmd_phase, ULPI 3.8.2 / 3.8.3)
 //   USB receive    : dir=1 -> turnaround -> RXCMD (RxActive=1) -> bytes with
 //                    nxt=1 -> RXCMD (RxActive=0) -> dir=0
 //                    (dir and nxt asserted together = implicit RxActive)
@@ -103,7 +106,8 @@ module ulpi_link_bfm #(
   parameter real TCQ         = 1.0,   // clock-to-output delay [ns]
   parameter      NXT_TIMEOUT = 64,    // cycles to wait for nxt / dir before erroring
   parameter      TX_MAX      = 1024,  // size of tx_buf
-  parameter      RX_MAX      = 1024   // size of rx_buf
+  parameter      RX_MAX      = 1024,  // size of rx_buf
+  parameter      CMD_RETRIES = 16     // TX CMD aborts by the PHY retried in a row
 )(
   input        clk,
   input        dir,
@@ -127,6 +131,7 @@ module ulpi_link_bfm #(
   integer   rx_pkt_cnt;            // number of completed receive packets
   reg       rx_err_seen;           // RxError was flagged in the last packet
   integer   err_cnt;               // testbench error counter
+  integer   cmd_retry_cnt;         // TX CMDs aborted by the PHY and retried (not errors)
   event     rx_packet_done;
 
   reg       reg_rd_busy;           // suppresses RXCMD/RX decode during register-read data
@@ -135,7 +140,7 @@ module ulpi_link_bfm #(
     $timeformat(-9, 3, " ns", 10);
     data_o = 8'h00; data_oe = 1'b1; stp = 1'b0;
     rx_len = 0; last_rxcmd = 8'h00; rxcmd_cnt = 0; rx_pkt_cnt = 0;
-    rx_err_seen = 1'b0; err_cnt = 0; reg_rd_busy = 1'b0;
+    rx_err_seen = 1'b0; err_cnt = 0; reg_rd_busy = 1'b0; cmd_retry_cnt = 0;
   end
 
   //------------------------------------------------------------ RXCMD decode
@@ -230,6 +235,43 @@ module ulpi_link_bfm #(
     end
   endtask
 
+  // TX CMD byte of any Link transfer.  The PHY may abort it by asserting dir
+  // before it has accepted the byte (USB receive or an RX CMD; ULPI 1.1
+  // 3.8.2.2, 3.8.3.1 / 3.8.3.2: "the Link must retry ... when the bus is idle"),
+  // e.g. the LineState RX CMD that follows the RX CMD with RxActive = 0 at the
+  // end of a received full-speed packet.  That is not an error: the Link waits
+  // until the PHY releases the bus and sends the TX CMD again (counted in
+  // cmd_retry_cnt).  A timeout, or more than CMD_RETRIES aborts in a row, is.
+  task link_cmd_phase(input [7:0] d, output ok);
+    reg n, dr;
+    integer t, tries;
+    begin
+      ok = 1'b0; tries = 0;
+      while (!ok && tries <= CMD_RETRIES) begin
+        n = 1'b0; dr = 1'b0; t = 0;
+        while (!n && !dr && t < NXT_TIMEOUT) begin
+          link_cycle(d, 1'b0, n, dr);
+          t = t + 1;
+        end
+        if (dr) begin
+          tries = tries + 1;
+          cmd_retry_cnt = cmd_retry_cnt + 1;
+          $display("[%0t] ULPI LINK: TX CMD 0x%02h aborted by PHY (dir), retry when the bus is idle", $time, d);
+          link_cleanup; link_sync; link_wait_idle;
+        end else if (!n) begin
+          err_cnt = err_cnt + 1;
+          $display("[%0t] ULPI LINK: ERROR timeout waiting for nxt (TX CMD 0x%02h)", $time, d);
+          tries = CMD_RETRIES + 1;
+        end else
+          ok = 1'b1;
+      end
+      if (!ok && tries == CMD_RETRIES + 1 && dr) begin
+        err_cnt = err_cnt + 1;
+        $display("[%0t] ULPI LINK: ERROR TX CMD 0x%02h aborted %0d times", $time, d, tries);
+      end
+    end
+  endtask
+
   task link_cleanup;                 // return bus to idle after an abort
     begin data_o = 8'h00; stp = 1'b0; data_oe = 1'b1; end
   endtask
@@ -283,7 +325,7 @@ module ulpi_link_bfm #(
     reg ok;
     begin
       link_sync; link_wait_idle;
-      link_phase(`ULPI_TXCMD_REGW(addr), ok);
+      link_cmd_phase(`ULPI_TXCMD_REGW(addr), ok);
       if (ok) link_phase(wdata, ok);
       if (ok) link_stp_cycle; else link_cleanup;
       $display("[%0t] ULPI LINK: REG WRITE [0x%02h] <= 0x%02h%s", $time, addr, wdata, ok ? "" : "  (FAILED)");
@@ -296,7 +338,7 @@ module ulpi_link_bfm #(
     begin
       link_sync; link_wait_idle;
       rdata = 8'hxx;
-      link_phase(`ULPI_TXCMD_REGR(addr), ok);
+      link_cmd_phase(`ULPI_TXCMD_REGR(addr), ok);
       if (ok) begin
         link_read_data(rdata);
         $display("[%0t] ULPI LINK: REG READ  [0x%02h] => 0x%02h", $time, addr, rdata);
@@ -309,7 +351,7 @@ module ulpi_link_bfm #(
     reg ok;
     begin
       link_sync; link_wait_idle;
-      link_phase(`ULPI_TXCMD_EXT_REGW, ok);
+      link_cmd_phase(`ULPI_TXCMD_EXT_REGW, ok);
       if (ok) link_phase(addr, ok);
       if (ok) link_phase(wdata, ok);
       if (ok) link_stp_cycle; else link_cleanup;
@@ -323,7 +365,7 @@ module ulpi_link_bfm #(
     begin
       link_sync; link_wait_idle;
       rdata = 8'hxx;
-      link_phase(`ULPI_TXCMD_EXT_REGR, ok);
+      link_cmd_phase(`ULPI_TXCMD_EXT_REGR, ok);
       if (ok) link_phase(addr, ok);
       if (ok) begin
         link_read_data(rdata);
@@ -354,7 +396,7 @@ module ulpi_link_bfm #(
     integer i;
     begin
       link_sync; link_wait_idle;
-      link_phase(`ULPI_TXCMD_XMIT(pid), ok);
+      link_cmd_phase(`ULPI_TXCMD_XMIT(pid), ok);
       i = 0;
       while (ok && i < len) begin
         link_phase(tx_buf[i], ok);

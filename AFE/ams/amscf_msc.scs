@@ -1,0 +1,15 @@
+// amscf_msc.scs - analog control file of tb_ams_msc (xrun -analogcontrol)
+//
+// The digital sequence ends the run with $finish (about 1.5 ms); the tran stop
+// time is only an upper bound (the sequence's watchdog is 20 ms).  The line
+// runs at full speed (83.3 ns bits; 4-20 ns edges, the device model's trf is
+// 8 ns); HS is only on during the 10 us bus reset (XcvrSelect 00: HS receiver,
+// squelch and CDR enabled, nothing transmitted), where the step control
+// follows the CDR's 480 MHz VCO by itself.  maxstep 1 ns resolves the FS
+// edges and the device's 10.4 ns sample timer.  Saved: the line only.
+simulator lang=spectre
+
+opts options temp=27 reltol=1e-4 vabstol=1e-6 iabstol=1e-12
+tran tran stop=20m errpreset=moderate maxstep=1n write="spectre.ic" annotate=status
+
+save tb_ams_msc.dp tb_ams_msc.dm
