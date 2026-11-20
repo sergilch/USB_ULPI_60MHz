@@ -1,0 +1,111 @@
+seq (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): the tb_afe_transceiver sequence
+  off: DP: 1.462e-06 V (-0.01 .. 0.01)
+  off: RXDP_A: 1.017e-09 V (-0.01 .. 0.1)
+  supply current, all off: VDD33 689 uA, VDD18 51.2 uA
+  attach: DP (1.5k up / 15k down): 3.278 V (3.223 .. 3.323)
+  attach: DM: 0.0004916 V (-0.01 .. 0.01)
+  attach: RXDP_A: 1.98 V (1.88 .. 1.99)
+  attach: RXDM_A: 1.03e-09 V (-0.01 .. 0.1)
+  attach: RXRCV_A: 1.98 V (1.88 .. 1.99)
+  HS: |DP - DM| 10 ns after TX_EN (t_en / 2): 0.0001328 mV (0 .. 5)
+  HS ready (current handed from the dump to the line) 17.3 ns after TX_EN
+  HS J: DP - DM: 397.7 mV (385 .. 415)
+  HS J: DM: 5.555e-05 mV (-5 .. 5)
+  HS K: DP - DM: -397.2 mV (-415 .. -385)
+  HS J->K 10-90 % fall time: 0.5407 ns (0.5 .. 1.3)
+  HS TX_IN -> line delay (50 %): 0.6913 ns (0.5 .. 1.3)
+  HS P = N: DP - DM: -0.2762 mV (-25 .. 25)
+  HS P = N: DP: 200.8 mV (175 .. 225)
+  chirp: DP into 45 Ohm: 796.3 mV (775 .. 825)
+  TX_EN = 0: DP: 0.3452 mV (-5 .. 5)
+  FS J: DP: 3.592 V (3.5 .. 3.61)
+  FS J: DM: -1.949e-09 V (-0.01 .. 0.05)
+  FS J: RXDP_A: 1.98 V (1.88 .. 1.99)
+  FS J: RXRCV_A: 1.98 V (1.88 .. 1.99)
+  FS K: DM: 3.592 V (3.5 .. 3.61)
+  FS K: RXRCV_A: -1.268e-09 V (-0.01 .. 0.1)
+  FS K: RXDM_A: 1.98 V (1.88 .. 1.99)
+  FS 10-90 % rise of DM: 9.032 ns (4 .. 20)
+  RXRCV_A delay after DP = DM: 1.998 ns (1.5 .. 3)
+  SE0: DP (pull-up against the driver): 0.07716 V (-0.01 .. 0.15)
+  SE0: DM: 6.658e-08 V (-0.01 .. 0.05)
+  SE0: RXDP_A: 1.017e-09 V (-0.01 .. 0.1)
+  SE0: RXDM_A: -3.901e-09 V (-0.01 .. 0.1)
+  LS J: DM: 3.592 V (3.5 .. 3.61)
+  LS J: DP: 7.705e-09 V (-0.01 .. 0.05)
+  LS K: DP: 3.592 V (3.5 .. 3.61)
+  LS 10-90 % rise of DP: 120.4 ns (75 .. 300)
+  device pulls: DP: 3.269 V (3.223 .. 3.323)
+  device pulls: DM (released 100 ns earlier): -0.06037 V (-0.25 .. 0.01)
+  FS_RX_EN_A = 0: RXDP_A: 2.634e-07 V (-0.01 .. 0.1)
+  FS_RX_EN_A = 0: RXDM_A: 2.384e-09 V (-0.01 .. 0.1)
+  FS_RX_EN_A = 0: RXRCV_A: 1.98 V (1.88 .. 1.99)
+  VDD33 = 2.5 V: RXDP_A: 9.894e-07 V (-0.01 .. 0.1)
+  VDD33 = 2.5 V: RXRCV_A: 1.98 V (1.88 .. 1.99)
+hs (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): HS packet (10 bits lead, SYNC, PRBS7, EOP) and device chirp K
+  no line current before ready: |DP - DM| <= 0.16 mV
+  ready 17.3 ns after TX_EN (model t_en 20 ns; must be <= the 10-bit lead 20.8 ns + 0.5 ns)
+  TX_IN -> line delay 704 ps (model 812), crossing jitter 18.6 ps p-p over 94 edges (<= 100 ps; USB eye +-156 ps)
+  steady-state amplitude (3rd bit of a run) 396.9 .. 398.5 mV, median 397.9 (USB 360 .. 440)
+  every bit centre: 396.9 .. 401.6 mV
+  first SYNC bit 399.6 mV (+0.4 % of steady state, <= 2 %); dump current at ready 17.77 mA
+  eye: margin to the template 1 inner hexagon (300 mV at 37.5 .. 62.5 % UI) +94 mV (>= 0), peak 411 mV (<= 475)
+  eye: |DP - DM| >= 377 mV over 25 .. 75 % UI
+  10-90 % edges: rise 533 .. 556 ps, fall 533 .. 557 ps (USB >= 500 ps)
+  TX_EN falls: |DP - DM| < 5 mV 1.88 ns later
+  supply current during the packet: VDD33 18.44 mA, VDD18 0.59 mA; before TX_EN: VDD33 688 uA
+  device chirp K (pull-up on, host 45 Ohm): DM - DP = 693 mV, DP 107 mV (A6 model 700; USB 500 .. 900)
+rx (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): receiver thresholds and UVLO on slow ramps
+  RXDP_A: high above 1.638 V, low below 1.303 V, hysteresis 335 mV (0.8 .. 2.0 V; model 1.4 +- 0.1)
+  RXDM_A: high above 1.638 V, low below 1.303 V, hysteresis 335 mV (0.8 .. 2.0 V; model 1.4 +- 0.1)
+  RXRCV_A at CM 0.40 V: switches at +22.1 / -54.0 mV, hysteresis 76.1 mV, centre -16.0 mV (within +-100 mV; USB 200 mV sensitivity)
+  RXRCV_A at CM 0.80 V: switches at +20.9 / -23.7 mV, hysteresis 44.6 mV, centre -1.4 mV (within +-100 mV; USB 200 mV sensitivity)
+  RXRCV_A at CM 1.65 V: switches at +19.8 / -15.8 mV, hysteresis 35.6 mV, centre +2.0 mV (within +-100 mV; USB 200 mV sensitivity)
+  RXRCV_A at CM 2.50 V: switches at +20.7 / -15.3 mV, hysteresis 35.9 mV, centre +2.7 mV (within +-100 mV; USB 200 mV sensitivity)
+  UVLO: receivers isolated below 2.833 V, on again above 2.948 V (model 2.97; on <= 3.0, off >= 2.7)
+dc (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): operating points (current into the forced DP / DM sources)
+  all off, DP = DM = 1.65 V: leakage 0.0 / 0.0 nA (< 1 uA)
+  bias current with everything off: VDD33 1296 uA, VDD18 51.17 uA
+  pull-up, DP = 0 V: 1473 Ohm (1425 .. 1575)
+  pull-up, DP = 1.65 V: 1473 Ohm (1425 .. 1575)
+  HS termination DP at 0.2 V: 44.52 Ohm (40.5 .. 49.5)
+  HS termination DM at 0.2 V: 44.52 Ohm (40.5 .. 49.5)
+  HS termination DP at 0.4 V: 44.53 Ohm (40.5 .. 49.5)
+  HS termination DM at 0.4 V: 44.53 Ohm (40.5 .. 49.5)
+  pull-down DP at 3.6 V: 14.53 kOhm (14.25 .. 24.8)
+  pull-down DM at 3.6 V: 14.53 kOhm (14.25 .. 24.8)
+  FS driver high (J, DP at 2.8 V): 32.78 Ohm (28 .. 44)
+  FS driver low (J, DM at 0.5 V): 32.44 Ohm (28 .. 44)
+  FS driver high (K, DM at 2.8 V): 32.78 Ohm (28 .. 44)
+  FS driver low (K, DP at 0.5 V): 32.44 Ohm (28 .. 44)
+  HS current J into 0.4 V: 17.77 mA (17.25 .. 18.31)
+  HS current at DP = 0 / 0.8 V and at VDD33 = 3.0 V: +0.01 / -0.03 / -0.01 % (within 1 %)
+  TX_IN_P = TX_IN_N: 8.90 / 8.90 mA into DP / DM (half each)
+  TX_EN = 0: 0.07 nA into DP (< 1 uA)
+  TX_EN = 1, VDD33 = 2.5 V (UVLO): 0.04 nA into DP (< 1 uA)
+  VDD33 current with TX_EN = 1: 18.41 mA (driver 17.77 mA)
+fs (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): FS packet into 50 pF
+  10-90 %: rise 10.6 .. 11.2 ns, fall 10.2 .. 10.7 ns (4 .. 20)
+  rise / fall matching 104.3 % (90 .. 111.1)
+  crossover 1.797 .. 1.846 V (1.3 .. 2.0) over 24 edges
+  levels at the bit centres: high >= 3.592 V (VOH >= 2.8), low <= 77 mV (VOL <= 0.3 V)
+  receivers at 3/4 of each bit: 0 errors in 48 bits (RXRCV_A, RXDP_A, RXDM_A); EOP SE0: RXDP_A = RXDM_A = 0 yes
+  RXRCV_A 1.68 .. 1.93 ns after DP = DM (model 2 ns); RXDP_A / RXDM_A skew <= 2.52 ns (limit 5)
+  VDD33 current during the packet 3.49 mA
+ls200 (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): LS packet into 200 pF
+  10-90 %: rise 122.3 .. 122.4 ns, fall 133.3 .. 133.4 ns (75 .. 300)
+  rise / fall matching 91.8 % (80 .. 125.0)
+  crossover 1.921 .. 1.942 V (1.3 .. 2.0) over 11 edges
+  levels at the bit centres: high >= 3.592 V (VOH >= 2.8), low <= 0 mV (VOL <= 0.3 V)
+  receivers at 3/4 of each bit: 0 errors in 20 bits (RXRCV_A, RXDP_A, RXDM_A); EOP SE0: RXDP_A = RXDM_A = 0 yes
+  RXRCV_A 2.36 .. 2.98 ns after DP = DM (model 2 ns); RXDP_A / RXDM_A skew <= 41.39 ns (limit 100)
+  VDD33 current during the packet 1.56 mA
+ls600 (ff, -40 C, VDD33 3.6 V, VDD18 1.98 V): LS packet into 600 pF
+  10-90 %: rise 136.8 .. 136.8 ns, fall 146.1 .. 146.1 ns (75 .. 300)
+  rise / fall matching 93.6 % (80 .. 125.0)
+  crossover 1.921 .. 1.936 V (1.3 .. 2.0) over 11 edges
+  levels at the bit centres: high >= 3.590 V (VOH >= 2.8), low <= 3 mV (VOL <= 0.3 V)
+  receivers at 3/4 of each bit: 0 errors in 20 bits (RXRCV_A, RXDP_A, RXDM_A); EOP SE0: RXDP_A = RXDM_A = 0 yes
+  RXRCV_A 2.47 .. 3.02 ns after DP = DM (model 2 ns); RXDP_A / RXDM_A skew <= 43.23 ns (limit 100)
+  VDD33 current during the packet 2.75 mA
+TEST PASSED
