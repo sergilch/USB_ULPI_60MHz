@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="380" fill="white"/>
+<line x1="290.0" y1="40" x2="290.0" y2="310" stroke="#d8d8d8"/>
+<text x="290.0" y="327" font-size="12" text-anchor="middle">0</text>
+<line x1="432.5" y1="40" x2="432.5" y2="310" stroke="#d8d8d8"/>
+<text x="432.5" y="327" font-size="12" text-anchor="middle">5</text>
+<line x1="575.0" y1="40" x2="575.0" y2="310" stroke="#d8d8d8"/>
+<text x="575.0" y="327" font-size="12" text-anchor="middle">10</text>
+<line x1="717.5" y1="40" x2="717.5" y2="310" stroke="#d8d8d8"/>
+<text x="717.5" y="327" font-size="12" text-anchor="middle">15</text>
+<line x1="860.0" y1="40" x2="860.0" y2="310" stroke="#d8d8d8"/>
+<text x="860.0" y="327" font-size="12" text-anchor="middle">20</text>
+<line x1="290" y1="271.4" x2="860" y2="271.4" stroke="#d8d8d8"/>
+<text x="284" y="275.4" font-size="12" text-anchor="end">SQUELCH_A release, 400 mV (≤ 12 ns)</text>
+<line x1="290" y1="207.1" x2="860" y2="207.1" stroke="#d8d8d8"/>
+<text x="284" y="211.1" font-size="12" text-anchor="end">SQUELCH_A release, 160 mV (≤ 12 ns)</text>
+<line x1="290" y1="142.9" x2="860" y2="142.9" stroke="#d8d8d8"/>
+<text x="284" y="146.9" font-size="12" text-anchor="end">SQUELCH_A assertion (6 … 16.7 ns)</text>
+<line x1="290" y1="78.6" x2="860" y2="78.6" stroke="#d8d8d8"/>
+<text x="284" y="82.6" font-size="12" text-anchor="end">DISC_A after 650 mV (no limit)</text>
+<rect x="290" y="40" width="570" height="270" fill="none" stroke="#333333"/>
+<text x="575.0" y="346" font-size="13" text-anchor="middle">Delay  [ns]</text>
+<text x="290" y="32" font-size="13" font-weight="bold">Squelch and disconnect timing against the requirements</text>
+<clipPath id="c130625466110976"><rect x="290" y="40" width="570" height="270"/></clipPath>
+<rect x="290.0" y="247.0" width="342.0" height="48.9" fill="#2e8b57" fill-opacity="0.10"/>
+<rect x="290.0" y="182.7" width="342.0" height="48.9" fill="#2e8b57" fill-opacity="0.10"/>
+<rect x="461.0" y="118.4" width="305.0" height="48.9" fill="#2e8b57" fill-opacity="0.10"/>
+<circle cx="406.9" cy="271.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="406.9" cy="207.1" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="634.8" cy="142.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="406.9" cy="78.6" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="500.6" cy="262.4" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="516.9" cy="198.1" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="669.6" cy="133.9" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="431.1" cy="69.6" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<rect x="512.1" y="248.9" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="530.0" y="184.6" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="688.2" y="120.4" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="433.1" y="56.1" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<polygon points="496.6,238.9 492.1,248.9 501.1,248.9" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="508.3,174.6 503.8,184.6 512.8,184.6" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="667.1,110.4 662.6,120.4 671.6,120.4" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="432.2,46.1 427.7,56.1 436.7,56.1" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<rect x="598.8" y="222" width="253.20000000000002" height="80" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<circle cx="617.8" cy="234.0" r="4" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="634.8" y="238" font-size="11.5">model</text>
+<circle cx="617.8" cy="252.0" r="4" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<text x="634.8" y="256" font-size="11.5">transistor tt 27 °C 3.3 / 1.8 V</text>
+<rect x="613.8" y="266.0" width="8" height="8" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<text x="634.8" y="274" font-size="11.5">transistor ss 125 °C 3.0 / 1.62 V</text>
+<polygon points="617.8,283.0 613.8,292.0 621.8,292.0" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<text x="634.8" y="292" font-size="11.5">transistor ff −40 °C 3.6 / 1.98 V</text>
+</svg>

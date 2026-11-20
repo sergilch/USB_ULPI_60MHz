@@ -1,0 +1,36 @@
+seq (ss, 125 C, RX_VDD 3.0 V, RX_VDDO 1.62 V)
+  RX_EN rises, idle line: SQUELCH_A stays 1; bias (vbp18) settled 73.1 ns, outputs enabled (on) 185.3 ns after RX_EN
+  400 mV: SQUELCH_A falls 7.95 ns after the line becomes active (spec <= 12 ns, model 4.1)
+  400 mV: RX_OUT_P delay 1240 ps rising / 1202 ps falling after DP - DM = 0 (model 300 ps), duty 49.1 %
+  400 mV alternating: DISC_A = 0
+  idle: SQUELCH_A rises 14.13 ns after the last bit (6 .. 16.7 ns, model 12.1)
+  90 mV alternating: squelch not released
+  160 mV alternating: released after 8.58 ns
+  2 ns burst at 400 mV: ignored
+  static 500 mV: DISC_A = 0
+  static 650 mV: DISC_A rises 5.18 ns later (model 4.1)
+  RX_EN = 0: RX_OUT_P 0.00, RX_OUT_N 1.62, SQUELCH_A 1.62, DISC_A 0.00 V
+  RX_VDD = 2.5 V: RX_OUT_P 0.00, RX_OUT_N 1.62, SQUELCH_A 1.62, DISC_A 0.00 V
+  RX_EN = 0: supply current 867.6 nA (95 ns after RX_EN falls)
+  supply current idle (squelched): RX_VDD 880 uA, RX_VDDO 734 uA; with 400 mV data: RX_VDDO 894 uA
+  PRBS7 400 mV: 0 bit errors in 118 bits (RX_OUT_P and RX_OUT_N); delay 1201 .. 1269 ps (spread 68 ps)
+  PRBS7 150 mV: 0 bit errors in 118 bits (RX_OUT_P and RX_OUT_N); delay 1454 .. 1507 ps (spread 53 ps)
+sqamp (ss, 125 C, RX_VDD 3.0 V, RX_VDDO 1.62 V): squelch on 480 Mbit/s alternating data
+  100 mV squelched, 110 mV squelched, 120 mV squelched, 130 mV squelched, 140 mV squelched, 145 mV released, 150 mV released, 155 mV released, 160 mV released, 170 mV released
+  dynamic threshold: released from 145 mV (USB: 100 mV stays squelched, >= 150 mV releases)
+dc0 (ss, 125 C, RX_VDD 3.0 V): common mode -50 mV
+  HS RX: switches at +8.0 / -7.9 mV: hysteresis 15.9 mV, centre +0.0 mV (model +-10 mV)
+  squelch DP > DM: 107.2 mV (100 .. 150, model 125)
+  squelch DM > DP: 107.3 mV (100 .. 150, model 125)
+dc2 (ss, 125 C, RX_VDD 3.0 V): common mode 200 mV
+  HS RX: switches at +7.7 / -7.6 mV: hysteresis 15.3 mV, centre +0.0 mV (model +-10 mV)
+  squelch DP > DM: 105.6 mV (100 .. 150, model 125)
+  squelch DM > DP: 105.6 mV (100 .. 150, model 125)
+  UVLO: off below 2.954 V, on again above 2.987 V (model 2.97 V)
+dc5 (ss, 125 C, RX_VDD 3.0 V): common mode 500 mV
+  HS RX: switches at +7.4 / -7.4 mV: hysteresis 14.9 mV, centre +0.0 mV (model +-10 mV)
+  squelch DP > DM: 104.5 mV (100 .. 150, model 125)
+  squelch DM > DP: 104.5 mV (100 .. 150, model 125)
+  disconnect DP > DM (other wire at 0 V): 565.9 mV (525 .. 625, model 575)
+  disconnect DM > DP (other wire at 0 V): 566.1 mV (525 .. 625, model 575)
+TEST PASSED

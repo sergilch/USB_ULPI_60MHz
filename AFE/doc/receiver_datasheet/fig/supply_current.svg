@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="380" fill="white"/>
+<line x1="161.7" y1="40" x2="161.7" y2="320" stroke="#d8d8d8"/>
+<text x="161.7" y="337" font-size="12" text-anchor="middle">tt</text>
+<line x1="305.0" y1="40" x2="305.0" y2="320" stroke="#d8d8d8"/>
+<text x="305.0" y="337" font-size="12" text-anchor="middle">ss 125 °C</text>
+<line x1="448.3" y1="40" x2="448.3" y2="320" stroke="#d8d8d8"/>
+<text x="448.3" y="337" font-size="12" text-anchor="middle">ff −40 °C</text>
+<line x1="90" y1="320.0" x2="520" y2="320.0" stroke="#d8d8d8"/>
+<text x="84" y="324.0" font-size="12" text-anchor="end">0</text>
+<line x1="90" y1="273.3" x2="520" y2="273.3" stroke="#d8d8d8"/>
+<text x="84" y="277.3" font-size="12" text-anchor="end">250</text>
+<line x1="90" y1="226.7" x2="520" y2="226.7" stroke="#d8d8d8"/>
+<text x="84" y="230.7" font-size="12" text-anchor="end">500</text>
+<line x1="90" y1="180.0" x2="520" y2="180.0" stroke="#d8d8d8"/>
+<text x="84" y="184.0" font-size="12" text-anchor="end">750</text>
+<line x1="90" y1="133.3" x2="520" y2="133.3" stroke="#d8d8d8"/>
+<text x="84" y="137.3" font-size="12" text-anchor="end">1000</text>
+<line x1="90" y1="86.7" x2="520" y2="86.7" stroke="#d8d8d8"/>
+<text x="84" y="90.7" font-size="12" text-anchor="end">1250</text>
+<line x1="90" y1="40.0" x2="520" y2="40.0" stroke="#d8d8d8"/>
+<text x="84" y="44.0" font-size="12" text-anchor="end">1500</text>
+<rect x="90" y="40" width="430" height="280" fill="none" stroke="#333333"/>
+<text transform="translate(38,180.0) rotate(-90)" font-size="13" text-anchor="middle">µA</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Supply currents (transistor)</text>
+<clipPath id="c130625466109680"><rect x="90" y="40" width="430" height="280"/></clipPath>
+<rect x="114.4" y="153.9" width="29.5" height="166.1" fill="#d4860b"/>
+<text x="129.1" y="149.9" font-size="10" text-anchor="middle">890</text>
+<rect x="145.9" y="178.1" width="29.5" height="141.9" fill="#6c3483"/>
+<text x="160.7" y="174.1" font-size="10" text-anchor="middle">760</text>
+<rect x="177.4" y="140.1" width="29.5" height="179.9" fill="#2e8b57"/>
+<text x="192.2" y="136.1" font-size="10" text-anchor="middle">964</text>
+<rect x="257.7" y="155.7" width="29.5" height="164.3" fill="#d4860b"/>
+<text x="272.5" y="151.7" font-size="10" text-anchor="middle">880</text>
+<rect x="289.2" y="183.0" width="29.5" height="137.0" fill="#6c3483"/>
+<text x="304.0" y="179.0" font-size="10" text-anchor="middle">734</text>
+<rect x="320.8" y="153.1" width="29.5" height="166.9" fill="#2e8b57"/>
+<text x="335.5" y="149.1" font-size="10" text-anchor="middle">894</text>
+<rect x="401.0" y="151.8" width="29.5" height="168.2" fill="#d4860b"/>
+<text x="415.8" y="147.8" font-size="10" text-anchor="middle">901</text>
+<rect x="432.6" y="189.7" width="29.5" height="130.3" fill="#6c3483"/>
+<text x="447.3" y="185.7" font-size="10" text-anchor="middle">698</text>
+<rect x="464.1" y="124.7" width="29.5" height="195.3" fill="#2e8b57"/>
+<text x="478.9" y="120.7" font-size="10" text-anchor="middle">1046</text>
+<line x1="620" y1="320.0" x2="880" y2="320.0" stroke="#d8d8d8"/>
+<text x="614" y="324.0" font-size="12" text-anchor="end">0</text>
+<line x1="620" y1="261.1" x2="880" y2="261.1" stroke="#d8d8d8"/>
+<text x="614" y="265.1" font-size="12" text-anchor="end">200</text>
+<line x1="620" y1="202.1" x2="880" y2="202.1" stroke="#d8d8d8"/>
+<text x="614" y="206.1" font-size="12" text-anchor="end">400</text>
+<line x1="620" y1="143.2" x2="880" y2="143.2" stroke="#d8d8d8"/>
+<text x="614" y="147.2" font-size="12" text-anchor="end">600</text>
+<line x1="620" y1="84.2" x2="880" y2="84.2" stroke="#d8d8d8"/>
+<text x="614" y="88.2" font-size="12" text-anchor="end">800</text>
+<rect x="620" y="40" width="260" height="280" fill="none" stroke="#333333"/>
+<text transform="translate(568,180.0) rotate(-90)" font-size="13" text-anchor="middle">µA</text>
+<text x="620" y="32" font-size="13" font-weight="bold">RX_VDD at tt, by block</text>
+<clipPath id="c130625466110640"><rect x="620" y="40" width="260" height="280"/></clipPath>
+<rect x="630.4" y="261.1" width="72.8" height="58.9" fill="#1f4e9c" stroke="white"/>
+<text x="713.6" y="294.5" font-size="10.5">HS pair 200 µA</text>
+<rect x="630.4" y="143.2" width="72.8" height="117.9" fill="#c0392b" stroke="white"/>
+<text x="713.6" y="206.1" font-size="10.5">squelch preamps 400 µA</text>
+<rect x="630.4" y="96.0" width="72.8" height="47.2" fill="#2e8b57" stroke="white"/>
+<text x="713.6" y="123.6" font-size="10.5">disconnect preamps 160 µA</text>
+<rect x="630.4" y="72.4" width="72.8" height="23.6" fill="#d4860b" stroke="white"/>
+<rect x="630.4" y="66.5" width="72.8" height="5.9" fill="#6c3483" stroke="white"/>
+<rect x="630.4" y="64.8" width="72.8" height="1.8" fill="#555555" stroke="white"/>
+<text x="713.6" y="60.8" font-size="10.5">bias 80, refs 20, UVLO 6 µA</text>
+<rect x="98" y="48" width="195.60000000000002" height="62" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="60" x2="128" y2="60" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="64" font-size="11.5">RX_VDD (3.3 V)</text>
+<line x1="106" y1="78" x2="128" y2="78" stroke="#6c3483" stroke-width="2"/>
+<text x="134" y="82" font-size="11.5">RX_VDDO idle (squelched)</text>
+<line x1="106" y1="96" x2="128" y2="96" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="100" font-size="11.5">RX_VDDO, 400 mV data</text>
+</svg>

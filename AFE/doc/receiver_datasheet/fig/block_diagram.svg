@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" font-family="Arial, Helvetica, sans-serif"><rect width="1000" height="520" fill="white"/><defs><marker id="ah" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><polygon points="0,0 9,4 0,8" fill="#222"/></marker><marker id="ad" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#555"/></marker></defs>
+<rect x="130" y="30" width="250" height="450" rx="8" fill="#fbf3e6" stroke="#d4860b" stroke-dasharray="6,4"/>
+<text x="140" y="48" font-size="12" fill="#a0640a" font-weight="normal" text-anchor="start">RX_VDD 3.3 V: input stages (pch33)</text>
+<rect x="390" y="30" width="470" height="450" rx="8" fill="#f3f7ee" stroke="#2e8b57" stroke-dasharray="6,4"/>
+<text x="400" y="48" font-size="12" fill="#22663f" font-weight="normal" text-anchor="start">RX_VDDO 1.8 V: comparators, timers, logic, outputs</text>
+<rect x="125" y="105" width="10" height="10" fill="#1f4e9c"/>
+<text x="120" y="114" font-size="12.5" fill="#222" font-weight="bold" text-anchor="end">RX_IN_P</text>
+<rect x="125" y="135" width="10" height="10" fill="#1f4e9c"/>
+<text x="120" y="144" font-size="12.5" fill="#222" font-weight="bold" text-anchor="end">RX_IN_N</text>
+<rect x="125" y="415" width="10" height="10" fill="#1f4e9c"/>
+<text x="120" y="424" font-size="12.5" fill="#222" font-weight="bold" text-anchor="end">RX_EN</text>
+<rect x="125" y="450" width="10" height="10" fill="#1f4e9c"/>
+<text x="120" y="459" font-size="12.5" fill="#222" font-weight="bold" text-anchor="end">RX_VREF</text>
+<rect x="855" y="100" width="10" height="10" fill="#1f4e9c"/>
+<text x="870" y="109" font-size="12.5" fill="#222" font-weight="bold" text-anchor="start">RX_OUT_P</text>
+<rect x="855" y="130" width="10" height="10" fill="#1f4e9c"/>
+<text x="870" y="139" font-size="12.5" fill="#222" font-weight="bold" text-anchor="start">RX_OUT_N</text>
+<rect x="855" y="235" width="10" height="10" fill="#1f4e9c"/>
+<text x="870" y="244" font-size="12.5" fill="#222" font-weight="bold" text-anchor="start">SQUELCH_A</text>
+<rect x="855" y="335" width="10" height="10" fill="#1f4e9c"/>
+<text x="870" y="344" font-size="12.5" fill="#222" font-weight="bold" text-anchor="start">DISC_A</text>
+<rect x="170" y="90" width="180" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="260.0" y="125.0" font-size="13.5" font-weight="bold" text-anchor="middle">HS preamp</text>
+<text x="260.0" y="140.0" font-size="11" text-anchor="middle">PMOS pair, 200 µA, 3 kΩ</text>
+<rect x="420" y="90" width="150" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="495.0" y="125.0" font-size="13.5" font-weight="bold" text-anchor="middle">Comparator</text>
+<text x="495.0" y="140.0" font-size="11" text-anchor="middle">hysteresis ±9 mV</text>
+<rect x="620" y="90" width="150" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="695.0" y="125.0" font-size="13.5" font-weight="bold" text-anchor="middle">Output gates</text>
+<text x="695.0" y="140.0" font-size="11" text-anchor="middle">&amp; on, delay 0.9 ns</text>
+<rect x="170" y="200" width="180" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="260.0" y="235.0" font-size="13.5" font-weight="bold" text-anchor="middle">Squelch preamps ×2</text>
+<text x="260.0" y="250.0" font-size="11" text-anchor="middle">|vd| &gt; 105 mV ref (DDA)</text>
+<rect x="420" y="200" width="150" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="495.0" y="235.0" font-size="13.5" font-weight="bold" text-anchor="middle">2 comparators</text>
+<text x="495.0" y="250.0" font-size="11" text-anchor="middle">OR</text>
+<rect x="620" y="195" width="150" height="80" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="695.0" y="229.0" font-size="13.5" font-weight="bold" text-anchor="middle">Squelch filter</text>
+<text x="695.0" y="244.0" font-size="11" text-anchor="middle">bridge 3 ns, on 6 ns,</text>
+<text x="695.0" y="257.0" font-size="11" text-anchor="middle">off 10 ns, SR latch</text>
+<rect x="170" y="300" width="180" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="260.0" y="335.0" font-size="13.5" font-weight="bold" text-anchor="middle">Disconnect preamps ×2</text>
+<text x="260.0" y="350.0" font-size="11" text-anchor="middle">|vd| &gt; 560 mV ref (DDA)</text>
+<rect x="420" y="300" width="150" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="495.0" y="335.0" font-size="13.5" font-weight="bold" text-anchor="middle">2 comparators</text>
+<text x="495.0" y="350.0" font-size="11" text-anchor="middle">OR</text>
+<rect x="620" y="300" width="150" height="70" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="695.0" y="335.0" font-size="13.5" font-weight="bold" text-anchor="middle">Timer</text>
+<text x="695.0" y="350.0" font-size="11" text-anchor="middle">4 ns, fall at once</text>
+<rect x="420" y="395" width="150" height="75" rx="6" fill="#fff" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="495.0" y="426.5" font-size="13.5" font-weight="bold" text-anchor="middle">Bias, refs</text>
+<text x="495.0" y="441.5" font-size="11" text-anchor="middle">I0 = V(RX_VREF) / 60 kΩ</text>
+<text x="495.0" y="454.5" font-size="11" text-anchor="middle">poly string → thresholds</text>
+<rect x="620" y="395" width="150" height="75" rx="6" fill="#fff" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="695.0" y="426.5" font-size="13.5" font-weight="bold" text-anchor="middle">Enable / UVLO</text>
+<text x="695.0" y="441.5" font-size="11" text-anchor="middle">ready ≈ 170 ns,</text>
+<text x="695.0" y="454.5" font-size="11" text-anchor="middle">RX_VDD &gt; 2.95 V</text>
+<polyline points="130,110 170,110" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="130,140 170,140" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="150,110 150,235 170,235" fill="none" stroke="#222" stroke-width="1.4"/>
+<polyline points="150,235 150,335 170,335" fill="none" stroke="#222" stroke-width="1.4"/>
+<circle cx="150" cy="110" r="3" fill="#222"/><circle cx="150" cy="235" r="3" fill="#222"/>
+<text x="155" y="290" font-size="10.5" fill="#555" font-weight="normal" text-anchor="start">DP, DM</text>
+<polyline points="350,125 420,125" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="385" y="118" font-size="10.5" fill="#222" font-weight="normal" text-anchor="middle">xa / ya</text>
+<polyline points="570,125 620,125" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,105 855,105" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,135 855,135" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="350,235 420,235" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="570,235 620,235" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,240 855,240" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="350,335 420,335" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="570,335 620,335" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,340 855,340" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="130,420 420,420" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="130,455 420,455" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="570,432 620,432" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,432 800,432 800,165" fill="none" stroke="#c0392b" stroke-width="1.6" stroke-dasharray="5,3"/>
+<line x1="800" y1="165" x2="772" y2="165" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#ah)"/>
+<line x1="800" y1="280" x2="772" y2="280" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#ah)"/>
+<line x1="800" y1="375" x2="772" y2="375" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#ah)"/>
+<text x="806" y="395" font-size="11.5" fill="#c0392b" font-weight="bold" text-anchor="start">on</text>
+<text x="495" y="388" font-size="10.5" fill="#6c3483" font-weight="normal" text-anchor="middle">I0, vbp18 / vbp33, references → all preamps and comparators</text>
+<text x="495" y="505" font-size="11.5" fill="#c0392b" font-weight="normal" text-anchor="middle">Off (RX_EN = 0, RX_VDD low or not ready): RX_OUT_P = 0, RX_OUT_N = 1, SQUELCH_A = 1, DISC_A = 0, all bias currents off</text></svg>
