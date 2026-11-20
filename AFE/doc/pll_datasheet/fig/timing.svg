@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420" font-family="Arial, Helvetica, sans-serif"><rect width="980" height="420" fill="white"/><polyline points="170.0,90 258.0,90 258.0,60 764.0,60 764.0,90 918.0,90" fill="none" stroke="#1f4e9c" stroke-width="2"/>
+<text x="140" y="80" font-size="13" font-weight="bold" text-anchor="end">PLL_EN</text>
+<polyline points="170.0,152 271.2,152 271.2,122 282.2,122 282.2,152 293.2,152 293.2,122 304.2,122 304.2,152 315.2,152 315.2,122 326.2,122 326.2,152 337.2,152 337.2,122 348.2,122 348.2,152 359.2,152 359.2,122 370.2,122 370.2,152 381.2,152 381.2,122 392.2,122 392.2,152 403.2,152 403.2,122 414.2,122 414.2,152 425.2,152 425.2,122 436.2,122 436.2,152 447.2,152 447.2,122 458.2,122 458.2,152 469.2,152 469.2,122 480.2,122 480.2,152 491.2,152 491.2,122 502.2,122 502.2,152 513.2,152 513.2,122 524.2,122 524.2,152 535.2,152 535.2,122 546.2,122 546.2,152 557.2,152 557.2,122 568.2,122 568.2,152 579.2,152 579.2,122 590.2,122 590.2,152 601.2,152 601.2,122 612.2,122 612.2,152 623.2,152 623.2,122 634.2,122 634.2,152 645.2,152 645.2,122 656.2,122 656.2,152 667.2,152 667.2,122 678.2,122 678.2,152 689.2,152 689.2,122 700.2,122 700.2,152 711.2,152 711.2,122 722.2,122 722.2,152 733.2,152 733.2,122 744.2,122 744.2,152 755.2,152 755.2,122 766.2,122 766.2,152 918.0,152" fill="none" stroke="#1f4e9c" stroke-width="2"/>
+<text x="140" y="142" font-size="13" font-weight="bold" text-anchor="end">CLK_BIT_A</text>
+<polyline points="170.0,214 271.2,214 271.2,184 359.2,184 359.2,214 447.2,214 447.2,184 535.2,184 535.2,214 623.2,214 623.2,184 711.2,184 711.2,214 777.2,214 777.2,214 918.0,214" fill="none" stroke="#1f4e9c" stroke-width="2"/>
+<text x="140" y="204" font-size="13" font-weight="bold" text-anchor="end">CLK60_A</text>
+<polyline points="170.0,246 203.0,246 203.0,276 313.0,276 313.0,246 423.0,246 423.0,276 533.0,276 533.0,246 643.0,246 643.0,276 753.0,276 753.0,246 863.0,246 863.0,276 918.0,276 918.0,246 918.0,246" fill="none" stroke="#1f4e9c" stroke-width="2"/>
+<text x="140" y="266" font-size="13" font-weight="bold" text-anchor="end">CDR_FREF</text>
+<polyline points="170.0,308 211.8,308 211.8,338 321.8,338 321.8,308 431.8,308 431.8,338 541.8,338 541.8,308 651.8,308 651.8,338 761.8,338 761.8,308 871.8,308 871.8,338 918.0,338 918.0,308 918.0,308" fill="none" stroke="#1f4e9c" stroke-width="2"/>
+<text x="140" y="328" font-size="13" font-weight="bold" text-anchor="end">REF_DIG</text>
+<line x1="271.2" y1="40" x2="271.2" y2="380" stroke="#c0392b" stroke-dasharray="4,3"/>
+<text x="275.2" y="44" font-size="11.5" fill="#c0392b" text-anchor="start">1st CLK_BIT_A rise = 1st CLK60_A rise (divider restarts)</text>
+<line x1="764.0" y1="400" x2="764.0" y2="40" stroke="#c0392b" stroke-dasharray="4,3"/>
+<text x="760.0" y="404" font-size="11.5" fill="#c0392b" text-anchor="end">PLL_EN falls: clocks stop low, filter discharged</text>
+<text x="359.2" y="232" font-size="11.5" text-anchor="middle">8 × T_bit = 16.7 ns, high 4 / low 4</text>
+<text x="918.0" y="356" font-size="11.5" text-anchor="end">REF_DIG = CDR_FREF delayed by t_ref_dly; runs while VDD18A is up, independent of PLL_EN</text>
+<text x="170" y="114" font-size="11.5" fill="#555">low (stopped)</text>
+<text x="258.0" y="108" font-size="11" fill="#555">not to scale: the VCO starts near f_min, and the frequency settles in ≈ 3 µs</text></svg>

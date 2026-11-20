@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="470" fill="white"/>
+<line x1="90.0" y1="50" x2="90.0" y2="380" stroke="#d8d8d8"/>
+<text x="90.0" y="397" font-size="12" text-anchor="middle">0.25</text>
+<line x1="175.0" y1="50" x2="175.0" y2="380" stroke="#d8d8d8"/>
+<text x="175.0" y="397" font-size="12" text-anchor="middle">0.5</text>
+<line x1="260.0" y1="50" x2="260.0" y2="380" stroke="#d8d8d8"/>
+<text x="260.0" y="397" font-size="12" text-anchor="middle">1</text>
+<line x1="345.0" y1="50" x2="345.0" y2="380" stroke="#d8d8d8"/>
+<text x="345.0" y="397" font-size="12" text-anchor="middle">2</text>
+<line x1="430.0" y1="50" x2="430.0" y2="380" stroke="#d8d8d8"/>
+<text x="430.0" y="397" font-size="12" text-anchor="middle">4</text>
+<line x1="90" y1="380.0" x2="430" y2="380.0" stroke="#d8d8d8"/>
+<text x="84" y="384.0" font-size="12" text-anchor="end">0.3 M</text>
+<line x1="90" y1="306.8" x2="430" y2="306.8" stroke="#d8d8d8"/>
+<text x="84" y="310.8" font-size="12" text-anchor="end">0.5 M</text>
+<line x1="90" y1="207.5" x2="430" y2="207.5" stroke="#d8d8d8"/>
+<text x="84" y="211.5" font-size="12" text-anchor="end">1 M</text>
+<line x1="90" y1="108.1" x2="430" y2="108.1" stroke="#d8d8d8"/>
+<text x="84" y="112.1" font-size="12" text-anchor="end">2 M</text>
+<line x1="90" y1="50.0" x2="430" y2="50.0" stroke="#d8d8d8"/>
+<text x="84" y="54.0" font-size="12" text-anchor="end">3 M</text>
+<rect x="90" y="50" width="340" height="330" fill="none" stroke="#333333"/>
+<text x="260.0" y="416" font-size="13" text-anchor="middle">Loop-gain factor icp·kvco / (20 µA · 200 MHz/V)</text>
+<text transform="translate(38,215.0) rotate(-90)" font-size="13" text-anchor="middle">f_c  [Hz]</text>
+<text x="90" y="42" font-size="13" font-weight="bold">Crossover and phase margin vs loop gain</text>
+<clipPath id="c138634193290256"><rect x="90" y="50" width="340" height="330"/></clipPath>
+<polyline clip-path="url(#c138634193290256)" points="90.00,364.45 95.67,359.89 101.33,355.27 107.00,350.62 112.67,345.90 118.33,341.15 124.00,336.33 129.67,331.48 135.33,326.56 141.00,321.60 146.67,316.58 152.33,311.52 158.00,306.40 163.67,301.24 169.33,296.01 175.00,290.76 180.67,285.45 186.33,280.08 192.00,274.69 197.67,269.26 203.33,263.78 209.00,258.27 214.67,252.74 220.33,247.17 226.00,241.57 231.67,235.96 237.33,230.32 243.00,224.66 248.67,219.00 254.33,213.32 260.00,207.65 265.67,201.97 271.33,196.31 277.00,190.64 282.67,184.99 288.33,179.35 294.00,173.72 299.67,168.13 305.33,162.57 311.00,157.03 316.67,151.52 322.33,146.04 328.00,140.59 333.67,135.20 339.33,129.83 345.00,124.54 350.67,119.26 356.33,114.04 362.00,108.88 367.67,103.75 373.33,98.68 379.00,93.67 384.67,88.70 390.33,83.78 396.00,78.92 401.67,74.10 407.33,69.33 413.00,64.63 418.67,59.96 424.33,55.34 430.00,50.77" fill="none" stroke="#1f4e9c" stroke-width="2.4" stroke-linejoin="round"/>
+<line x1="260.0" y1="50" x2="260.0" y2="380" stroke="#555555" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="264.0" y="64" font-size="11" fill="#555555" text-anchor="start">default</text>
+<line x1="248.4" y1="50" x2="248.4" y2="380" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="252.4" y="374" font-size="11" fill="#2e8b57" text-anchor="start">tt</text>
+<line x1="520.0" y1="50" x2="520.0" y2="380" stroke="#d8d8d8"/>
+<text x="520.0" y="397" font-size="12" text-anchor="middle">0.25</text>
+<line x1="605.0" y1="50" x2="605.0" y2="380" stroke="#d8d8d8"/>
+<text x="605.0" y="397" font-size="12" text-anchor="middle">0.5</text>
+<line x1="690.0" y1="50" x2="690.0" y2="380" stroke="#d8d8d8"/>
+<text x="690.0" y="397" font-size="12" text-anchor="middle">1</text>
+<line x1="775.0" y1="50" x2="775.0" y2="380" stroke="#d8d8d8"/>
+<text x="775.0" y="397" font-size="12" text-anchor="middle">2</text>
+<line x1="860.0" y1="50" x2="860.0" y2="380" stroke="#d8d8d8"/>
+<text x="860.0" y="397" font-size="12" text-anchor="middle">4</text>
+<line x1="520" y1="380.0" x2="860" y2="380.0" stroke="#d8d8d8"/>
+<text x="514" y="384.0" font-size="12" text-anchor="end">30</text>
+<line x1="520" y1="325.0" x2="860" y2="325.0" stroke="#d8d8d8"/>
+<text x="514" y="329.0" font-size="12" text-anchor="end">35</text>
+<line x1="520" y1="270.0" x2="860" y2="270.0" stroke="#d8d8d8"/>
+<text x="514" y="274.0" font-size="12" text-anchor="end">40</text>
+<line x1="520" y1="215.0" x2="860" y2="215.0" stroke="#d8d8d8"/>
+<text x="514" y="219.0" font-size="12" text-anchor="end">45</text>
+<line x1="520" y1="160.0" x2="860" y2="160.0" stroke="#d8d8d8"/>
+<text x="514" y="164.0" font-size="12" text-anchor="end">50</text>
+<line x1="520" y1="105.0" x2="860" y2="105.0" stroke="#d8d8d8"/>
+<text x="514" y="109.0" font-size="12" text-anchor="end">55</text>
+<line x1="520" y1="50.0" x2="860" y2="50.0" stroke="#d8d8d8"/>
+<text x="514" y="54.0" font-size="12" text-anchor="end">60</text>
+<rect x="520" y="50" width="340" height="330" fill="none" stroke="#333333"/>
+<text x="690.0" y="416" font-size="13" text-anchor="middle">Loop-gain factor</text>
+<text transform="translate(468,215.0) rotate(-90)" font-size="13" text-anchor="middle">Phase margin  [°]</text>
+<clipPath id="c138634193290160"><rect x="520" y="50" width="340" height="330"/></clipPath>
+<polyline clip-path="url(#c138634193290160)" points="520.00,245.78 525.67,237.87 531.33,229.95 537.00,222.10 542.67,214.27 548.33,206.55 554.00,198.88 559.67,191.35 565.33,183.92 571.00,176.63 576.67,169.50 582.33,162.55 588.00,155.80 593.67,149.27 599.33,142.96 605.00,136.94 610.67,131.18 616.33,125.71 622.00,120.57 627.67,115.77 633.33,111.31 639.00,107.22 644.67,103.53 650.33,100.22 656.00,97.33 661.67,94.86 667.33,92.82 673.00,91.22 678.67,90.07 684.33,89.37 690.00,89.13 695.67,89.34 701.33,90.01 707.00,91.13 712.67,92.69 718.33,94.69 724.00,97.14 729.67,100.00 735.33,103.26 741.00,106.94 746.67,111.00 752.33,115.43 758.00,120.22 763.67,125.33 769.33,130.78 775.00,136.50 780.67,142.53 786.33,148.80 792.00,155.31 797.67,162.06 803.33,168.99 809.00,176.10 814.67,183.37 820.33,190.79 826.00,198.33 831.67,205.98 837.33,213.72 843.00,221.51 848.67,229.38 854.33,237.29 860.00,245.22" fill="none" stroke="#c0392b" stroke-width="2.4" stroke-linejoin="round"/>
+<line x1="690.0" y1="50" x2="690.0" y2="380" stroke="#555555" stroke-width="1.3" stroke-dasharray="5,4"/>
+<line x1="520" y1="215.0" x2="860" y2="215.0" stroke="#555555" stroke-width="1.3" stroke-dasharray="3,3"/>
+<text x="856" y="211.0" font-size="11" fill="#555555" text-anchor="end">45°</text>
+<rect x="98" y="58" width="61.2" height="26" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="70" x2="128" y2="70" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="74" font-size="11.5">f_c</text>
+<rect x="528" y="346" width="234.0" height="26" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="536" y1="358" x2="558" y2="358" stroke="#c0392b" stroke-width="2"/>
+<text x="564" y="362" font-size="11.5">PM vs loop gain (C3 / C4 = 10)</text>
+</svg>

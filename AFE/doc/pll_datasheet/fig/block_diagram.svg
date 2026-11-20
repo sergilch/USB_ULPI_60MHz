@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480" font-family="Arial, Helvetica, sans-serif"><rect width="1000" height="480" fill="white"/><defs><marker id="ah" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><polygon points="0,0 9,4 0,8" fill="#222"/></marker></defs>
+<rect x="120" y="30" width="700" height="430" rx="10" fill="none" stroke="#888" stroke-dasharray="6,4"/>
+<text x="130" y="50" font-size="13" fill="#555">afe_pll (VDD18A / VSS18A, 1.8 V)</text>
+<rect x="115" y="115" width="10" height="10" fill="#1f4e9c"/>
+<text x="110" y="124" font-size="12.5" font-weight="bold" text-anchor="end">CDR_FREF</text>
+<rect x="115" y="395" width="10" height="10" fill="#1f4e9c"/>
+<text x="110" y="404" font-size="12.5" font-weight="bold" text-anchor="end">PLL_EN</text>
+<rect x="115" y="295" width="10" height="10" fill="#1f4e9c"/>
+<text x="110" y="304" font-size="12.5" font-weight="bold" text-anchor="end">REFSEL1/0</text>
+<rect x="815" y="115" width="10" height="10" fill="#1f4e9c"/>
+<text x="830" y="124" font-size="12.5" font-weight="bold" text-anchor="start">CLK_BIT_A</text>
+<rect x="815" y="205" width="10" height="10" fill="#1f4e9c"/>
+<text x="830" y="214" font-size="12.5" font-weight="bold" text-anchor="start">CLK60_A</text>
+<rect x="815" y="65" width="10" height="10" fill="#1f4e9c"/>
+<text x="830" y="74" font-size="12.5" font-weight="bold" text-anchor="start">REF_DIG</text>
+<rect x="815" y="395" width="10" height="10" fill="#1f4e9c"/>
+<text x="830" y="404" font-size="12.5" font-weight="bold" text-anchor="start">CDR_CH_OUT_PLL</text>
+<rect x="150" y="100" width="60" height="40" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="180.0" y="125.0" font-size="14" font-weight="bold" text-anchor="middle">buf</text>
+<rect x="250" y="95" width="90" height="50" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="295.0" y="120.0" font-size="14" font-weight="bold" text-anchor="middle">PFD</text>
+<text x="295.0" y="137.0" font-size="11.5" text-anchor="middle">tri-state</text>
+<rect x="375" y="95" width="100" height="50" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="425.0" y="120.0" font-size="14" font-weight="bold" text-anchor="middle">Charge pump</text>
+<text x="425.0" y="137.0" font-size="11.5" text-anchor="middle">±icp 20 µA</text>
+<rect x="375" y="190" width="100" height="60" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="425.0" y="220.0" font-size="14" font-weight="bold" text-anchor="middle">Loop filter</text>
+<text x="425.0" y="237.0" font-size="11.5" text-anchor="middle">C4 ‖ (R2+C3)</text>
+<rect x="540" y="95" width="110" height="50" rx="6" fill="#eef3fb" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="595.0" y="120.0" font-size="14" font-weight="bold" text-anchor="middle">Ring VCO</text>
+<text x="595.0" y="137.0" font-size="11.5" text-anchor="middle">400–500 MHz</text>
+<rect x="690" y="190" width="80" height="40" rx="6" fill="#f3f7ee" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="730.0" y="210.0" font-size="14" font-weight="bold" text-anchor="middle">÷ 8</text>
+<text x="730.0" y="227.0" font-size="11.5" text-anchor="middle">div60</text>
+<rect x="370" y="280" width="100" height="50" rx="6" fill="#f3f7ee" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="420.0" y="305.0" font-size="14" font-weight="bold" text-anchor="middle">÷ N</text>
+<text x="420.0" y="322.0" font-size="11.5" text-anchor="middle">20 / 25</text>
+<rect x="150" y="370" width="160" height="50" rx="6" fill="#fbf3e6" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="230.0" y="395.0" font-size="14" font-weight="bold" text-anchor="middle">Enable / UVLO</text>
+<text x="230.0" y="412.0" font-size="11.5" text-anchor="middle">PLL_EN ∧ VDD &gt; vdd_min</text>
+<polyline points="120,120 150,120" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="210,120 250,120" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="230.0" y="114.0" font-size="11.5" text-anchor="middle">ref</text>
+<polyline points="180,100 180,70 815,70" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="677.5" y="64.0" font-size="11.5" text-anchor="middle">t_ref_dly 0.2 ns</text>
+<polyline points="340,112 375,112" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="357.5" y="107.0" font-size="11.5" text-anchor="middle">UP</text>
+<polyline points="340,130 375,130" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="357.5" y="144.0" font-size="11.5" text-anchor="middle">DN</text>
+<polyline points="425,145 425,190" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="451.0" y="171.5" font-size="11.5" text-anchor="middle">I_CP</text>
+<polyline points="475,220 510,220 510,120 540,120" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="480" y="180" font-size="11.5">V_C</text>
+<polyline points="510,220 510,400 815,400" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="702.5" y="394.0" font-size="11.5" text-anchor="middle">→ CDR_V_IN_2 of afe_cdr (coarse)</text>
+<polyline points="650,120 815,120" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="732.5" y="114.0" font-size="11.5" text-anchor="middle">480 MHz</text>
+<polyline points="670,120 670,210 690,210" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="770,210 815,210" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="788.5" y="202.0" font-size="11.5" text-anchor="middle">60 MHz</text>
+<polyline points="670,210 670,305 470,305" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<polyline points="370,305 295,305 295,145" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="245.0" y="265.0" font-size="11.5" text-anchor="middle">fb = f_VCO / N</text>
+<polyline points="120,300 230,300 230,318 370,318" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="250" y="335" font-size="11">N select (prog_div = 1)</text>
+<polyline points="120,400 150,400" fill="none" stroke="#222" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="150" y="440" font-size="11" fill="#c0392b">en = 0: PFD / CP reset, VCO and ÷8 stopped low,</text>
+<text x="150" y="454" font-size="11" fill="#c0392b">loop filter discharged (restart at f_min)</text></svg>

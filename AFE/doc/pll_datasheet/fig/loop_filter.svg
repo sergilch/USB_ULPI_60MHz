@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="290" viewBox="0 0 900 290" font-family="Arial, Helvetica, sans-serif"><rect width="900" height="290" fill="white"/><circle cx="120" cy="150" r="24" fill="white" stroke="#222" stroke-width="2"/>
+<line x1="120" y1="165" x2="120" y2="135" stroke="#222" stroke-width="2"/>
+<polygon points="120,130 114,142 126,142" fill="#222"/>
+<text x="88" y="147" font-size="13" text-anchor="end" font-weight="normal">I_CP = ±icp</text>
+<text x="88" y="164" font-size="12" text-anchor="end" font-weight="normal">(UP / DN)</text>
+<line x1="120" y1="126" x2="120" y2="70" stroke="#222" stroke-width="2"/>
+<line x1="120" y1="174" x2="120" y2="250" stroke="#222" stroke-width="2"/>
+<line x1="120" y1="250" x2="120" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="106" y1="260" x2="134" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="111" y1="265" x2="129" y2="265" stroke="#222" stroke-width="2"/>
+<line x1="116" y1="270" x2="124" y2="270" stroke="#222" stroke-width="2"/>
+<line x1="120" y1="70" x2="640" y2="70" stroke="#222" stroke-width="2"/>
+<circle cx="120" cy="70" r="3" fill="#222"/>
+<line x1="300" y1="70" x2="300" y2="145" stroke="#222" stroke-width="2"/>
+<line x1="282" y1="145" x2="318" y2="145" stroke="#222" stroke-width="2"/>
+<line x1="282" y1="155" x2="318" y2="155" stroke="#222" stroke-width="2"/>
+<line x1="300" y1="155" x2="300" y2="250" stroke="#222" stroke-width="2"/>
+<line x1="300" y1="250" x2="300" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="286" y1="260" x2="314" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="291" y1="265" x2="309" y2="265" stroke="#222" stroke-width="2"/>
+<line x1="296" y1="270" x2="304" y2="270" stroke="#222" stroke-width="2"/>
+<text x="330" y="155" font-size="14" text-anchor="start" font-weight="normal">C4  1.53 pF</text>
+<circle cx="300" cy="70" r="4" fill="#222"/>
+<line x1="470" y1="70" x2="470" y2="95" stroke="#222" stroke-width="2"/>
+<polyline fill="none" stroke="#222" stroke-width="2" points="470,95 460,100.0 480,110.0 460,120.0 480,130.0 460,140.0 480,150.0 470,155"/>
+<line x1="470" y1="155" x2="470" y2="185" stroke="#222" stroke-width="2"/>
+<line x1="452" y1="185" x2="488" y2="185" stroke="#222" stroke-width="2"/>
+<line x1="452" y1="195" x2="488" y2="195" stroke="#222" stroke-width="2"/>
+<line x1="470" y1="195" x2="470" y2="250" stroke="#222" stroke-width="2"/>
+<line x1="470" y1="250" x2="470" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="456" y1="260" x2="484" y2="260" stroke="#222" stroke-width="2"/>
+<line x1="461" y1="265" x2="479" y2="265" stroke="#222" stroke-width="2"/>
+<line x1="466" y1="270" x2="474" y2="270" stroke="#222" stroke-width="2"/>
+<text x="492" y="130" font-size="14" text-anchor="start" font-weight="normal">R2  34.5 kΩ</text>
+<text x="492" y="195" font-size="14" text-anchor="start" font-weight="normal">C3  15.3 pF</text>
+<text x="492" y="172" font-size="12" text-anchor="start" font-weight="normal">n_z</text>
+<circle cx="470" cy="70" r="4" fill="#222"/>
+<text x="640" y="150" font-size="12" text-anchor="start" font-weight="normal">PLL_EN = 0: both nodes</text>
+<text x="640" y="166" font-size="12" text-anchor="start" font-weight="normal">discharged (r_dis = 1 kΩ)</text>
+<circle cx="640" cy="70" r="5" fill="white" stroke="#222" stroke-width="2"/>
+<text x="655" y="60" font-size="14" text-anchor="start" font-weight="bold">CDR_CH_OUT_PLL</text>
+<text x="655" y="92" font-size="12" text-anchor="start" font-weight="normal">→ VCO and CDR_V_IN_2 of afe_cdr</text></svg>

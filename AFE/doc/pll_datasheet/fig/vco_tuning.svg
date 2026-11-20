@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="470" fill="white"/>
+<line x1="80.0" y1="40" x2="80.0" y2="400" stroke="#d8d8d8"/>
+<text x="80.0" y="417" font-size="12" text-anchor="middle">0</text>
+<line x1="219.3" y1="40" x2="219.3" y2="400" stroke="#d8d8d8"/>
+<text x="219.3" y="417" font-size="12" text-anchor="middle">0.25</text>
+<line x1="358.6" y1="40" x2="358.6" y2="400" stroke="#d8d8d8"/>
+<text x="358.6" y="417" font-size="12" text-anchor="middle">0.5</text>
+<line x1="497.9" y1="40" x2="497.9" y2="400" stroke="#d8d8d8"/>
+<text x="497.9" y="417" font-size="12" text-anchor="middle">0.75</text>
+<line x1="637.1" y1="40" x2="637.1" y2="400" stroke="#d8d8d8"/>
+<text x="637.1" y="417" font-size="12" text-anchor="middle">1</text>
+<line x1="776.4" y1="40" x2="776.4" y2="400" stroke="#d8d8d8"/>
+<text x="776.4" y="417" font-size="12" text-anchor="middle">1.25</text>
+<line x1="80" y1="400.0" x2="860" y2="400.0" stroke="#d8d8d8"/>
+<text x="74" y="404.0" font-size="12" text-anchor="end">350</text>
+<line x1="80" y1="328.0" x2="860" y2="328.0" stroke="#d8d8d8"/>
+<text x="74" y="332.0" font-size="12" text-anchor="end">400</text>
+<line x1="80" y1="256.0" x2="860" y2="256.0" stroke="#d8d8d8"/>
+<text x="74" y="260.0" font-size="12" text-anchor="end">450</text>
+<line x1="80" y1="184.0" x2="860" y2="184.0" stroke="#d8d8d8"/>
+<text x="74" y="188.0" font-size="12" text-anchor="end">500</text>
+<line x1="80" y1="112.0" x2="860" y2="112.0" stroke="#d8d8d8"/>
+<text x="74" y="116.0" font-size="12" text-anchor="end">550</text>
+<line x1="80" y1="40.0" x2="860" y2="40.0" stroke="#d8d8d8"/>
+<text x="74" y="44.0" font-size="12" text-anchor="end">600</text>
+<rect x="80" y="40" width="780" height="360" fill="none" stroke="#333333"/>
+<text x="470.0" y="436" font-size="13" text-anchor="middle">Control voltage V(CDR_CH_OUT_PLL)  [V]</text>
+<text transform="translate(28,220.0) rotate(-90)" font-size="13" text-anchor="middle">CLK_BIT_A frequency  [MHz]</text>
+<text x="80" y="32" font-size="13" font-weight="bold">VCO tuning curve</text>
+<clipPath id="c138634201515504"><rect x="80" y="40" width="780" height="360"/></clipPath>
+<rect x="80" y="184.0" width="780" height="144.0" fill="#1f4e9c" fill-opacity="0.05"/>
+<polyline clip-path="url(#c138634201515504)" points="80.00,328.00 82.79,328.00 85.57,328.00 88.36,328.00 91.14,328.00 93.93,328.00 96.71,328.00 99.50,328.00 102.29,328.00 105.07,328.00 107.86,328.00 110.64,328.00 113.43,328.00 116.21,328.00 119.00,328.00 121.79,328.00 124.57,328.00 127.36,328.00 130.14,328.00 132.93,328.00 135.71,328.00 138.50,328.00 141.29,328.00 144.07,328.00 146.86,328.00 149.64,328.00 152.43,328.00 155.21,328.00 158.00,328.00 160.79,328.00 163.57,328.00 166.36,328.00 169.14,328.00 171.93,328.00 174.71,328.00 177.50,328.00 180.29,328.00 183.07,328.00 185.86,328.00 188.64,328.00 191.43,328.00 194.21,328.00 197.00,328.00 199.79,328.00 202.57,328.00 205.36,328.00 208.14,328.00 210.93,328.00 213.71,328.00 216.50,328.00 219.29,328.00 222.07,328.00 224.86,328.00 227.64,328.00 230.43,328.00 233.21,328.00 236.00,328.00 238.79,328.00 241.57,328.00 244.36,328.00 247.14,328.00 249.93,328.00 252.71,328.00 255.50,328.00 258.29,328.00 261.07,328.00 263.86,328.00 266.64,328.00 269.43,328.00 272.21,328.00 275.00,328.00 277.79,328.00 280.57,328.00 283.36,328.00 286.14,328.00 288.93,328.00 291.71,328.00 294.50,328.00 297.29,328.00 300.07,328.00 302.86,328.00 305.64,328.00 308.43,328.00 311.21,328.00 314.00,328.00 316.79,328.00 319.57,328.00 322.36,328.00 325.14,328.00 327.93,328.00 330.71,328.00 333.50,328.00 336.29,328.00 339.07,328.00 341.86,328.00 344.64,328.00 347.43,328.00 350.21,328.00 353.00,328.00 355.79,328.00 358.57,328.00 361.36,326.56 364.14,325.12 366.93,323.68 369.71,322.24 372.50,320.80 375.29,319.36 378.07,317.92 380.86,316.48 383.64,315.04 386.43,313.60 389.21,312.16 392.00,310.72 394.79,309.28 397.57,307.84 400.36,306.40 403.14,304.96 405.93,303.52 408.71,302.08 411.50,300.64 414.29,299.20 417.07,297.76 419.86,296.32 422.64,294.88 425.43,293.44 428.21,292.00 431.00,290.56 433.79,289.12 436.57,287.68 439.36,286.24 442.14,284.80 444.93,283.36 447.71,281.92 450.50,280.48 453.29,279.04 456.07,277.60 458.86,276.16 461.64,274.72 464.43,273.28 467.21,271.84 470.00,270.40 472.79,268.96 475.57,267.52 478.36,266.08 481.14,264.64 483.93,263.20 486.71,261.76 489.50,260.32 492.29,258.88 495.07,257.44 497.86,256.00 500.64,254.56 503.43,253.12 506.21,251.68 509.00,250.24 511.79,248.80 514.57,247.36 517.36,245.92 520.14,244.48 522.93,243.04 525.71,241.60 528.50,240.16 531.29,238.72 534.07,237.28 536.86,235.84 539.64,234.40 542.43,232.96 545.21,231.52 548.00,230.08 550.79,228.64 553.57,227.20 556.36,225.76 559.14,224.32 561.93,222.88 564.71,221.44 567.50,220.00 570.29,218.56 573.07,217.12 575.86,215.68 578.64,214.24 581.43,212.80 584.21,211.36 587.00,209.92 589.79,208.48 592.57,207.04 595.36,205.60 598.14,204.16 600.93,202.72 603.71,201.28 606.50,199.84 609.29,198.40 612.07,196.96 614.86,195.52 617.64,194.08 620.43,192.64 623.21,191.20 626.00,189.76 628.79,188.32 631.57,186.88 634.36,185.44 637.14,184.00 639.93,184.00 642.71,184.00 645.50,184.00 648.29,184.00 651.07,184.00 653.86,184.00 656.64,184.00 659.43,184.00 662.21,184.00 665.00,184.00 667.79,184.00 670.57,184.00 673.36,184.00 676.14,184.00 678.93,184.00 681.71,184.00 684.50,184.00 687.29,184.00 690.07,184.00 692.86,184.00 695.64,184.00 698.43,184.00 701.21,184.00 704.00,184.00 706.79,184.00 709.57,184.00 712.36,184.00 715.14,184.00 717.93,184.00 720.71,184.00 723.50,184.00 726.29,184.00 729.07,184.00 731.86,184.00 734.64,184.00 737.43,184.00 740.21,184.00 743.00,184.00 745.79,184.00 748.57,184.00 751.36,184.00 754.14,184.00 756.93,184.00 759.71,184.00 762.50,184.00 765.29,184.00 768.07,184.00 770.86,184.00 773.64,184.00 776.43,184.00 779.21,184.00 782.00,184.00 784.79,184.00 787.57,184.00 790.36,184.00 793.14,184.00 795.93,184.00 798.71,184.00 801.50,184.00 804.29,184.00 807.07,184.00 809.86,184.00 812.64,184.00 815.43,184.00 818.21,184.00 821.00,184.00 823.79,184.00 826.57,184.00 829.36,184.00 832.14,184.00 834.93,184.00 837.71,184.00 840.50,184.00 843.29,184.00 846.07,184.00 848.86,184.00 851.64,184.00 854.43,184.00 857.21,184.00 860.00,184.00" fill="none" stroke="#1f4e9c" stroke-width="2.6" stroke-linejoin="round"/>
+<polyline clip-path="url(#c138634201515504)" points="80.00,339.04 135.71,337.84 191.43,337.48 247.14,336.84 302.86,334.02 358.57,320.32 414.29,298.59 470.00,272.65 525.71,244.83 581.43,216.27 637.14,190.01 692.86,158.30 748.57,133.04 804.29,101.92 860.00,78.54" fill="none" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="3,3" stroke-linejoin="round"/>
+<circle cx="80.0" cy="339.0" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="135.7" cy="337.8" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="191.4" cy="337.5" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="247.1" cy="336.8" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="302.9" cy="334.0" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="358.6" cy="320.3" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="414.3" cy="298.6" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="470.0" cy="272.6" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="525.7" cy="244.8" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="581.4" cy="216.3" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="637.1" cy="190.0" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="692.9" cy="158.3" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="748.6" cy="133.0" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="804.3" cy="101.9" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="860.0" cy="78.5" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polyline clip-path="url(#c138634201515504)" points="80.00,327.20 135.71,327.20 191.43,327.17 247.14,326.99 302.86,325.90 358.57,321.60 414.29,312.47 470.00,300.07 525.71,286.24 581.43,271.96 637.14,257.73 692.86,243.82 748.57,230.51 804.29,219.21 860.00,212.37" fill="none" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="3,3" stroke-linejoin="round"/>
+<rect x="75.5" y="322.7" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="131.2" y="322.7" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="186.9" y="322.7" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="242.6" y="322.5" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="298.4" y="321.4" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="354.1" y="317.1" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="409.8" y="308.0" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="465.5" y="295.6" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="521.2" y="281.7" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="576.9" y="267.5" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="632.6" y="253.2" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="688.4" y="239.3" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="744.1" y="226.0" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="799.8" y="214.7" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="855.5" y="207.9" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<polyline clip-path="url(#c138634201515504)" points="80.00,354.79 135.71,354.78 191.43,354.76 247.14,354.18 302.86,347.04 358.57,326.60 414.29,299.05 470.00,268.55 525.71,236.60 581.43,203.82 637.14,170.54 692.86,136.99 748.57,103.30 804.29,69.60 860.00,35.96" fill="none" stroke="#d4860b" stroke-width="1.3" stroke-dasharray="3,3" stroke-linejoin="round"/>
+<polygon points="80.0,349.3 75.5,359.3 84.5,359.3" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="135.7,349.3 131.2,359.3 140.2,359.3" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="191.4,349.3 186.9,359.3 195.9,359.3" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="247.1,348.7 242.6,358.7 251.6,358.7" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="302.9,341.5 298.4,351.5 307.4,351.5" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="358.6,321.1 354.1,331.1 363.1,331.1" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="414.3,293.6 409.8,303.6 418.8,303.6" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="470.0,263.1 465.5,273.1 474.5,273.1" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="525.7,231.1 521.2,241.1 530.2,241.1" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="581.4,198.3 576.9,208.3 585.9,208.3" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="637.1,165.0 632.6,175.0 641.6,175.0" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="692.9,131.5 688.4,141.5 697.4,141.5" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="748.6,97.8 744.1,107.8 753.1,107.8" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="804.3,64.1 799.8,74.1 808.8,74.1" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polygon points="860.0,30.5 855.5,40.5 864.5,40.5" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<line x1="80" y1="212.8" x2="860" y2="212.8" stroke="#1f4e9c" stroke-width="1.3" stroke-dasharray="6,4"/>
+<text x="856" y="208.8" font-size="11" fill="#1f4e9c" text-anchor="end">480 MHz (N · f_ref)</text>
+<line x1="80" y1="155.2" x2="860" y2="155.2" stroke="#555555" stroke-width="1.3" stroke-dasharray="2,4"/>
+<text x="84" y="151.2" font-size="11" fill="#555555" text-anchor="start">520 MHz = 20 × 26 MHz (must not be reported as lock)</text>
+<circle cx="581.4" cy="212.8" r="3.5" fill="#1f4e9c"/>
+<text x="589.4" y="228.8" font-size="11" fill="#1f4e9c" text-anchor="start">0.9 V / 480 MHz</text>
+<rect x="88" y="48" width="342.8" height="80" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="96" y1="60" x2="118" y2="60" stroke="#1f4e9c" stroke-width="2"/>
+<text x="124" y="64" font-size="11.5">afe_pll.va model (400–500 MHz clamp, 200 MHz/V)</text>
+<circle cx="107.0" cy="78.0" r="4" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<text x="124" y="82" font-size="11.5">transistor tt, 27 °C, 1.8 V</text>
+<rect x="103.0" y="92.0" width="8" height="8" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<text x="124" y="100" font-size="11.5">transistor ss, 125 °C, 1.62 V</text>
+<polygon points="107.0,109.0 103.0,118.0 111.0,118.0" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<text x="124" y="118" font-size="11.5">transistor ff, −40 °C, 1.98 V</text>
+</svg>

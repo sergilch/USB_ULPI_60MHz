@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="460" viewBox="0 0 900 460" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="460" fill="white"/>
+<line x1="90" y1="370.8" x2="860" y2="370.8" stroke="#eeeeee"/>
+<line x1="90" y1="359.5" x2="860" y2="359.5" stroke="#eeeeee"/>
+<line x1="90" y1="351.5" x2="860" y2="351.5" stroke="#eeeeee"/>
+<line x1="90" y1="345.3" x2="860" y2="345.3" stroke="#eeeeee"/>
+<line x1="90" y1="340.3" x2="860" y2="340.3" stroke="#eeeeee"/>
+<line x1="90" y1="336.0" x2="860" y2="336.0" stroke="#eeeeee"/>
+<line x1="90" y1="332.3" x2="860" y2="332.3" stroke="#eeeeee"/>
+<line x1="90" y1="329.0" x2="860" y2="329.0" stroke="#eeeeee"/>
+<line x1="90" y1="306.9" x2="860" y2="306.9" stroke="#eeeeee"/>
+<line x1="90" y1="295.6" x2="860" y2="295.6" stroke="#eeeeee"/>
+<line x1="90" y1="287.6" x2="860" y2="287.6" stroke="#eeeeee"/>
+<line x1="90" y1="281.4" x2="860" y2="281.4" stroke="#eeeeee"/>
+<line x1="90" y1="276.4" x2="860" y2="276.4" stroke="#eeeeee"/>
+<line x1="90" y1="272.1" x2="860" y2="272.1" stroke="#eeeeee"/>
+<line x1="90" y1="268.4" x2="860" y2="268.4" stroke="#eeeeee"/>
+<line x1="90" y1="265.1" x2="860" y2="265.1" stroke="#eeeeee"/>
+<line x1="90" y1="243.0" x2="860" y2="243.0" stroke="#eeeeee"/>
+<line x1="90" y1="231.7" x2="860" y2="231.7" stroke="#eeeeee"/>
+<line x1="90" y1="223.7" x2="860" y2="223.7" stroke="#eeeeee"/>
+<line x1="90" y1="217.5" x2="860" y2="217.5" stroke="#eeeeee"/>
+<line x1="90" y1="212.5" x2="860" y2="212.5" stroke="#eeeeee"/>
+<line x1="90" y1="208.2" x2="860" y2="208.2" stroke="#eeeeee"/>
+<line x1="90" y1="204.5" x2="860" y2="204.5" stroke="#eeeeee"/>
+<line x1="90" y1="201.2" x2="860" y2="201.2" stroke="#eeeeee"/>
+<line x1="90" y1="179.1" x2="860" y2="179.1" stroke="#eeeeee"/>
+<line x1="90" y1="167.8" x2="860" y2="167.8" stroke="#eeeeee"/>
+<line x1="90" y1="159.8" x2="860" y2="159.8" stroke="#eeeeee"/>
+<line x1="90" y1="153.6" x2="860" y2="153.6" stroke="#eeeeee"/>
+<line x1="90" y1="148.6" x2="860" y2="148.6" stroke="#eeeeee"/>
+<line x1="90" y1="144.3" x2="860" y2="144.3" stroke="#eeeeee"/>
+<line x1="90" y1="140.6" x2="860" y2="140.6" stroke="#eeeeee"/>
+<line x1="90" y1="137.3" x2="860" y2="137.3" stroke="#eeeeee"/>
+<line x1="90" y1="115.2" x2="860" y2="115.2" stroke="#eeeeee"/>
+<line x1="90" y1="103.9" x2="860" y2="103.9" stroke="#eeeeee"/>
+<line x1="90" y1="95.9" x2="860" y2="95.9" stroke="#eeeeee"/>
+<line x1="90" y1="89.7" x2="860" y2="89.7" stroke="#eeeeee"/>
+<line x1="90" y1="84.7" x2="860" y2="84.7" stroke="#eeeeee"/>
+<line x1="90" y1="80.4" x2="860" y2="80.4" stroke="#eeeeee"/>
+<line x1="90" y1="76.7" x2="860" y2="76.7" stroke="#eeeeee"/>
+<line x1="90" y1="73.4" x2="860" y2="73.4" stroke="#eeeeee"/>
+<line x1="90" y1="51.3" x2="860" y2="51.3" stroke="#eeeeee"/>
+<line x1="90.0" y1="40" x2="90.0" y2="390" stroke="#d8d8d8"/>
+<text x="90.0" y="407" font-size="12" text-anchor="middle">0</text>
+<line x1="218.3" y1="40" x2="218.3" y2="390" stroke="#d8d8d8"/>
+<text x="218.3" y="407" font-size="12" text-anchor="middle">2</text>
+<line x1="346.7" y1="40" x2="346.7" y2="390" stroke="#d8d8d8"/>
+<text x="346.7" y="407" font-size="12" text-anchor="middle">4</text>
+<line x1="475.0" y1="40" x2="475.0" y2="390" stroke="#d8d8d8"/>
+<text x="475.0" y="407" font-size="12" text-anchor="middle">6</text>
+<line x1="603.3" y1="40" x2="603.3" y2="390" stroke="#d8d8d8"/>
+<text x="603.3" y="407" font-size="12" text-anchor="middle">8</text>
+<line x1="731.7" y1="40" x2="731.7" y2="390" stroke="#d8d8d8"/>
+<text x="731.7" y="407" font-size="12" text-anchor="middle">10</text>
+<line x1="860.0" y1="40" x2="860.0" y2="390" stroke="#d8d8d8"/>
+<text x="860.0" y="407" font-size="12" text-anchor="middle">12</text>
+<line x1="90" y1="390.0" x2="860" y2="390.0" stroke="#d8d8d8"/>
+<text x="84" y="394.0" font-size="12" text-anchor="end">1</text>
+<line x1="90" y1="326.1" x2="860" y2="326.1" stroke="#d8d8d8"/>
+<text x="84" y="330.1" font-size="12" text-anchor="end">10</text>
+<line x1="90" y1="262.2" x2="860" y2="262.2" stroke="#d8d8d8"/>
+<text x="84" y="266.2" font-size="12" text-anchor="end">100</text>
+<line x1="90" y1="198.3" x2="860" y2="198.3" stroke="#d8d8d8"/>
+<text x="84" y="202.3" font-size="12" text-anchor="end">1000</text>
+<line x1="90" y1="134.4" x2="860" y2="134.4" stroke="#d8d8d8"/>
+<text x="84" y="138.4" font-size="12" text-anchor="end">10000</text>
+<line x1="90" y1="70.5" x2="860" y2="70.5" stroke="#d8d8d8"/>
+<text x="84" y="74.5" font-size="12" text-anchor="end">100000</text>
+<rect x="90" y="40" width="770" height="350" fill="none" stroke="#333333"/>
+<text x="475.0" y="426" font-size="13" text-anchor="middle">Time after PLL_EN  [µs]</text>
+<text transform="translate(38,215.0) rotate(-90)" font-size="13" text-anchor="middle">|f_CLK_BIT_A / (N f_ref) − 1|  [ppm]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Frequency error in 0.25 µs windows (model)</text>
+<clipPath id="c138634193289872"><rect x="90" y="40" width="770" height="350"/></clipPath>
+<polyline clip-path="url(#c138634193289872)" points="109.25,57.26 125.29,93.33 141.33,94.80 157.38,94.79 173.42,94.79 189.46,95.91 205.50,144.88 221.54,144.52 237.58,152.33 253.63,171.38 269.67,193.66 285.71,217.04 301.75,240.79 317.79,264.65 333.83,288.53 349.87,312.41 365.92,336.29 381.96,360.16 398.00,384.04 414.04,390.00 430.08,390.00 446.12,390.00 462.17,390.00 478.21,390.00 494.25,390.00 510.29,390.00 526.33,390.00 542.38,390.00 558.42,390.00 574.46,390.00 590.50,390.00 606.54,390.00 622.58,390.00 638.62,390.00 654.67,390.00 670.71,390.00 686.75,390.00 702.79,390.00 718.83,390.00 734.87,390.00 750.92,390.00 766.96,390.00 783.00,390.00 799.04,390.00 815.08,390.00 831.12,390.00 847.17,390.00" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c138634193289872)" points="109.25,58.36 125.29,70.31 141.33,101.59 157.38,94.79 173.42,94.79 189.46,94.79 205.50,94.79 221.54,111.59 237.58,134.98 253.63,126.72 269.67,139.06 285.71,159.14 301.75,185.31 317.79,222.78 333.83,317.86 349.87,272.54 365.92,277.65 381.96,292.93 398.00,316.41 414.04,347.61 430.08,390.00 446.12,390.00 462.17,390.00 478.21,390.00 494.25,390.00 510.29,390.00 526.33,390.00 542.38,390.00 558.42,390.00 574.46,390.00 590.50,390.00 606.54,390.00 622.58,390.00 638.62,390.00 654.67,390.00 670.71,390.00 686.75,390.00 702.79,390.00 718.83,390.00 734.87,390.00 750.92,390.00 766.96,390.00 783.00,390.00 799.04,390.00 815.08,390.00 831.12,390.00 847.17,390.00" fill="none" stroke="#d4860b" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c138634193289872)" points="109.25,49.44 125.29,55.14 141.33,69.54 157.38,76.10 173.42,95.76 189.46,97.01 205.50,97.01 221.54,97.01 237.58,97.01 253.63,97.01 269.67,97.01 285.71,97.01 301.75,97.01 317.79,97.01 333.83,97.01 349.87,97.01 365.92,97.01 381.96,97.01 398.00,97.01 414.04,97.01 430.08,97.01 446.12,97.01 462.17,97.01 478.21,97.01 494.25,97.01 510.29,97.01 526.33,97.01 542.38,97.01 558.42,97.01 574.46,97.01 590.50,97.01 606.54,97.01 622.58,97.01 638.62,97.01 654.67,97.01 670.71,97.01 686.75,97.01 702.79,97.01 718.83,97.01 734.87,97.01 750.92,97.01 766.96,97.01 783.00,97.01 799.04,97.01 815.08,97.01 831.12,97.01 847.17,97.01" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="90" y1="204.5" x2="860" y2="204.5" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="6,4"/>
+<text x="856" y="218.5" font-size="11" fill="#2e8b57" text-anchor="end">±800 ppm: settling criterion (spec 4.3: within 45 µs)</text>
+<line x1="90" y1="198.3" x2="860" y2="198.3" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="2,4"/>
+<text x="94" y="194.3" font-size="11" fill="#c0392b" text-anchor="start">±0.1 % = ±5 counts: lock-detector tolerance</text>
+<line x1="90" y1="243.0" x2="860" y2="243.0" stroke="#555555" stroke-width="1.3" stroke-dasharray="3,3"/>
+<text x="856" y="239.0" font-size="11" fill="#555555" text-anchor="end">±200 ppm: locked-frequency check</text>
+<rect x="560.4" y="48" width="291.6" height="62" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="568.4" y1="60" x2="590.4" y2="60" stroke="#1f4e9c" stroke-width="2"/>
+<text x="596.4" y="64" font-size="11.5">24 MHz, ÷20: settled 2.80 µs</text>
+<line x1="568.4" y1="78" x2="590.4" y2="78" stroke="#d4860b" stroke-width="2"/>
+<text x="596.4" y="82" font-size="11.5">19.2 MHz, ÷25: settled 3.30 µs</text>
+<line x1="568.4" y1="96" x2="590.4" y2="96" stroke="#c0392b" stroke-width="2"/>
+<text x="596.4" y="100" font-size="11.5">26 MHz, ÷20 (VCO at f_max, never locks)</text>
+</svg>

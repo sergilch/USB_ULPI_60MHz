@@ -8,16 +8,23 @@
 //
 // Supports only the Markdown subset used by the description: headings (# title,
 // ## chapter, ### section, #### module), paragraphs, bullet / numbered lists,
-// tables, fenced code blocks, --- rules, inline `code` / **bold** / *italic*.
+// tables, fenced code blocks, --- rules, inline `code` / ``code with ` `` /
+// **bold** / *italic*, [links](url) (rendered as their text), and images on a
+// line of their own: ![caption](fig/x.svg) embeds fig/x.png (the PNG next to the
+// referenced file, path relative to the Markdown file) at full text width,
+// with the caption centred below it.
+// Optional third argument: footer text (default: the description's footer), e.g.
+//   node DOC/Description/md2docx.js in.md out.docx "Mass-storage test"
 // Output: A4, table of contents before chapter 1 (Word fills it on opening).
 const fs = require('fs');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
   WidthType, ShadingType, BorderStyle, LevelFormat, AlignmentType, Footer, PageNumber,
-  TableOfContents,
+  TableOfContents, ImageRun,
 } = require('docx');
+const path = require('path');
 
-const [, , inPath, outPath] = process.argv;
+const [, , inPath, outPath, footerText = 'USB 2.0 ULPI PHY — Verilog modules'] = process.argv;
 const lines = fs.readFileSync(inPath, 'utf8').split('\n');
 
 const FONT = 'Calibri', MONO = 'Consolas';
@@ -25,14 +32,16 @@ const PAGE_W = 11906, MARGIN = 1134, CONTENT_W = PAGE_W - 2 * MARGIN; // A4, 2 c
 
 function inline(text, base = {}) {
   const runs = [];
-  const re = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  const re = /(\[[^\]]+\]\([^)]+\)|``.+?``|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) runs.push(new TextRun({ text: text.slice(last, m.index), font: FONT, ...base }));
     const t = m[0];
-    if (t.startsWith('`')) runs.push(new TextRun({ text: t.slice(1, -1), font: MONO, size: (base.size || 21) - 2, color: '8B1A1A', bold: base.bold }));
-    else if (t.startsWith('**')) runs.push(new TextRun({ text: t.slice(2, -2), font: FONT, ...base, bold: true }));
-    else runs.push(new TextRun({ text: t.slice(1, -1), font: FONT, ...base, italics: true }));
+    if (t.startsWith('[')) runs.push(...inline(t.slice(1, t.indexOf('](')), base));
+    else if (t.startsWith('``')) runs.push(new TextRun({ text: t.slice(2, -2).trim(), font: MONO, size: (base.size || 21) - 2, color: '8B1A1A', bold: base.bold, italics: base.italics }));
+    else if (t.startsWith('`')) runs.push(new TextRun({ text: t.slice(1, -1), font: MONO, size: (base.size || 21) - 2, color: '8B1A1A', bold: base.bold, italics: base.italics }));
+    else if (t.startsWith('**')) runs.push(...inline(t.slice(2, -2), { ...base, bold: true }));
+    else runs.push(...inline(t.slice(1, -1), { ...base, italics: true }));
     last = m.index + t.length;
   }
   if (last < text.length) runs.push(new TextRun({ text: text.slice(last), font: FONT, ...base }));
@@ -49,12 +58,25 @@ function splitRow(l) {
 function makeTable(rows) {
   const header = rows[0], body = rows.slice(2);
   const n = header.length;
-  // column widths proportional to max text length (bounded)
+  // column widths: each column at least as wide as its longest word (no
+  // words broken across lines), the rest shared in proportion to the
+  // column's longest cell text (bounded)
   const all = [header, ...body];
-  const lens = Array.from({ length: n }, (_, i) =>
-    Math.min(60, Math.max(6, ...all.map(r => (r[i] || '').replace(/[`*]/g, '').length))));
-  const sum = lens.reduce((a, b) => a + b, 0);
-  const widths = lens.map(l => Math.floor(CONTENT_W * l / sum));
+  const plain = s => (s || '').replace(/[`*]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  const CH = 115, PAD = 230;  // approx. DXA per character at 10 pt, cell padding
+  const want = Array.from({ length: n }, (_, i) =>
+    Math.min(60, Math.max(6, ...all.map(r => plain(r[i]).length))) * CH + PAD);
+  const minW = Array.from({ length: n }, (_, i) =>
+    Math.min(28, Math.max(3, ...all.map(r => Math.max(0, ...plain(r[i]).split(/\s+/).map(w => w.length))))) * CH + PAD);
+  const minSum = minW.reduce((a, b) => a + b, 0);
+  let widths;
+  if (minSum >= CONTENT_W) {
+    widths = minW.map(w => Math.floor(CONTENT_W * w / minSum));
+  } else {
+    const extra = want.map((w, i) => Math.max(0, w - minW[i]));
+    const exSum = extra.reduce((a, b) => a + b, 0);
+    widths = minW.map((w, i) => Math.floor(w + (CONTENT_W - minSum) * (exSum ? extra[i] / exSum : 1 / n)));
+  }
   widths[n - 1] += CONTENT_W - widths.reduce((a, b) => a + b, 0);
   const cell = (txt, i, isHead) => new TableCell({
     borders, width: { size: widths[i], type: WidthType.DXA },
@@ -113,6 +135,17 @@ while (i < lines.length) {
     }
     i++; continue;
   }
+  if ((m = /^!\[([^\]]*)\]\(([^)]+)\)\s*$/.exec(l))) {
+    const png = path.resolve(path.dirname(inPath), m[2].replace(/\.svg$/i, '.png'));
+    const data = fs.readFileSync(png);
+    const w0 = data.readUInt32BE(16), h0 = data.readUInt32BE(20);   // PNG IHDR
+    const w = Math.round(CONTENT_W / 15), h = Math.round(w * h0 / w0); // twips -> px at 96 dpi
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: 120, after: 40 },
+      children: [new ImageRun({ type: 'png', data, transformation: { width: w, height: h } })] }));
+    if (m[1]) children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 },
+      children: inline(m[1], { size: 18, italics: true, color: '404040' }) }));
+    i++; continue;
+  }
   if (/^---\s*$/.test(l)) {
     children.push(new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '8EAADB', space: 1 } }, children: [] }));
     i++; continue;
@@ -131,7 +164,7 @@ while (i < lines.length) {
   // paragraph: join following plain lines
   const para = [l];
   i++;
-  while (i < lines.length && lines[i].trim() !== '' && !/^(#|\||```|\s*- |\d+\. |---)/.test(lines[i])) para.push(lines[i++]);
+  while (i < lines.length && lines[i].trim() !== '' && !/^(#|\||```|\s*- |\d+\. |---|!\[)/.test(lines[i])) para.push(lines[i++]);
   children.push(new Paragraph({ spacing: { after: 120 }, children: inline(para.join(' ')) }));
 }
 
@@ -163,7 +196,7 @@ const doc = new Document({
   sections: [{
     properties: { page: { size: { width: PAGE_W, height: 16838 }, margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } } },
     footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [
-      new TextRun({ text: 'USB 2.0 ULPI PHY — Verilog modules    Page ', font: FONT, size: 16, color: '808080' }),
+      new TextRun({ text: footerText + '    Page ', font: FONT, size: 16, color: '808080' }),
       new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 16, color: '808080' })] })] }) },
     children,
   }],
