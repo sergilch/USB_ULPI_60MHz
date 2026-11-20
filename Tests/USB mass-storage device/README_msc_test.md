@@ -76,9 +76,13 @@ At full speed, the PHY ends every received packet with two RX CMDs. The first ha
 
 The template's `ulpi_link_bfm` counted such an abort as an error. `link_cmd_phase` now retries the TX CMD byte of every transfer, up to `CMD_RETRIES` = 16 times in a row, and counts it in `cmd_retry_cnt`. It is not an error. Aborts during the payload bytes are still errors. The MSC test sees 37 retries per run; the mouse test (low speed) sees none.
 
-## Observation about the PHY (not fixed)
+## Note: LineState RXCMDs during the PHY's own transmit
 
-The PHY sends LineState RX CMDs while its own FS packet is still on the line, after the Link's STP: 31 079 RX CMDs in this test. ULPI 1.1 §3.8.2.2 says that all RX CMD changes during a USB transmit should be replaced by one RX CMD at the end of the transmit. `usb_ulpi_bus_owner` only holds the bus while `usb_tx_holding` is busy. The Link model ignores these RX CMDs, so the test passes. A real Link controller might not.
+During a full-speed run, the PHY sends many LineState RXCMDs while its own packet is still on the line after the Link's STP (about 31 000 RXCMDs in this test). It ends each transmit with an SE0 RXCMD and then a J RXCMD. This is the behaviour ULPI 1.1 asks for:
+- §3.8.1.3: after a USB transmit, the PHY must send an RX CMD with LineState indicating EOP, which for FS/LS is the SE0 → J transition.
+- Figure 12 marks the FS/LS line-transmit time with "Other FS/LS RX CMD's can occur here".
+
+The "single RX CMD update at the end of the transmit" sentence of §3.8.2.2 covers only the time the Link drives the bus. `usb_ulpi_bus_owner` already honours it: it does not take the bus while `usb_tx_holding` is busy. Holding the RXCMDs until the line is idle would suppress the mandatory EOP RXCMD, because LineState is back at J, the last value reported. A version of the RTL with that hold was tried and reverted on 2026-11-20.
 
 ## Running
 
