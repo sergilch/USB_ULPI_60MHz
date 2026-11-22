@@ -1,0 +1,20 @@
+afe_xosc_tr: corner ws, 125 C, VDD 1.62 V, DRV 2, ESR 100 Ohm  (Lm 15.2745 mH, fs 23.996087 MHz)
+  ac DRV=0: R_neg(24 MHz)   -281.7 Ohm  X   -777.5 Ohm  margin   2.8 x ESR 100
+  ac DRV=1: R_neg(24 MHz)   -390.3 Ohm  X   -801.2 Ohm  margin   3.9 x ESR 100
+  ac DRV=2: R_neg(24 MHz)   -483.0 Ohm  X   -827.4 Ohm  margin   4.8 x ESR 100
+  ac DRV=3: R_neg(24 MHz)   -562.2 Ohm  X   -854.9 Ohm  margin   5.6 x ESR 100
+  op d0_e1: XI 0.732 V  XO 0.732 V  I(VDD)   333.134 uA
+  op d0_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.002 uA
+  op d1_e1: XI 0.762 V  XO 0.762 V  I(VDD)   411.568 uA
+  op d1_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.002 uA
+  op d2_e1: XI 0.786 V  XO 0.786 V  I(VDD)   490.072 uA
+  op d2_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.002 uA
+  op d3_e1: XI 0.805 V  XO 0.805 V  I(VDD)   568.510 uA
+  op d3_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.002 uA
+  ss DRV=2 ESR=100: f 24.000044 MHz (+1.8 ppm, C_ext 8.731 pF, R_ext -118.9 Ohm)  XI 0.706 Vpp  XO 0.785 Vpp  I_x 0.659 mA rms  DL 43.5 uW  I(VDD) 0.326 mA  duty 48.13 %  tr/tf 415/370 ps
+  byp sq: f 24.0000 MHz  duty 49.97 %  XI->REF_CLK 1.47 ns  I(VDD) 0.142 mA
+  byp sine: f 24.0000 MHz  duty 47.81 %  XI->REF_CLK 2.99 ns  I(VDD) 0.396 mA
+  start DRV=2 ESR=100: first REF_CLK edge 0.0 us, stable 530.1 us, 90 % amplitude 1064.0 us, tau 620.1 us, final 0.740 Vpp
+  ERROR: start-up margin 4.8 < 5.0
+  ERROR: steady state not reached: R_ext -119 Ohm, ESR 100 Ohm
+TEST FAILED: 2 error(s)

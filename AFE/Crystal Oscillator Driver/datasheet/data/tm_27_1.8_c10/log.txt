@@ -1,0 +1,7 @@
+afe_xosc_tr: corner tm, 27 C, VDD 1.8 V, DRV 2, ESR 100 Ohm  (Lm 15.2745 mH, fs 23.996087 MHz)
+  ss DRV=2 ESR=100: f 24.000588 MHz (+24.5 ppm, C_ext 7.676 pF, R_ext -105.7 Ohm)  XI 0.806 Vpp  XO 0.893 Vpp  I_x 0.671 mA rms  DL 45.1 uW  I(VDD) 0.330 mA  duty 48.67 %  tr/tf 256/214 ps
+  ac DRV=0: R_neg(24 MHz)   -592.4 Ohm  X   -954.3 Ohm  margin   5.9 x ESR 100
+  ac DRV=1: R_neg(24 MHz)   -792.1 Ohm  X  -1041.8 Ohm  margin   7.9 x ESR 100
+  ac DRV=2: R_neg(24 MHz)   -950.7 Ohm  X  -1134.2 Ohm  margin   9.5 x ESR 100
+  ac DRV=3: R_neg(24 MHz)  -1076.9 Ohm  X  -1226.5 Ohm  margin  10.8 x ESR 100
+TEST PASSED

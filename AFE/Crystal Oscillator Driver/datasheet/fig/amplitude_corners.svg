@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="640" fill="white"/>
+<line x1="90" y1="260.0" x2="860" y2="260.0" stroke="#d8d8d8"/>
+<text x="84" y="264.0" font-size="12" text-anchor="end">0</text>
+<line x1="90" y1="220.7" x2="860" y2="220.7" stroke="#d8d8d8"/>
+<text x="84" y="224.7" font-size="12" text-anchor="end">0.25</text>
+<line x1="90" y1="181.4" x2="860" y2="181.4" stroke="#d8d8d8"/>
+<text x="84" y="185.4" font-size="12" text-anchor="end">0.5</text>
+<line x1="90" y1="142.1" x2="860" y2="142.1" stroke="#d8d8d8"/>
+<text x="84" y="146.1" font-size="12" text-anchor="end">0.75</text>
+<line x1="90" y1="102.9" x2="860" y2="102.9" stroke="#d8d8d8"/>
+<text x="84" y="106.9" font-size="12" text-anchor="end">1</text>
+<line x1="90" y1="63.6" x2="860" y2="63.6" stroke="#d8d8d8"/>
+<text x="84" y="67.6" font-size="12" text-anchor="end">1.25</text>
+<rect x="90" y="40" width="770" height="220" fill="none" stroke="#333333"/>
+<text transform="translate(38,150.0) rotate(-90)" font-size="13" text-anchor="middle">Amplitude  [Vpp]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Regulated amplitude, drive level and current over corners (ESR 100 Ω, DRV = 10)</text>
+<clipPath id="c138682415440112"><rect x="90" y="40" width="770" height="220"/></clipPath>
+<circle cx="167.0" cy="142.0" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="321.0" cy="149.0" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="475.0" cy="148.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="629.0" cy="136.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="783.0" cy="132.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<rect x="162.5" y="123.0" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="316.5" y="132.1" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="470.5" y="129.9" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="624.5" y="115.0" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="778.5" y="109.0" width="9.0" height="9.0" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<line x1="90" y1="520.0" x2="860" y2="520.0" stroke="#d8d8d8"/>
+<text x="84" y="524.0" font-size="12" text-anchor="end">0</text>
+<line x1="90" y1="476.0" x2="860" y2="476.0" stroke="#d8d8d8"/>
+<text x="84" y="480.0" font-size="12" text-anchor="end">50</text>
+<line x1="90" y1="432.0" x2="860" y2="432.0" stroke="#d8d8d8"/>
+<text x="84" y="436.0" font-size="12" text-anchor="end">100</text>
+<line x1="90" y1="388.0" x2="860" y2="388.0" stroke="#d8d8d8"/>
+<text x="84" y="392.0" font-size="12" text-anchor="end">150</text>
+<line x1="90" y1="344.0" x2="860" y2="344.0" stroke="#d8d8d8"/>
+<text x="84" y="348.0" font-size="12" text-anchor="end">200</text>
+<line x1="90" y1="300.0" x2="860" y2="300.0" stroke="#d8d8d8"/>
+<text x="84" y="304.0" font-size="12" text-anchor="end">250</text>
+<rect x="90" y="300" width="770" height="220" fill="none" stroke="#333333"/>
+<text transform="translate(38,410.0) rotate(-90)" font-size="13" text-anchor="middle">Drive level [µW] / I(VDD) [100 µA]</text>
+<clipPath id="c138682394867520"><rect x="90" y="300" width="770" height="220"/></clipPath>
+<circle cx="167.0" cy="476.6" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="321.0" cy="481.7" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="475.0" cy="481.7" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="629.0" cy="472.1" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="783.0" cy="468.6" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<polygon points="167.0,482.4 162.5,492.4 171.5,492.4" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polygon points="321.0,485.8 316.5,495.8 325.5,495.8" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polygon points="475.0,487.5 470.5,497.5 479.5,497.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polygon points="629.0,477.6 624.5,487.6 633.5,487.6" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polygon points="783.0,468.4 778.5,478.4 787.5,478.4" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<line x1="90" y1="344.0" x2="860" y2="344.0" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="6,4"/>
+<text x="94" y="340.0" font-size="11" fill="#c0392b" text-anchor="start">crystal DL_max 200 µW</text>
+<text x="167.0" y="555.2" font-size="10.5" fill="#222222" text-anchor="middle">tm</text>
+<text x="321.0" y="555.2" font-size="10.5" fill="#222222" text-anchor="middle">ws</text>
+<text x="475.0" y="555.2" font-size="10.5" fill="#222222" text-anchor="middle">ws</text>
+<text x="629.0" y="555.2" font-size="10.5" fill="#222222" text-anchor="middle">wp</text>
+<text x="783.0" y="555.2" font-size="10.5" fill="#222222" text-anchor="middle">wp</text>
+<text x="167.0" y="577.2" font-size="10.5" fill="#222222" text-anchor="middle">27 °C 1.8 V</text>
+<text x="321.0" y="577.2" font-size="10.5" fill="#222222" text-anchor="middle">125 °C 1.62 V</text>
+<text x="475.0" y="577.2" font-size="10.5" fill="#222222" text-anchor="middle">−40 °C 1.62 V</text>
+<text x="629.0" y="577.2" font-size="10.5" fill="#222222" text-anchor="middle">−40 °C 1.98 V</text>
+<text x="783.0" y="577.2" font-size="10.5" fill="#222222" text-anchor="middle">125 °C 1.98 V</text>
+<rect x="797.2" y="48" width="54.8" height="44" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<circle cx="816.2" cy="60.0" r="4" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="833.2" y="64" font-size="11.5">XI</text>
+<rect x="812.2" y="74.0" width="8" height="8" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<text x="833.2" y="82" font-size="11.5">XO</text>
+<rect x="605.2" y="308" width="246.8" height="44" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<circle cx="624.2" cy="320.0" r="4" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<text x="641.2" y="324" font-size="11.5">crystal drive level  [µW]</text>
+<polygon points="624.2,333.0 620.2,342.0 628.2,342.0" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<text x="641.2" y="342" font-size="11.5">I(VDD) in steady state  [100 µA]</text>
+</svg>

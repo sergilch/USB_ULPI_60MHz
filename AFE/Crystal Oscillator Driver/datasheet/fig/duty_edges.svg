@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="520" fill="white"/>
+<line x1="90" y1="210.0" x2="860" y2="210.0" stroke="#d8d8d8"/>
+<text x="84" y="214.0" font-size="12" text-anchor="end">40</text>
+<line x1="90" y1="167.5" x2="860" y2="167.5" stroke="#d8d8d8"/>
+<text x="84" y="171.5" font-size="12" text-anchor="end">45</text>
+<line x1="90" y1="125.0" x2="860" y2="125.0" stroke="#d8d8d8"/>
+<text x="84" y="129.0" font-size="12" text-anchor="end">50</text>
+<line x1="90" y1="82.5" x2="860" y2="82.5" stroke="#d8d8d8"/>
+<text x="84" y="86.5" font-size="12" text-anchor="end">55</text>
+<line x1="90" y1="40.0" x2="860" y2="40.0" stroke="#d8d8d8"/>
+<text x="84" y="44.0" font-size="12" text-anchor="end">60</text>
+<rect x="90" y="40" width="770" height="170" fill="none" stroke="#333333"/>
+<text transform="translate(38,125.0) rotate(-90)" font-size="13" text-anchor="middle">Duty cycle  [%]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">REF_CLK duty cycle and edges over corners (100 fF load)</text>
+<clipPath id="c138682394652800"><rect x="90" y="40" width="770" height="170"/></clipPath>
+<rect x="90" y="82.5" width="770" height="85.0" fill="#2e8b57" fill-opacity="0.08"/>
+<circle cx="167.0" cy="136.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="321.0" cy="140.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="475.0" cy="137.5" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="629.0" cy="133.1" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="783.0" cy="137.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<line x1="90" y1="420.0" x2="860" y2="420.0" stroke="#d8d8d8"/>
+<text x="84" y="424.0" font-size="12" text-anchor="end">0</text>
+<line x1="90" y1="386.0" x2="860" y2="386.0" stroke="#d8d8d8"/>
+<text x="84" y="390.0" font-size="12" text-anchor="end">100</text>
+<line x1="90" y1="352.0" x2="860" y2="352.0" stroke="#d8d8d8"/>
+<text x="84" y="356.0" font-size="12" text-anchor="end">200</text>
+<line x1="90" y1="318.0" x2="860" y2="318.0" stroke="#d8d8d8"/>
+<text x="84" y="322.0" font-size="12" text-anchor="end">300</text>
+<line x1="90" y1="284.0" x2="860" y2="284.0" stroke="#d8d8d8"/>
+<text x="84" y="288.0" font-size="12" text-anchor="end">400</text>
+<line x1="90" y1="250.0" x2="860" y2="250.0" stroke="#d8d8d8"/>
+<text x="84" y="254.0" font-size="12" text-anchor="end">500</text>
+<rect x="90" y="250" width="770" height="170" fill="none" stroke="#333333"/>
+<text transform="translate(38,335.0) rotate(-90)" font-size="13" text-anchor="middle">10–90 %  [ps]</text>
+<clipPath id="c138682394865360"><rect x="90" y="250" width="770" height="170"/></clipPath>
+<circle cx="167.0" cy="332.8" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="321.0" cy="278.8" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="475.0" cy="316.5" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="629.0" cy="362.3" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="783.0" cy="339.1" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<rect x="162.5" y="342.6" width="9.0" height="9.0" fill="white" stroke="#555555" stroke-width="1.8"/>
+<rect x="316.5" y="289.6" width="9.0" height="9.0" fill="white" stroke="#555555" stroke-width="1.8"/>
+<rect x="470.5" y="332.4" width="9.0" height="9.0" fill="white" stroke="#555555" stroke-width="1.8"/>
+<rect x="624.5" y="367.6" width="9.0" height="9.0" fill="white" stroke="#555555" stroke-width="1.8"/>
+<rect x="778.5" y="342.9" width="9.0" height="9.0" fill="white" stroke="#555555" stroke-width="1.8"/>
+<text x="167.0" y="440.4" font-size="10.5" fill="#222222" text-anchor="middle">tm</text>
+<text x="321.0" y="440.4" font-size="10.5" fill="#222222" text-anchor="middle">ws</text>
+<text x="475.0" y="440.4" font-size="10.5" fill="#222222" text-anchor="middle">ws</text>
+<text x="629.0" y="440.4" font-size="10.5" fill="#222222" text-anchor="middle">wp</text>
+<text x="783.0" y="440.4" font-size="10.5" fill="#222222" text-anchor="middle">wp</text>
+<text x="167.0" y="457.4" font-size="10.5" fill="#222222" text-anchor="middle">27 °C 1.8 V</text>
+<text x="321.0" y="457.4" font-size="10.5" fill="#222222" text-anchor="middle">125 °C 1.62 V</text>
+<text x="475.0" y="457.4" font-size="10.5" fill="#222222" text-anchor="middle">−40 °C 1.62 V</text>
+<text x="629.0" y="457.4" font-size="10.5" fill="#222222" text-anchor="middle">−40 °C 1.98 V</text>
+<text x="783.0" y="457.4" font-size="10.5" fill="#222222" text-anchor="middle">125 °C 1.98 V</text>
+<rect x="643.6" y="48" width="208.4" height="26" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<circle cx="662.6" cy="60.0" r="4" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="679.6" y="64" font-size="11.5">duty cycle (limit 45–55 %)</text>
+<rect x="784.4" y="258" width="67.6" height="44" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<circle cx="803.4" cy="270.0" r="4" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<text x="820.4" y="274" font-size="11.5">rise</text>
+<rect x="799.4" y="284.0" width="8" height="8" fill="white" stroke="#555555" stroke-width="1.8"/>
+<text x="820.4" y="292" font-size="11.5">fall</text>
+</svg>

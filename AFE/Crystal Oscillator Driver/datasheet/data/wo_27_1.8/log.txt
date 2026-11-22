@@ -1,0 +1,14 @@
+afe_xosc_tr: corner wo, 27 C, VDD 1.8 V, DRV 2, ESR 100 Ohm  (Lm 15.2745 mH, fs 23.996087 MHz)
+  op d0_e1: XI 0.769 V  XO 0.769 V  I(VDD)   489.855 uA
+  op d0_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.000 uA
+  op d1_e1: XI 0.795 V  XO 0.795 V  I(VDD)   604.087 uA
+  op d1_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.000 uA
+  op d2_e1: XI 0.815 V  XO 0.815 V  I(VDD)   718.326 uA
+  op d2_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.000 uA
+  op d3_e1: XI 0.832 V  XO 0.832 V  I(VDD)   832.602 uA
+  op d3_e0: XI 0.000 V  XO 0.000 V  I(VDD)     0.000 uA
+  ac DRV=0: R_neg(24 MHz)   -491.4 Ohm  X   -822.8 Ohm  margin   4.9 x ESR 100
+  ac DRV=1: R_neg(24 MHz)   -664.4 Ohm  X   -883.3 Ohm  margin   6.6 x ESR 100
+  ac DRV=2: R_neg(24 MHz)   -806.9 Ohm  X   -948.9 Ohm  margin   8.1 x ESR 100
+  ac DRV=3: R_neg(24 MHz)   -925.7 Ohm  X  -1016.2 Ohm  margin   9.3 x ESR 100
+TEST PASSED

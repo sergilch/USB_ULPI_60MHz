@@ -1,0 +1,16 @@
+afe_xosc_tr: corner wp, 125 C, VDD 1.98 V, DRV 2, ESR 100 Ohm  (Lm 15.2745 mH, fs 23.996087 MHz)
+  op d0_e1: XI 0.684 V  XO 0.684 V  I(VDD)   673.015 uA
+  op d0_e0: XI 0.000 V  XO 0.001 V  I(VDD)     0.007 uA
+  op d1_e1: XI 0.718 V  XO 0.719 V  I(VDD)   813.498 uA
+  op d1_e0: XI 0.000 V  XO 0.001 V  I(VDD)     0.007 uA
+  op d2_e1: XI 0.745 V  XO 0.746 V  I(VDD)   954.013 uA
+  op d2_e0: XI 0.000 V  XO 0.001 V  I(VDD)     0.007 uA
+  op d3_e1: XI 0.768 V  XO 0.768 V  I(VDD)  1094.540 uA
+  op d3_e0: XI 0.000 V  XO 0.001 V  I(VDD)     0.007 uA
+  ac DRV=0: R_neg(24 MHz)   -454.0 Ohm  X   -815.1 Ohm  margin   4.5 x ESR 100
+  ac DRV=1: R_neg(24 MHz)   -610.3 Ohm  X   -866.2 Ohm  margin   6.1 x ESR 100
+  ac DRV=2: R_neg(24 MHz)   -738.4 Ohm  X   -921.1 Ohm  margin   7.4 x ESR 100
+  ac DRV=3: R_neg(24 MHz)   -844.4 Ohm  X   -977.0 Ohm  margin   8.4 x ESR 100
+  ss DRV=2 ESR=100: f 24.000176 MHz (+7.3 ppm, C_ext 8.450 pF, R_ext -132.0 Ohm)  XI 0.813 Vpp  XO 0.932 Vpp  I_x 0.764 mA rms  DL 58.4 uW  I(VDD) 0.524 mA  duty 48.55 %  tr/tf 238/214 ps
+  ERROR: steady state not reached: R_ext -132 Ohm, ESR 100 Ohm
+TEST FAILED: 1 error(s)
