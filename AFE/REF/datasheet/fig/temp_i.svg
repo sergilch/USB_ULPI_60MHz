@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="620" fill="white"/>
+<line x1="276.7" y1="40" x2="276.7" y2="270" stroke="#d8d8d8"/>
+<text x="276.7" y="287" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="40" x2="510.0" y2="270" stroke="#d8d8d8"/>
+<text x="510.0" y="287" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="40" x2="743.3" y2="270" stroke="#d8d8d8"/>
+<text x="743.3" y="287" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="270.0" x2="860" y2="270.0" stroke="#d8d8d8"/>
+<text x="84" y="274.0" font-size="12" text-anchor="end">4.9</text>
+<line x1="90" y1="212.5" x2="860" y2="212.5" stroke="#d8d8d8"/>
+<text x="84" y="216.5" font-size="12" text-anchor="end">4.95</text>
+<line x1="90" y1="155.0" x2="860" y2="155.0" stroke="#d8d8d8"/>
+<text x="84" y="159.0" font-size="12" text-anchor="end">5</text>
+<line x1="90" y1="97.5" x2="860" y2="97.5" stroke="#d8d8d8"/>
+<text x="84" y="101.5" font-size="12" text-anchor="end">5.05</text>
+<line x1="90" y1="40.0" x2="860" y2="40.0" stroke="#d8d8d8"/>
+<text x="84" y="44.0" font-size="12" text-anchor="end">5.1</text>
+<rect x="90" y="40" width="770" height="230" fill="none" stroke="#333333"/>
+<text transform="translate(38,155.0) rotate(-90)" font-size="13" text-anchor="middle">TX_I_5U  [µA]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">TX_I_5U vs temperature (trimmed, RBIAS 12.0 kΩ ideal, VDD33 2.97 / 3.3 / 3.63 V)</text>
+<clipPath id="c131846725905120"><rect x="90" y="40" width="770" height="230"/></clipPath>
+<line x1="276.7" y1="330" x2="276.7" y2="560" stroke="#d8d8d8"/>
+<text x="276.7" y="577" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="330" x2="510.0" y2="560" stroke="#d8d8d8"/>
+<text x="510.0" y="577" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="330" x2="743.3" y2="560" stroke="#d8d8d8"/>
+<text x="743.3" y="577" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="527.1" x2="860" y2="527.1" stroke="#d8d8d8"/>
+<text x="84" y="531.1" font-size="12" text-anchor="end">200</text>
+<line x1="90" y1="486.1" x2="860" y2="486.1" stroke="#d8d8d8"/>
+<text x="84" y="490.1" font-size="12" text-anchor="end">225</text>
+<line x1="90" y1="445.0" x2="860" y2="445.0" stroke="#d8d8d8"/>
+<text x="84" y="449.0" font-size="12" text-anchor="end">250</text>
+<line x1="90" y1="403.9" x2="860" y2="403.9" stroke="#d8d8d8"/>
+<text x="84" y="407.9" font-size="12" text-anchor="end">275</text>
+<line x1="90" y1="362.9" x2="860" y2="362.9" stroke="#d8d8d8"/>
+<text x="84" y="366.9" font-size="12" text-anchor="end">300</text>
+<rect x="90" y="330" width="770" height="230" fill="none" stroke="#333333"/>
+<text x="475.0" y="596" font-size="13" text-anchor="middle">Temperature  [°C]</text>
+<text transform="translate(38,445.0) rotate(-90)" font-size="13" text-anchor="middle">IDD  [µA]</text>
+<text x="90" y="322" font-size="13" font-weight="bold">Supply current (incl. 100 µA in RBIAS and 5 µA out of TX_I_5U)</text>
+<clipPath id="c131846725899648"><rect x="90" y="330" width="770" height="230"/></clipPath>
+<polyline clip-path="url(#c131846725905120)" points="90.00,180.37 183.33,172.01 276.67,166.07 402.67,161.81 510.00,161.50 673.33,166.77 766.67,172.75 860.00,180.45" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,494.46 183.33,480.70 276.67,466.87 402.67,448.15 510.00,432.27 673.33,409.30 766.67,397.42 860.00,386.37" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,176.51 183.33,168.00 276.67,161.70 402.67,156.59 510.00,155.17 673.33,157.76 766.67,161.52 860.00,166.40" fill="none" stroke="#555555" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,489.30 183.33,475.81 276.67,462.21 402.67,443.75 510.00,428.02 673.33,405.20 766.67,393.37 860.00,382.32" fill="none" stroke="#555555" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,170.06 183.33,163.26 276.67,158.29 402.67,154.51 510.00,153.90 673.33,157.37 766.67,161.50 860.00,166.68" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,483.95 183.33,470.77 276.67,457.45 402.67,439.30 510.00,423.81 673.33,401.31 766.67,389.63 860.00,378.73" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,177.38 183.33,169.11 276.67,163.65 402.67,160.83 510.00,162.70 673.33,173.12 766.67,182.77 860.00,194.11" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,497.06 183.33,483.15 276.67,469.25 402.67,450.99 510.00,436.66 673.33,417.03 766.67,406.77 860.00,397.13" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,172.62 183.33,163.56 276.67,156.78 402.67,151.09 510.00,149.20 673.33,151.13 766.67,154.48 860.00,158.81" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,492.47 183.33,478.78 276.67,465.06 402.67,446.95 510.00,432.67 673.33,412.97 766.67,402.61 860.00,392.82" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,167.14 183.33,159.45 276.67,153.66 402.67,148.87 510.00,147.45 673.33,149.75 766.67,153.17 860.00,157.50" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,487.72 183.33,474.32 276.67,460.83 402.67,443.00 510.00,428.91 673.33,409.46 766.67,399.23 860.00,389.55" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,184.11 183.33,176.11 276.67,170.40 402.67,166.20 510.00,165.67 673.33,169.90 766.67,174.84 860.00,181.21" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,489.47 183.33,475.99 276.67,462.40 402.67,443.95 510.00,428.18 673.33,404.16 766.67,390.55 860.00,377.48" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,180.43 183.33,172.53 276.67,166.76 402.67,162.31 510.00,161.40 673.33,164.76 766.67,169.01 860.00,174.53" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,483.17 183.33,470.02 276.67,456.72 402.67,438.59 510.00,423.05 673.33,399.32 766.67,385.84 860.00,372.86" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,172.89 183.33,167.02 276.67,162.91 402.67,160.23 510.00,160.53 673.33,165.36 766.67,170.33 860.00,176.52" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,476.63 183.33,463.87 276.67,450.89 402.67,433.15 510.00,417.90 673.33,394.55 766.67,381.29 860.00,368.51" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,180.21 183.33,171.66 276.67,165.52 402.67,160.92 510.00,160.21 673.33,164.56 766.67,169.83 860.00,176.73" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,496.51 183.33,482.59 276.67,468.62 402.67,449.74 510.00,433.66 673.33,409.28 766.67,395.72 860.00,383.01" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,176.83 183.33,168.20 276.67,161.82 402.67,156.64 510.00,155.16 673.33,157.72 766.67,161.50 860.00,166.47" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,491.83 183.33,478.17 276.67,464.41 402.67,445.76 510.00,429.83 673.33,405.63 766.67,392.12 860.00,379.43" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,171.32 183.33,164.23 276.67,159.01 402.67,154.96 510.00,154.16 673.33,157.42 766.67,161.48 860.00,166.67" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,486.98 183.33,473.60 276.67,460.09 402.67,441.72 510.00,426.00 673.33,402.09 766.67,388.72 860.00,376.16" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,180.75 183.33,172.67 276.67,167.08 402.67,163.46 510.00,163.95 673.33,170.98 766.67,178.23 860.00,187.20" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,492.34 183.33,478.74 276.67,465.08 402.67,446.88 510.00,432.36 673.33,412.45 766.67,402.04 860.00,392.25" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,176.19 183.33,167.81 276.67,161.60 402.67,156.59 510.00,155.22 673.33,157.87 766.67,161.63 860.00,166.43" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,486.67 183.33,473.37 276.67,459.96 402.67,442.01 510.00,427.64 673.33,407.85 766.67,397.46 860.00,387.64" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725905120)" points="90.00,168.77 183.33,162.26 276.67,157.52 402.67,154.02 510.00,153.60 673.33,157.30 766.67,161.50 860.00,166.66" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846725899648)" points="90.00,480.81 183.33,467.85 276.67,454.74 402.67,437.14 510.00,423.03 673.33,403.59 766.67,393.37 860.00,383.72" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<rect x="98" y="164" width="54.8" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="176" x2="128" y2="176" stroke="#555555" stroke-width="2"/>
+<text x="134" y="180" font-size="11.5">tm</text>
+<line x1="106" y1="194" x2="128" y2="194" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="198" font-size="11.5">ws</text>
+<line x1="106" y1="212" x2="128" y2="212" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="216" font-size="11.5">wp</text>
+<line x1="106" y1="230" x2="128" y2="230" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="234" font-size="11.5">wo</text>
+<line x1="106" y1="248" x2="128" y2="248" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="252" font-size="11.5">wz</text>
+<rect x="98" y="338" width="54.8" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="350" x2="128" y2="350" stroke="#555555" stroke-width="2"/>
+<text x="134" y="354" font-size="11.5">tm</text>
+<line x1="106" y1="368" x2="128" y2="368" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="372" font-size="11.5">ws</text>
+<line x1="106" y1="386" x2="128" y2="386" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="390" font-size="11.5">wp</text>
+<line x1="106" y1="404" x2="128" y2="404" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="408" font-size="11.5">wo</text>
+<line x1="106" y1="422" x2="128" y2="422" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="426" font-size="11.5">wz</text>
+</svg>

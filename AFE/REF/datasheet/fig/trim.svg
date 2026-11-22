@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="470" fill="white"/>
+<line x1="114.1" y1="40" x2="114.1" y2="400" stroke="#d8d8d8"/>
+<text x="114.1" y="417" font-size="12" text-anchor="middle">0</text>
+<line x1="162.2" y1="40" x2="162.2" y2="400" stroke="#d8d8d8"/>
+<text x="162.2" y="417" font-size="12" text-anchor="middle">1</text>
+<line x1="210.3" y1="40" x2="210.3" y2="400" stroke="#d8d8d8"/>
+<text x="210.3" y="417" font-size="12" text-anchor="middle">2</text>
+<line x1="258.4" y1="40" x2="258.4" y2="400" stroke="#d8d8d8"/>
+<text x="258.4" y="417" font-size="12" text-anchor="middle">3</text>
+<line x1="306.6" y1="40" x2="306.6" y2="400" stroke="#d8d8d8"/>
+<text x="306.6" y="417" font-size="12" text-anchor="middle">4</text>
+<line x1="354.7" y1="40" x2="354.7" y2="400" stroke="#d8d8d8"/>
+<text x="354.7" y="417" font-size="12" text-anchor="middle">5</text>
+<line x1="402.8" y1="40" x2="402.8" y2="400" stroke="#d8d8d8"/>
+<text x="402.8" y="417" font-size="12" text-anchor="middle">6</text>
+<line x1="450.9" y1="40" x2="450.9" y2="400" stroke="#d8d8d8"/>
+<text x="450.9" y="417" font-size="12" text-anchor="middle">7</text>
+<line x1="499.1" y1="40" x2="499.1" y2="400" stroke="#d8d8d8"/>
+<text x="499.1" y="417" font-size="12" text-anchor="middle">8</text>
+<line x1="547.2" y1="40" x2="547.2" y2="400" stroke="#d8d8d8"/>
+<text x="547.2" y="417" font-size="12" text-anchor="middle">9</text>
+<line x1="595.3" y1="40" x2="595.3" y2="400" stroke="#d8d8d8"/>
+<text x="595.3" y="417" font-size="12" text-anchor="middle">10</text>
+<line x1="643.4" y1="40" x2="643.4" y2="400" stroke="#d8d8d8"/>
+<text x="643.4" y="417" font-size="12" text-anchor="middle">11</text>
+<line x1="691.6" y1="40" x2="691.6" y2="400" stroke="#d8d8d8"/>
+<text x="691.6" y="417" font-size="12" text-anchor="middle">12</text>
+<line x1="739.7" y1="40" x2="739.7" y2="400" stroke="#d8d8d8"/>
+<text x="739.7" y="417" font-size="12" text-anchor="middle">13</text>
+<line x1="787.8" y1="40" x2="787.8" y2="400" stroke="#d8d8d8"/>
+<text x="787.8" y="417" font-size="12" text-anchor="middle">14</text>
+<line x1="835.9" y1="40" x2="835.9" y2="400" stroke="#d8d8d8"/>
+<text x="835.9" y="417" font-size="12" text-anchor="middle">15</text>
+<line x1="90" y1="332.5" x2="860" y2="332.5" stroke="#d8d8d8"/>
+<text x="84" y="336.5" font-size="12" text-anchor="end">1.15</text>
+<line x1="90" y1="220.0" x2="860" y2="220.0" stroke="#d8d8d8"/>
+<text x="84" y="224.0" font-size="12" text-anchor="end">1.2</text>
+<line x1="90" y1="107.5" x2="860" y2="107.5" stroke="#d8d8d8"/>
+<text x="84" y="111.5" font-size="12" text-anchor="end">1.25</text>
+<rect x="90" y="40" width="770" height="360" fill="none" stroke="#333333"/>
+<text x="475.0" y="436" font-size="13" text-anchor="middle">TRIM[3:0] code</text>
+<text transform="translate(38,220.0) rotate(-90)" font-size="13" text-anchor="middle">TX_VREF  [V]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Trim characteristic at 27 °C, VDD33 3.3 V (all process corners)</text>
+<clipPath id="c131846744557088"><rect x="90" y="40" width="770" height="360"/></clipPath>
+<polyline clip-path="url(#c131846744557088)" points="114.06,347.52 162.19,331.33 210.31,315.14 258.44,298.94 306.56,282.75 354.69,266.56 402.81,250.36 450.94,234.17 499.06,217.98 547.19,201.78 595.31,185.59 643.44,169.40 691.56,153.20 739.69,137.01 787.81,120.82 835.94,104.62" fill="none" stroke="#555555" stroke-width="2.0" stroke-linejoin="round"/>
+<circle cx="499.1" cy="218.0" r="4.5" fill="white" stroke="#555555" stroke-width="1.8"/>
+<polyline clip-path="url(#c131846744557088)" points="114.06,279.81 162.19,263.61 210.31,247.42 258.44,231.23 306.56,215.03 354.69,198.84 402.81,182.65 450.94,166.45 499.06,150.26 547.19,134.07 595.31,117.87 643.44,101.68 691.56,85.49 739.69,69.29 787.81,53.10 835.94,36.91" fill="none" stroke="#c0392b" stroke-width="2.0" stroke-linejoin="round"/>
+<circle cx="306.6" cy="215.0" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<polyline clip-path="url(#c131846744557088)" points="114.06,415.21 162.19,399.02 210.31,382.83 258.44,366.64 306.56,350.45 354.69,334.25 402.81,318.06 450.94,301.87 499.06,285.68 547.19,269.49 595.31,253.29 643.44,237.10 691.56,220.91 739.69,204.72 787.81,188.53 835.94,172.33" fill="none" stroke="#1f4e9c" stroke-width="2.0" stroke-linejoin="round"/>
+<circle cx="691.6" cy="220.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<polyline clip-path="url(#c131846744557088)" points="114.06,347.73 162.19,331.54 210.31,315.35 258.44,299.16 306.56,282.96 354.69,266.77 402.81,250.57 450.94,234.38 499.06,218.19 547.19,201.99 595.31,185.80 643.44,169.61 691.56,153.41 739.69,137.22 787.81,121.03 835.94,104.83" fill="none" stroke="#2e8b57" stroke-width="2.0" stroke-linejoin="round"/>
+<circle cx="499.1" cy="218.2" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polyline clip-path="url(#c131846744557088)" points="114.06,347.31 162.19,331.11 210.31,314.92 258.44,298.73 306.56,282.53 354.69,266.34 402.81,250.15 450.94,233.95 499.06,217.76 547.19,201.57 595.31,185.37 643.44,169.18 691.56,152.99 739.69,136.80 787.81,120.60 835.94,104.41" fill="none" stroke="#d4860b" stroke-width="2.0" stroke-linejoin="round"/>
+<circle cx="499.1" cy="217.8" r="4.5" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<line x1="90" y1="220.0" x2="860" y2="220.0" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="6,4"/>
+<text x="856" y="216.0" font-size="11" fill="#c0392b" text-anchor="end">1.200 V</text>
+<rect x="90" y="206.5" width="770" height="27.0" fill="#2e8b57" fill-opacity="0.08"/>
+<rect x="98" y="48" width="208.4" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="60" x2="128" y2="60" stroke="#555555" stroke-width="2"/>
+<text x="134" y="64" font-size="11.5">tm: LSB 7.20 mV, code 1000</text>
+<line x1="106" y1="78" x2="128" y2="78" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="82" font-size="11.5">ws: LSB 7.20 mV, code 0100</text>
+<line x1="106" y1="96" x2="128" y2="96" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="100" font-size="11.5">wp: LSB 7.20 mV, code 1100</text>
+<line x1="106" y1="114" x2="128" y2="114" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="118" font-size="11.5">wo: LSB 7.20 mV, code 1000</text>
+<line x1="106" y1="132" x2="128" y2="132" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="136" font-size="11.5">wz: LSB 7.20 mV, code 1000</text>
+</svg>

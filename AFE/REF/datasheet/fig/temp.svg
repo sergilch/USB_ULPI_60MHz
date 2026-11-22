@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="620" fill="white"/>
+<line x1="276.7" y1="40" x2="276.7" y2="270" stroke="#d8d8d8"/>
+<text x="276.7" y="287" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="40" x2="510.0" y2="270" stroke="#d8d8d8"/>
+<text x="510.0" y="287" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="40" x2="743.3" y2="270" stroke="#d8d8d8"/>
+<text x="743.3" y="287" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="237.1" x2="860" y2="237.1" stroke="#d8d8d8"/>
+<text x="84" y="241.1" font-size="12" text-anchor="end">1.15</text>
+<line x1="90" y1="196.1" x2="860" y2="196.1" stroke="#d8d8d8"/>
+<text x="84" y="200.1" font-size="12" text-anchor="end">1.175</text>
+<line x1="90" y1="155.0" x2="860" y2="155.0" stroke="#d8d8d8"/>
+<text x="84" y="159.0" font-size="12" text-anchor="end">1.2</text>
+<line x1="90" y1="113.9" x2="860" y2="113.9" stroke="#d8d8d8"/>
+<text x="84" y="117.9" font-size="12" text-anchor="end">1.225</text>
+<line x1="90" y1="72.9" x2="860" y2="72.9" stroke="#d8d8d8"/>
+<text x="84" y="76.9" font-size="12" text-anchor="end">1.25</text>
+<rect x="90" y="40" width="770" height="230" fill="none" stroke="#333333"/>
+<text transform="translate(38,155.0) rotate(-90)" font-size="13" text-anchor="middle">TX_VREF  [V]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">TX_VREF vs temperature, untrimmed (code 1000b, VDD33 3.3 V)</text>
+<clipPath id="c131846728120656"><rect x="90" y="40" width="770" height="230"/></clipPath>
+<line x1="276.7" y1="330" x2="276.7" y2="560" stroke="#d8d8d8"/>
+<text x="276.7" y="577" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="330" x2="510.0" y2="560" stroke="#d8d8d8"/>
+<text x="510.0" y="577" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="330" x2="743.3" y2="560" stroke="#d8d8d8"/>
+<text x="743.3" y="577" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="540.8" x2="860" y2="540.8" stroke="#d8d8d8"/>
+<text x="84" y="544.8" font-size="12" text-anchor="end">1.19</text>
+<line x1="90" y1="492.9" x2="860" y2="492.9" stroke="#d8d8d8"/>
+<text x="84" y="496.9" font-size="12" text-anchor="end">1.195</text>
+<line x1="90" y1="445.0" x2="860" y2="445.0" stroke="#d8d8d8"/>
+<text x="84" y="449.0" font-size="12" text-anchor="end">1.2</text>
+<line x1="90" y1="397.1" x2="860" y2="397.1" stroke="#d8d8d8"/>
+<text x="84" y="401.1" font-size="12" text-anchor="end">1.205</text>
+<line x1="90" y1="349.2" x2="860" y2="349.2" stroke="#d8d8d8"/>
+<text x="84" y="353.2" font-size="12" text-anchor="end">1.21</text>
+<rect x="90" y="330" width="770" height="230" fill="none" stroke="#333333"/>
+<text x="475.0" y="596" font-size="13" text-anchor="middle">Temperature  [°C]</text>
+<text transform="translate(38,445.0) rotate(-90)" font-size="13" text-anchor="middle">TX_VREF  [V]</text>
+<text x="90" y="322" font-size="13" font-weight="bold">Trimmed at 27 °C (code per corner), VDD33 2.97 / 3.3 / 3.63 V</text>
+<clipPath id="c131846729497488"><rect x="90" y="330" width="770" height="230"/></clipPath>
+<polyline clip-path="url(#c131846728120656)" points="90.00,161.35 183.33,158.05 276.67,155.60 402.67,153.52 510.00,152.79 673.33,153.36 766.67,154.52 860.00,156.27" fill="none" stroke="#555555" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,484.97 183.33,466.03 276.67,452.07 402.67,440.52 510.00,436.79 673.33,440.98 766.67,448.34 860.00,459.12" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,482.05 183.33,462.79 276.67,448.48 402.67,436.38 510.00,432.12 673.33,435.41 766.67,442.22 860.00,452.42" fill="none" stroke="#555555" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,481.99 183.33,462.93 276.67,448.83 402.67,437.05 510.00,433.07 673.33,436.83 766.67,443.97 860.00,454.53" fill="none" stroke="#555555" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846728120656)" points="90.00,122.91 183.33,116.32 276.67,110.58 402.67,104.08 510.00,99.58 673.33,94.42 766.67,92.32 860.00,90.79" fill="none" stroke="#c0392b" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,475.47 183.33,455.75 276.67,441.05 402.67,428.52 510.00,423.95 673.33,426.83 766.67,433.43 860.00,443.45" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,472.28 183.33,452.19 276.67,437.05 402.67,423.85 510.00,418.67 673.33,420.53 766.67,426.51 860.00,435.86" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,471.48 183.33,451.41 276.67,436.29 402.67,423.08 510.00,417.87 673.33,419.71 766.67,425.68 860.00,435.01" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846728120656)" points="90.00,199.78 183.33,199.77 276.67,200.60 402.67,202.96 510.00,206.00 673.33,212.30 766.67,216.76 860.00,221.82" fill="none" stroke="#1f4e9c" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,494.51 183.33,476.32 276.67,463.11 402.67,452.53 510.00,449.61 673.33,455.05 766.67,463.22 860.00,474.97" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,491.82 183.33,473.38 276.67,459.88 402.67,448.87 510.00,445.55 673.33,450.28 766.67,458.00 860.00,469.28" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,492.55 183.33,474.53 276.67,461.49 402.67,451.18 510.00,448.52 673.33,454.46 766.67,462.96 860.00,475.10" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846728120656)" points="90.00,161.45 183.33,158.16 276.67,155.73 402.67,153.68 510.00,152.97 673.33,153.58 766.67,154.78 860.00,156.57" fill="none" stroke="#2e8b57" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,485.58 183.33,466.73 276.67,452.88 402.67,441.48 510.00,437.92 673.33,442.44 766.67,450.08 860.00,461.20" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,482.62 183.33,463.45 276.67,449.24 402.67,437.28 510.00,433.15 673.33,436.70 766.67,443.70 860.00,454.13" fill="none" stroke="#2e8b57" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,482.46 183.33,463.45 276.67,449.40 402.67,437.67 510.00,433.74 673.33,437.58 766.67,444.77 860.00,455.41" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846728120656)" points="90.00,161.25 183.33,157.93 276.67,155.46 402.67,153.37 510.00,152.61 673.33,153.14 766.67,154.29 860.00,156.03" fill="none" stroke="#d4860b" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,484.37 183.33,465.33 276.67,451.27 402.67,439.56 510.00,435.65 673.33,439.52 766.67,446.70 860.00,457.36" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="2,3" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,481.46 183.33,462.12 276.67,447.70 402.67,435.46 510.00,431.08 673.33,434.16 766.67,440.85 860.00,450.99" fill="none" stroke="#d4860b" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846729497488)" points="90.00,481.46 183.33,462.36 276.67,448.21 402.67,436.36 510.00,432.34 673.33,436.09 766.67,443.23 860.00,453.83" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<rect x="90" y="387.5" width="770" height="115.0" fill="#2e8b57" fill-opacity="0.08"/>
+<line x1="90" y1="445.0" x2="860" y2="445.0" stroke="#888888" stroke-width="1.3" stroke-dasharray="4,4"/>
+<rect x="98" y="48" width="54.8" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="60" x2="128" y2="60" stroke="#555555" stroke-width="2"/>
+<text x="134" y="64" font-size="11.5">tm</text>
+<line x1="106" y1="78" x2="128" y2="78" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="82" font-size="11.5">ws</text>
+<line x1="106" y1="96" x2="128" y2="96" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="100" font-size="11.5">wp</text>
+<line x1="106" y1="114" x2="128" y2="114" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="118" font-size="11.5">wo</text>
+<line x1="106" y1="132" x2="128" y2="132" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="136" font-size="11.5">wz</text>
+<rect x="98" y="454" width="99.6" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="466" x2="128" y2="466" stroke="#555555" stroke-width="2"/>
+<text x="134" y="470" font-size="11.5">tm (1000)</text>
+<line x1="106" y1="484" x2="128" y2="484" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="488" font-size="11.5">ws (0100)</text>
+<line x1="106" y1="502" x2="128" y2="502" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="506" font-size="11.5">wp (1100)</text>
+<line x1="106" y1="520" x2="128" y2="520" stroke="#2e8b57" stroke-width="2"/>
+<text x="134" y="524" font-size="11.5">wo (1000)</text>
+<line x1="106" y1="538" x2="128" y2="538" stroke="#d4860b" stroke-width="2"/>
+<text x="134" y="542" font-size="11.5">wz (1000)</text>
+</svg>

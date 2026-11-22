@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="470" fill="white"/>
+<line x1="90.0" y1="40" x2="90.0" y2="400" stroke="#d8d8d8"/>
+<text x="90.0" y="417" font-size="12" text-anchor="middle">5</text>
+<line x1="282.5" y1="40" x2="282.5" y2="400" stroke="#d8d8d8"/>
+<text x="282.5" y="417" font-size="12" text-anchor="middle">10</text>
+<line x1="475.0" y1="40" x2="475.0" y2="400" stroke="#d8d8d8"/>
+<text x="475.0" y="417" font-size="12" text-anchor="middle">15</text>
+<line x1="667.5" y1="40" x2="667.5" y2="400" stroke="#d8d8d8"/>
+<text x="667.5" y="417" font-size="12" text-anchor="middle">20</text>
+<line x1="860.0" y1="40" x2="860.0" y2="400" stroke="#d8d8d8"/>
+<text x="860.0" y="417" font-size="12" text-anchor="middle">25</text>
+<line x1="90" y1="400.0" x2="860" y2="400.0" stroke="#d8d8d8"/>
+<text x="84" y="404.0" font-size="12" text-anchor="end">0</text>
+<line x1="90" y1="318.2" x2="860" y2="318.2" stroke="#d8d8d8"/>
+<text x="84" y="322.2" font-size="12" text-anchor="end">5</text>
+<line x1="90" y1="236.4" x2="860" y2="236.4" stroke="#d8d8d8"/>
+<text x="84" y="240.4" font-size="12" text-anchor="end">10</text>
+<line x1="90" y1="154.5" x2="860" y2="154.5" stroke="#d8d8d8"/>
+<text x="84" y="158.5" font-size="12" text-anchor="end">15</text>
+<line x1="90" y1="72.7" x2="860" y2="72.7" stroke="#d8d8d8"/>
+<text x="84" y="76.7" font-size="12" text-anchor="end">20</text>
+<rect x="90" y="40" width="770" height="360" fill="none" stroke="#333333"/>
+<text x="475.0" y="436" font-size="13" text-anchor="middle">RBIAS  [kΩ]</text>
+<text transform="translate(38,220.0) rotate(-90)" font-size="13" text-anchor="middle">TX_I_5U  [µA]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">TX_I_5U vs RBIAS (tm, 27 °C): I = VREF / RBIAS / 20</text>
+<clipPath id="c131846705552592"><rect x="90" y="40" width="770" height="360"/></clipPath>
+<polyline clip-path="url(#c131846705552592)" points="128.50,236.24 205.50,277.29 282.50,301.84 354.88,317.38 359.50,318.20 364.12,319.01 436.50,329.89 590.50,345.47 821.50,359.10" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846705552592)" points="90.00,203.64 105.71,218.46 121.43,231.20 137.14,242.27 152.86,251.97 168.57,260.55 184.29,268.19 200.00,275.04 215.71,281.21 231.43,286.80 247.14,291.89 262.86,296.54 278.57,300.81 294.29,304.73 310.00,308.36 325.71,311.73 341.43,314.85 357.14,317.76 372.86,320.48 388.57,323.03 404.29,325.41 420.00,327.66 435.71,329.77 451.43,331.76 467.14,333.64 482.86,335.42 498.57,337.11 514.29,338.71 530.00,340.24 545.71,341.69 561.43,343.07 577.14,344.38 592.86,345.64 608.57,346.84 624.29,347.99 640.00,349.09 655.71,350.15 671.43,351.16 687.14,352.13 702.86,353.06 718.57,353.96 734.29,354.83 750.00,355.66 765.71,356.46 781.43,357.24 797.14,357.98 812.86,358.70 828.57,359.40 844.29,360.08 860.00,360.73" fill="none" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="6,3" stroke-linejoin="round"/>
+<circle cx="128.5" cy="236.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="205.5" cy="277.3" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="282.5" cy="301.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="354.9" cy="317.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="359.5" cy="318.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="364.1" cy="319.0" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="436.5" cy="329.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="590.5" cy="345.5" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="821.5" cy="359.1" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<rect x="694.8" y="48" width="157.2" height="44" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="702.8" y1="60" x2="724.8" y2="60" stroke="#1f4e9c" stroke-width="2"/>
+<text x="730.8" y="64" font-size="11.5">simulated</text>
+<line x1="702.8" y1="78" x2="724.8" y2="78" stroke="#c0392b" stroke-width="2" stroke-dasharray="6,3"/>
+<text x="730.8" y="82" font-size="11.5">1.2 V / RBIAS / 20</text>
+</svg>

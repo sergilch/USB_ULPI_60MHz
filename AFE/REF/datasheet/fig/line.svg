@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="620" fill="white"/>
+<line x1="171.1" y1="40" x2="171.1" y2="270" stroke="#d8d8d8"/>
+<text x="171.1" y="287" font-size="12" text-anchor="middle">2</text>
+<line x1="373.7" y1="40" x2="373.7" y2="270" stroke="#d8d8d8"/>
+<text x="373.7" y="287" font-size="12" text-anchor="middle">2.5</text>
+<line x1="576.3" y1="40" x2="576.3" y2="270" stroke="#d8d8d8"/>
+<text x="576.3" y="287" font-size="12" text-anchor="middle">3</text>
+<line x1="778.9" y1="40" x2="778.9" y2="270" stroke="#d8d8d8"/>
+<text x="778.9" y="287" font-size="12" text-anchor="middle">3.5</text>
+<line x1="90" y1="237.1" x2="860" y2="237.1" stroke="#d8d8d8"/>
+<text x="84" y="241.1" font-size="12" text-anchor="end">1.16</text>
+<line x1="90" y1="171.4" x2="860" y2="171.4" stroke="#d8d8d8"/>
+<text x="84" y="175.4" font-size="12" text-anchor="end">1.18</text>
+<line x1="90" y1="105.7" x2="860" y2="105.7" stroke="#d8d8d8"/>
+<text x="84" y="109.7" font-size="12" text-anchor="end">1.2</text>
+<line x1="90" y1="40.0" x2="860" y2="40.0" stroke="#d8d8d8"/>
+<text x="84" y="44.0" font-size="12" text-anchor="end">1.22</text>
+<rect x="90" y="40" width="770" height="230" fill="none" stroke="#333333"/>
+<text transform="translate(38,155.0) rotate(-90)" font-size="13" text-anchor="middle">Voltage  [V]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Line: VDD33 ramped 3.63 → 1.8 V (tm, 27 °C)</text>
+<clipPath id="c131846726141664"><rect x="90" y="40" width="770" height="230"/></clipPath>
+<polyline clip-path="url(#c131846726141664)" points="831.56,102.99 817.91,102.86 803.08,102.72 788.25,102.63 773.41,102.58 758.58,102.56 743.75,102.58 728.92,102.62 714.08,102.69 699.25,102.78 684.42,102.89 669.59,103.01 654.75,103.15 639.92,103.29 625.09,103.45 610.25,103.62 595.42,103.80 580.59,103.99 565.76,104.18 550.92,104.39 536.09,104.60 521.26,104.82 506.43,105.05 491.59,105.29 476.76,105.53 461.93,105.79 447.10,106.05 432.26,106.33 417.43,106.62 402.60,106.92 387.77,107.23 372.93,107.56 358.10,107.91 343.27,108.27 328.43,108.65 313.60,109.05 298.77,109.48 283.94,109.92 269.10,110.39 254.27,110.89 239.44,111.41 224.61,111.98 209.77,112.63 194.94,113.39 180.11,114.34 165.28,115.57 150.44,117.13 135.61,119.06 120.78,121.31 105.95,123.82 91.11,126.51" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c131846726141664)" points="831.56,102.99 817.91,102.86 803.08,102.72 788.25,102.63 773.41,102.58 758.58,102.56 743.75,102.58 728.92,102.62 714.08,102.69 699.25,102.78 684.42,102.89 669.59,103.01 654.75,103.15 639.92,103.29 625.09,103.45 610.25,103.62 595.42,103.80 580.59,103.99 565.76,104.18 550.92,104.39 536.09,104.60 521.26,104.82 506.43,105.05 491.59,105.29 476.76,105.53 461.93,105.79 447.10,106.05 432.26,106.33 417.43,106.62 402.60,106.92 387.77,107.23 372.93,107.56 358.10,107.91 343.27,108.27 328.43,108.65 313.60,109.05 298.77,109.48 283.94,109.92 269.10,110.39 254.27,110.89 239.44,111.41 224.61,111.98 209.77,112.63 194.94,113.39 180.11,114.34 165.28,115.57 150.44,117.13 135.61,119.06 120.78,121.31 105.95,123.82 91.11,126.51" fill="none" stroke="#d4860b" stroke-width="1.4" stroke-dasharray="5,3" stroke-linejoin="round"/>
+<line x1="564.2" y1="40" x2="564.2" y2="270" stroke="#888888" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="568.2" y="54" font-size="11" fill="#888888" text-anchor="start">2.97 V</text>
+<line x1="113.4" y1="40" x2="113.4" y2="270" stroke="#888888" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="117.4" y="54" font-size="11" fill="#888888" text-anchor="start">−0.5 % at 1.86 V</text>
+<line x1="171.1" y1="330" x2="171.1" y2="560" stroke="#d8d8d8"/>
+<text x="171.1" y="577" font-size="12" text-anchor="middle">2</text>
+<line x1="373.7" y1="330" x2="373.7" y2="560" stroke="#d8d8d8"/>
+<text x="373.7" y="577" font-size="12" text-anchor="middle">2.5</text>
+<line x1="576.3" y1="330" x2="576.3" y2="560" stroke="#d8d8d8"/>
+<text x="576.3" y="577" font-size="12" text-anchor="middle">3</text>
+<line x1="778.9" y1="330" x2="778.9" y2="560" stroke="#d8d8d8"/>
+<text x="778.9" y="577" font-size="12" text-anchor="middle">3.5</text>
+<line x1="90" y1="560.0" x2="860" y2="560.0" stroke="#d8d8d8"/>
+<text x="84" y="564.0" font-size="12" text-anchor="end">4</text>
+<line x1="90" y1="512.1" x2="860" y2="512.1" stroke="#d8d8d8"/>
+<text x="84" y="516.1" font-size="12" text-anchor="end">4.25</text>
+<line x1="90" y1="464.2" x2="860" y2="464.2" stroke="#d8d8d8"/>
+<text x="84" y="468.2" font-size="12" text-anchor="end">4.5</text>
+<line x1="90" y1="416.2" x2="860" y2="416.2" stroke="#d8d8d8"/>
+<text x="84" y="420.2" font-size="12" text-anchor="end">4.75</text>
+<line x1="90" y1="368.3" x2="860" y2="368.3" stroke="#d8d8d8"/>
+<text x="84" y="372.3" font-size="12" text-anchor="end">5</text>
+<rect x="90" y="330" width="770" height="230" fill="none" stroke="#333333"/>
+<text x="475.0" y="596" font-size="13" text-anchor="middle">VDD33  [V]</text>
+<text transform="translate(38,445.0) rotate(-90)" font-size="13" text-anchor="middle">TX_I_5U  [µA]</text>
+<text x="90" y="322" font-size="13" font-weight="bold">Reference current (output at 0.6 V)</text>
+<clipPath id="c131846726140608"><rect x="90" y="330" width="770" height="230"/></clipPath>
+<polyline clip-path="url(#c131846726140608)" points="831.56,368.25 817.91,368.30 803.08,368.34 788.25,368.37 773.41,368.41 758.58,368.44 743.75,368.48 728.92,368.52 714.08,368.56 699.25,368.60 684.42,368.65 669.59,368.71 654.75,368.76 639.92,368.83 625.09,368.90 610.25,368.99 595.42,369.10 580.59,369.24 565.76,369.45 550.92,369.80 536.09,370.46 521.26,371.75 506.43,374.08 491.59,377.72 476.76,382.78 461.93,389.24 447.10,397.02 432.26,406.04 417.43,416.23 402.60,427.53 387.77,439.90 372.93,453.30 358.10,467.72 343.27,483.14 328.43,499.53 313.60,516.81 298.77,534.86 283.94,553.54 269.10,572.69 254.27,592.16 239.44,611.82 224.61,631.58 209.77,651.39 194.94,671.19 180.11,690.97 165.28,710.70 150.44,730.37 135.61,749.98 120.78,769.52 105.95,788.99 91.11,808.38" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="564.2" y1="330" x2="564.2" y2="560" stroke="#888888" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="568.2" y="344" font-size="11" fill="#888888" text-anchor="start">2.97 V</text>
+<line x1="489.4" y1="330" x2="489.4" y2="560" stroke="#888888" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="485.4" y="344" font-size="11" fill="#888888" text-anchor="end">−1 % at 2.79 V</text>
+<rect x="682.0" y="218" width="170.0" height="44" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="690.0" y1="230" x2="712.0" y2="230" stroke="#1f4e9c" stroke-width="2"/>
+<text x="718.0" y="234" font-size="11.5">TX_VREF (+0.65 mV/V)</text>
+<line x1="690.0" y1="248" x2="712.0" y2="248" stroke="#d4860b" stroke-width="2" stroke-dasharray="5,3"/>
+<text x="718.0" y="252" font-size="11.5">RX_VREF</text>
+<rect x="682.0" y="526" width="170.0" height="26" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="690.0" y1="538" x2="712.0" y2="538" stroke="#c0392b" stroke-width="2"/>
+<text x="718.0" y="542" font-size="11.5">TX_I_5U (+0.160 %/V)</text>
+</svg>

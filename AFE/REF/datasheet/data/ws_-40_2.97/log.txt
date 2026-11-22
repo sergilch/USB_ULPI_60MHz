@@ -1,0 +1,20 @@
+afe_ref_tr: corner ws, -40 C, VDD33 2.97 V, RBIAS 12 kOhm (afe_ref_tr.sp)
+  op (code 0100): TX_VREF 1.19682 V  RX_VREF 1.19682 V  V(RBIAS) 1.19503 V  TX_I_5U 4.9805 uA  IDD 218.3 uA (core 113.3 uA)  VBG(1000b) 1.2051 V  vcas 1.443 V;  off: 0.48 nA
+  line: +0.679 mV/V (2.97 .. 3.63 V); TX_VREF within 0.5 % down to VDD33 = 1.81 V, TX_I_5U within 1 % down to 2.79 V (+0.227 %/V)
+  psrr TX_VREF: 58.4 / 58.4 / 49.7 / 39.9 / 52.7 dB at 100 Hz / 1k / 100k / 1M / 10M, minimum 39.8 dB at 891 kHz; TX_I_5U -43.7 dB(1/V) at 1 kHz, -37.5 at 1 MHz
+  stab bg   : DC  55.6 dB, crossover     655.2 kHz, PM  67.0 deg, GM  19.3 dB
+  stab a1   : DC  85.6 dB, crossover   46431.7 kHz, PM 122.2 deg, GM  99.0 dB
+  stab tx0  : DC  58.5 dB, crossover   10135.2 kHz, PM  80.0 deg, GM  99.0 dB
+  stab tx10 : DC  58.5 dB, crossover    1836.1 kHz, PM  88.0 deg, GM  99.0 dB
+  stab tx100: DC  58.5 dB, crossover     216.8 kHz, PM  89.8 deg, GM  99.0 dB
+  stab i0   : DC  39.5 dB, crossover    1433.8 kHz, PM  87.6 deg, GM  50.2 dB
+  stab i20  : DC  39.5 dB, crossover    1419.2 kHz, PM  79.6 deg, GM  38.2 dB
+  stab i100 : DC  39.5 dB, crossover    1222.9 kHz, PM  56.6 deg, GM  28.3 dB
+  start en10: TX_VREF 0.5 % in 8.30 us, 0.1 % in 9.32 us; RX_VREF 0.5 % in 8.30 us; TX_I_5U 1 % in 7.88 us; overshoot 0.0 mV; off (10 %) 42 ns; peak IDD 552 uA
+  start en100: TX_VREF 0.5 % in 11.36 us, 0.1 % in 12.54 us; RX_VREF 0.5 % in 11.36 us; TX_I_5U 1 % in 7.88 us; overshoot 0.0 mV; off (10 %) 199 ns; peak IDD 552 uA
+  start pwr (VDD33 0 -> 2.97 V in 20 us, BIAS_EN = VDD33): TX_VREF 0.5 % 2.58 us after VDD33 is up, overshoot 0.0 mV
+  comply: TX_I_5U 4.9805 uA at 0.6 V, within 1 % from 0 to 2.56 V, Rout 996 MOhm (0.2 .. 1.8 V)
+  tran: VDD33 3.0 -> 3.6 V step: TX_VREF 2.90 mV / 2.45 mV peak, TX_I_5U 0.43 %; 10 uA pulses into TX_VREF (10 pF): TX 74.7 mV, RX 14.1 uV
+  ERROR: settling en100 = 1.136e-05 outside 0 .. 1e-05
+  ERROR: settling RX en100 = 1.136e-05 outside 0 .. 1e-05
+TEST FAILED: 2 error(s)

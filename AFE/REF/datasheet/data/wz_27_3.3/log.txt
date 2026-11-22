@@ -1,0 +1,20 @@
+afe_ref_tr: corner wz, 27 C, VDD33 3.3 V, RBIAS 12 kOhm (afe_ref_tr.sp)
+  trim: code 1000b 1.20100 V, LSB 7.20 mV (0.599 %), DNL -0.000 .. +0.000, range -4.79 / +4.19 %; best code 1000: 1.20100 V
+  op (code 1000): TX_VREF 1.20100 V  RX_VREF 1.20100 V  V(RBIAS) 1.19939 V  TX_I_5U 4.9986 uA  IDD 251.8 uA (core 146.8 uA)  VBG(1000b) 1.1865 V  vcas 1.776 V;  off: 0.81 nA
+  temp code 1000: TX_VREF 1.19589 .. 1.20145 V (-0.34 / +0.12 %), 26.6 ppm/K box (3.3 V); TX_I_5U 4.972 .. 5.001 uA; |RX-TX| <= 0.00 mV; IDD <= 287 uA
+  line: +0.608 mV/V (2.97 .. 3.63 V); TX_VREF within 0.5 % down to VDD33 = 1.85 V, TX_I_5U within 1 % down to 2.82 V (+0.192 %/V)
+  psrr TX_VREF: 61.9 / 61.9 / 49.1 / 40.0 / 53.8 dB at 100 Hz / 1k / 100k / 1M / 10M, minimum 39.8 dB at 891 kHz; TX_I_5U -56.4 dB(1/V) at 1 kHz, -39.8 at 1 MHz
+  stab bg   : DC  51.8 dB, crossover     675.0 kHz, PM  66.8 deg, GM  18.8 dB
+  stab a1   : DC  84.2 dB, crossover   52699.7 kHz, PM 118.0 deg, GM  99.0 dB
+  stab tx0  : DC  55.9 dB, crossover    9781.0 kHz, PM  81.4 deg, GM  99.0 dB
+  stab tx10 : DC  55.9 dB, crossover    1751.7 kHz, PM  88.3 deg, GM  99.0 dB
+  stab tx100: DC  55.9 dB, crossover     206.8 kHz, PM  89.9 deg, GM  99.0 dB
+  stab i0   : DC  52.3 dB, crossover    1433.3 kHz, PM  87.4 deg, GM  48.1 dB
+  stab i20  : DC  52.3 dB, crossover    1412.5 kHz, PM  77.8 deg, GM  35.8 dB
+  stab i100 : DC  52.3 dB, crossover    1172.2 kHz, PM  52.7 deg, GM  28.3 dB
+  start en10: TX_VREF 0.5 % in 6.66 us, 0.1 % in 7.72 us; RX_VREF 0.5 % in 6.66 us; TX_I_5U 1 % in 6.22 us; overshoot 0.0 mV; off (10 %) 45 ns; peak IDD 644 uA
+  start en100: TX_VREF 0.5 % in 9.14 us, 0.1 % in 10.38 us; RX_VREF 0.5 % in 9.14 us; TX_I_5U 1 % in 6.22 us; overshoot 0.0 mV; off (10 %) 221 ns; peak IDD 644 uA
+  start pwr (VDD33 0 -> 3.3 V in 20 us, BIAS_EN = VDD33): TX_VREF 0.5 % 0.00 us after VDD33 is up, overshoot 0.2 mV
+  comply: TX_I_5U 4.9986 uA at 0.6 V, within 1 % from 0 to 2.88 V, Rout 741 MOhm (0.2 .. 1.8 V)
+  rbias: I5 x RBIAS x 20 / VREF = 0.9989 .. 1.0000 for 6 .. 24 kOhm; short: TX_I_5U 32.6 uA, IDD 0.84 mA; open: TX_I_5U 0.0 nA, TX_VREF 1.2010 V
+TEST PASSED
