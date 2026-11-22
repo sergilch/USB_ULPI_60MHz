@@ -1,0 +1,44 @@
+afe_ldo_tr: corner wp, 125 C, VIN 3.63 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  temp: VBG 1.1442 .. 1.1585 V (75.3 ppm/K box), VOUT 1.7318 .. 1.7544 V, I_gnd 105.2 .. 137.4 uA
+  line 1m: VOUT 1.7331 .. 1.7345 V for VIN 2.97 .. 3.63 V, -1.96 mV/V; VOUT 1.7334 V at 2.55 V, off below 2.177 V; dropout (-50 mV, UVLO overridden) 65 mV
+  op: VOUT 1.7900 V (no load) 1.7318 V (20 mA)  VBG 1.1442 V  Iq 79.6 uA  I_gnd(20 mA) 132.9 uA  I_off 28.6 nA
+  line 20m: VOUT 1.7318 .. 1.7331 V for VIN 2.97 .. 3.63 V, -1.30 mV/V; VOUT 1.7307 V at 2.55 V, off below 2.390 V; dropout (-50 mV, UVLO overridden) 514 mV
+  load VIN 3.3: 0 -> 20 mA -2.86 mV (-0.143 Ohm), current limit (VOUT -100 mV) 62.0 mA, max 79.0 mA
+  load VIN 2.97: 0 -> 20 mA -3.24 mV (-0.162 Ohm), current limit (VOUT -100 mV) 61.6 mA, max 78.9 mA
+  psrr 1m: 40.3 / 40.7 / 50.5 / 63.6 / 77.9 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 40.3 dB at 0 kHz
+  psrr 20m: 40.5 / 41.0 / 50.5 / 58.5 / 62.2 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 40.5 dB at 0 kHz
+  ac    0: DC gain -105.3 dB  crossover      nan kHz  PM   nan deg  GM  17.9 dB
+  ac  10u: DC gain -101.0 dB  crossover      nan kHz  PM   nan deg  GM  17.8 dB
+  ac 100u: DC gain  92.8 dB  crossover     14.8 kHz  PM  84.3 deg  GM  44.4 dB
+  ac   1m: DC gain  96.8 dB  crossover    100.9 kHz  PM  87.2 deg  GM  26.7 dB
+  ac   5m: DC gain  95.1 dB  crossover    294.4 kHz  PM  83.4 deg  GM  18.4 dB
+  ac  20m: DC gain  86.4 dB  crossover    560.8 kHz  PM  79.8 deg  GM  13.3 dB
+  ac  50m: DC gain  45.4 dB  crossover     49.8 kHz  PM  90.4 deg  GM  13.0 dB
+  step 1 -> 20 mA: undershoot 8.6 mV, settles (2 mV) in 91.0 us; 20 -> 1 mA: overshoot 8.6 mV, settles in 83.2 us
+  start: regulator on at VIN 2.560 V, VOUT 90 % 141.0 us later (10-90 % 108.4 us), PWR_GOOD -12.9 us after VOUT > 1.62 V, POR_N 88.1 us later, inrush 59.1 mA, overshoot 0.0 mV
+  uvlo: off at VIN 2.408 V (falling), on at 2.551 V (rising), hysteresis 143 mV; VOUT >= 1.7319 V until off, PWR_GOOD fell at VIN 2.408 V
+  enth: LDO_EN threshold 0.629 V rising, 0.629 V falling
+  en: VOUT 10 % after 33.7 us, 90 % after 141.6 us (rise 107.9 us), PWR_GOOD +-12.6 us, POR_N +88.1 us, inrush 58.2 mA; off: PWR_GOOD low after 26 ns, VOUT < 10 % after 1569 us; restart 90 % after 141.0 us
+  ERROR: VOUT 20 mA = 1.732 outside 1.737 .. 1.863
+  ERROR: VOUT at 125 C = 1.732 outside 1.737 .. 1.863
+  ERROR: phase margin 0 = nan outside 45 .. 180
+  ERROR: phase margin 10u = nan outside 45 .. 180
+  ERROR: t_pg (start) = -1.289e-05 outside 4e-06 .. 2.5e-05
+  ERROR: t_pg (en) = -1.262e-05 outside 4e-06 .. 2.5e-05
+TEST FAILED: 6 error(s)
+
+# rerun op ac psrr start en
+afe_ldo_tr: corner wp, 125 C, VIN 3.63 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  op: VOUT 1.7337 V (no load) 1.7318 V (20 mA)  VBG 1.1442 V  Iq 114.5 uA  I_gnd(20 mA) 132.9 uA  I_off 28.6 nA
+  ac    0: DC gain  76.3 dB  crossover      1.8 kHz  PM  55.4 deg  GM  65.6 dB
+  ac  10u: DC gain  81.8 dB  crossover      3.0 kHz  PM  65.7 deg  GM  17.8 dB
+  ac 100u: DC gain  92.6 dB  crossover     14.3 kHz  PM  84.1 deg  GM  17.6 dB
+  ac   1m: DC gain  96.8 dB  crossover    100.9 kHz  PM  87.2 deg  GM  26.7 dB
+  ac   5m: DC gain  95.1 dB  crossover    294.4 kHz  PM  83.4 deg  GM  18.4 dB
+  ac  20m: DC gain  86.4 dB  crossover    560.8 kHz  PM  79.8 deg  GM  13.3 dB
+  ac  50m: DC gain  45.4 dB  crossover     49.8 kHz  PM  90.4 deg  GM  13.0 dB
+  psrr 1m: 40.3 / 40.7 / 50.5 / 63.6 / 77.9 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 40.3 dB at 0 kHz
+  psrr 20m: 40.5 / 41.0 / 50.5 / 58.5 / 62.2 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 40.5 dB at 0 kHz
+  start: regulator on at VIN 2.560 V, VOUT 90 % 141.0 us later (10-90 % 108.4 us), PG comparator at VOUT 1.560 V, PWR_GOOD 8.9 us later, POR_N 88.1 us later, inrush 59.1 mA, overshoot 0.0 mV
+  en: VOUT 10 % after 33.7 us, 90 % after 141.6 us (rise 107.9 us), PWR_GOOD +8.9 us after the PG comparator, POR_N +88.1 us, inrush 58.2 mA; off: PWR_GOOD low after 26 ns, VOUT < 10 % after 1569 us; restart 90 % after 141.0 us
+TEST PASSED

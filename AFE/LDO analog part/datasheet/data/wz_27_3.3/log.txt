@@ -1,0 +1,27 @@
+afe_ldo_tr: corner wz, 27 C, VIN 3.3 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  line 1m: VOUT 1.7979 .. 1.7985 V for VIN 2.97 .. 3.63 V, -0.65 mV/V; VOUT 1.7977 V at 2.55 V, off below 2.264 V; dropout (-50 mV, UVLO overridden) 46 mV
+  op: VOUT 1.7992 V (no load) 1.7977 V (20 mA)  VBG 1.1866 V  Iq 92.0 uA  I_gnd(20 mA) 109.4 uA  I_off 1.1 nA
+  load VIN 3.3: 0 -> 20 mA -1.95 mV (-0.097 Ohm), current limit (VOUT -100 mV) 79.2 mA, max 93.5 mA
+  line 20m: VOUT 1.7971 .. 1.7976 V for VIN 2.97 .. 3.63 V, -0.24 mV/V; VOUT 1.7959 V at 2.55 V, off below 2.477 V; dropout (-50 mV, UVLO overridden) 440 mV
+  load VIN 2.97: 0 -> 20 mA -2.19 mV (-0.109 Ohm), current limit (VOUT -100 mV) 78.6 mA, max 93.5 mA
+  step 1 -> 20 mA: undershoot 7.6 mV, settles (2 mV) in 84.1 us; 20 -> 1 mA: overshoot 7.4 mV, settles in 75.2 us
+  ac    0: DC gain  81.6 dB  crossover      2.4 kHz  PM  59.8 deg  GM  63.3 dB
+  ac  10u: DC gain  86.2 dB  crossover      3.8 kHz  PM  69.6 deg  GM  17.6 dB
+  ac 100u: DC gain  95.0 dB  crossover     17.3 kHz  PM  84.8 deg  GM  43.2 dB
+  ac   1m: DC gain  97.9 dB  crossover    116.6 kHz  PM  86.8 deg  GM  25.5 dB
+  ac   5m: DC gain  95.8 dB  crossover    334.1 kHz  PM  82.0 deg  GM  17.6 dB
+  ac  20m: DC gain  90.8 dB  crossover    652.7 kHz  PM  74.1 deg  GM  12.7 dB
+  ac  50m: DC gain  72.2 dB  crossover    723.5 kHz  PM  86.7 deg  GM   9.1 dB
+TEST PASSED
+
+# rerun op ac
+afe_ldo_tr: corner wz, 27 C, VIN 3.3 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  op: VOUT 1.7990 V (no load) 1.7977 V (20 mA)  VBG 1.1866 V  Iq 92.1 uA  I_gnd(20 mA) 109.4 uA  I_off 1.1 nA
+  ac    0: DC gain  81.7 dB  crossover      2.4 kHz  PM  60.0 deg  GM  63.2 dB
+  ac  10u: DC gain  86.2 dB  crossover      3.9 kHz  PM  69.7 deg  GM  17.6 dB
+  ac 100u: DC gain  95.0 dB  crossover     17.3 kHz  PM  84.8 deg  GM  43.2 dB
+  ac   1m: DC gain  97.9 dB  crossover    116.6 kHz  PM  86.8 deg  GM  25.5 dB
+  ac   5m: DC gain  95.8 dB  crossover    334.1 kHz  PM  82.0 deg  GM  17.6 dB
+  ac  20m: DC gain  90.8 dB  crossover    652.7 kHz  PM  74.1 deg  GM  12.7 dB
+  ac  50m: DC gain  72.2 dB  crossover    723.5 kHz  PM  86.7 deg  GM   9.1 dB
+TEST PASSED

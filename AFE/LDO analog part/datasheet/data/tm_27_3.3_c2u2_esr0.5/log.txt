@@ -1,0 +1,23 @@
+afe_ldo_tr: corner tm, 27 C, VIN 3.3 V, COUT 2.2 uF ESR 0.5 Ohm (afe_ldo_tr.sp)
+  step 1 -> 20 mA: undershoot 7.5 mV, settles (2 mV) in 85.2 us; 20 -> 1 mA: overshoot 7.4 mV, settles in 79.8 us
+  ac    0: DC gain  88.8 dB  crossover      4.1 kHz  PM  72.4 deg  GM  17.8 dB
+  ac  10u: DC gain  83.7 dB  crossover      2.4 kHz  PM  60.9 deg  GM  17.8 dB
+  ac 100u: DC gain  93.4 dB  crossover      8.0 kHz  PM  82.7 deg  GM  17.9 dB
+  ac   1m: DC gain  98.0 dB  crossover     56.0 kHz  PM 108.2 deg  GM  21.0 dB
+  ac   5m: DC gain  95.6 dB  crossover   1997.2 kHz  PM 106.1 deg  GM  15.4 dB
+  ac  20m: DC gain  90.2 dB  crossover   3460.2 kHz  PM  53.0 deg  GM  11.4 dB
+  ac  50m: DC gain  66.9 dB  crossover   4440.3 kHz  PM  33.2 deg  GM   9.6 dB
+  ERROR: phase margin 50m = 33.18 outside 45 .. 180
+TEST FAILED: 1 error(s)
+
+# rerun ac
+afe_ldo_tr: corner tm, 27 C, VIN 3.3 V, COUT 2.2 uF ESR 0.5 Ohm (afe_ldo_tr.sp)
+  ac    0: DC gain  73.0 dB  crossover      1.0 kHz  PM  42.7 deg  GM  17.8 dB
+  ac  10u: DC gain  82.8 dB  crossover      2.2 kHz  PM  59.1 deg  GM  17.8 dB
+  ac 100u: DC gain  93.4 dB  crossover      8.0 kHz  PM  82.7 deg  GM  17.9 dB
+  ac   1m: DC gain  98.0 dB  crossover     56.0 kHz  PM 108.2 deg  GM  21.0 dB
+  ac   5m: DC gain  95.6 dB  crossover   1997.2 kHz  PM 106.1 deg  GM  15.4 dB
+  ac  20m: DC gain  90.2 dB  crossover   3460.2 kHz  PM  53.0 deg  GM  11.4 dB
+  ac  50m: DC gain  66.9 dB  crossover   4440.3 kHz  PM  33.2 deg  GM   9.6 dB
+  ERROR: phase margin 0 = 42.73 outside 45 .. 180
+TEST FAILED: 1 error(s)

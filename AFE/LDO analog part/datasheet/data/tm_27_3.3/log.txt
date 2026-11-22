@@ -1,0 +1,81 @@
+afe_ldo_tr: corner tm, 27 C, VIN 3.3 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  temp: VBG 1.1820 .. 1.1870 V (25.6 ppm/K box), VOUT 1.7900 .. 1.7976 V, I_gnd 102.9 .. 136.6 uA
+  op: VOUT 1.7991 V (no load) 1.7975 V (20 mA)  VBG 1.1867 V  Iq 91.6 uA  I_gnd(20 mA) 108.6 uA  I_off 1.1 nA
+  line 1m: VOUT 1.7979 .. 1.7984 V for VIN 2.97 .. 3.63 V, -0.49 mV/V; VOUT 1.7975 V at 2.55 V, off below 2.274 V; dropout (-50 mV, UVLO overridden) 127 mV
+  load VIN 3.3: 0 -> 20 mA -2.05 mV (-0.102 Ohm), current limit (VOUT -100 mV) 75.7 mA, max 89.8 mA
+  load VIN 2.97: 0 -> 20 mA -2.35 mV (-0.118 Ohm), current limit (VOUT -100 mV) 75.1 mA, max 89.7 mA
+  line 20m: VOUT 1.7971 .. 1.7975 V for VIN 2.97 .. 3.63 V, 0.05 mV/V; VOUT 1.7952 V at 2.55 V, off below 2.478 V; dropout (-50 mV, UVLO overridden) 555 mV
+  ac    0: DC gain  81.9 dB  crossover      2.4 kHz  PM  60.4 deg  GM  17.8 dB
+  ac  10u: DC gain  86.3 dB  crossover      3.9 kHz  PM  69.7 deg  GM  57.8 dB
+  ac 100u: DC gain  95.3 dB  crossover     17.3 kHz  PM  84.8 deg  GM  17.7 dB
+  ac   1m: DC gain  98.1 dB  crossover    114.9 kHz  PM  86.7 deg  GM  25.5 dB
+  ac   5m: DC gain  95.6 dB  crossover    321.9 kHz  PM  82.1 deg  GM  17.5 dB
+  ac  20m: DC gain  90.2 dB  crossover    621.0 kHz  PM  74.5 deg  GM  12.5 dB
+  ac  50m: DC gain  66.9 dB  crossover    468.3 kHz  PM  90.1 deg  GM   9.3 dB
+  psrr 1m: 83.9 / 67.5 / 58.2 / 60.1 / 75.0 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 58.0 dB at 20 kHz
+  psrr 20m: 67.4 / 62.4 / 54.9 / 54.7 / 58.1 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 54.6 dB at 45 kHz
+  zout 1m: 176.7 mOhm at 100 Hz, peak 1383 mOhm at 14 kHz
+  zout 20m: 36.3 mOhm at 100 Hz, peak 260 mOhm at 40 kHz
+  noise: 2944 nV/rtHz at 1 kHz, 70 nV/rtHz at 100 kHz, 237.1 uV rms (10 Hz .. 100 kHz)
+  start: regulator on at VIN 2.654 V, VOUT 90 % 119.9 us later (10-90 % 74.8 us), PWR_GOOD 10.4 us after VOUT > 1.62 V, POR_N 106.4 us later, inrush 74.0 mA, overshoot 0.0 mV
+  uvlo: off at VIN 2.497 V (falling), on at 2.645 V (rising), hysteresis 148 mV; VOUT >= 1.7967 V until off, PWR_GOOD fell at VIN 2.497 V
+  capsweep C 0.47 uF ESR 0.005 Ohm   0: crossover     4.3 kHz PM  71.4 deg GM  55.6 dB
+  capsweep C 0.47 uF ESR 0.005 Ohm  1m: crossover   244.5 kHz PM  83.6 deg GM  19.5 dB
+  capsweep C 0.47 uF ESR 0.005 Ohm 20m: crossover  1369.8 kHz PM  47.1 deg GM   6.0 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm   0: crossover     4.3 kHz PM  71.7 deg GM  17.8 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm  1m: crossover   262.3 kHz PM 104.1 deg GM  19.7 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm 20m: crossover  3501.7 kHz PM  43.2 deg GM  10.3 dB
+  capsweep C 1 uF ESR 0.01 Ohm   0: crossover     2.4 kHz PM  60.4 deg GM  17.8 dB
+  capsweep C 1 uF ESR 0.01 Ohm  1m: crossover   114.9 kHz PM  86.7 deg GM  25.5 dB
+  capsweep C 1 uF ESR 0.01 Ohm 20m: crossover   621.0 kHz PM  74.5 deg GM  12.5 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm   0: crossover     4.2 kHz PM  71.0 deg GM  17.7 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm  1m: crossover    52.2 kHz PM  87.3 deg GM  31.4 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm 20m: crossover   278.8 kHz PM  83.1 deg GM  18.7 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm   0: crossover     4.1 kHz PM  72.4 deg GM  17.8 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm  1m: crossover    56.0 kHz PM 108.2 deg GM  21.0 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm 20m: crossover  3460.2 kHz PM  53.0 deg GM  11.4 dB
+  capsweep C 10 uF ESR 0.01 Ohm   0: crossover     nan kHz PM   nan deg GM  18.6 dB
+  capsweep C 10 uF ESR 0.01 Ohm  1m: crossover    11.6 kHz PM  82.9 deg GM  17.7 dB
+  capsweep C 10 uF ESR 0.01 Ohm 20m: crossover    61.3 kHz PM  89.2 deg GM  32.1 dB
+  step 1 -> 20 mA: undershoot 7.9 mV, settles (2 mV) in 86.3 us; 20 -> 1 mA: overshoot 7.7 mV, settles in 77.5 us
+  line step 3.0 <-> 3.6 V in 1 us: +0.84 mV / -0.82 mV peak, +0.062 mV DC
+  enth: LDO_EN threshold 0.758 V rising, 0.758 V falling
+  en: VOUT 10 % after 47.3 us, 90 % after 121.8 us (rise 74.5 us), PWR_GOOD +10.4 us, POR_N +106.4 us, inrush 73.5 mA; off: PWR_GOOD low after 25 ns, VOUT < 10 % after 1396 us; restart 90 % after 120.8 us
+  short (1 Ohm): 84.1 mA from VIN (peak 97.4 mA), recovers to 98 % in 22.9 us, overshoot 1.2 mV
+  ERROR: phase margin C 1e-05 ESR 0.01 0 = nan outside 35 .. 180
+TEST FAILED: 1 error(s)
+
+# rerun op ac capsweep start en
+afe_ldo_tr: corner tm, 27 C, VIN 3.3 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  op: VOUT 1.7990 V (no load) 1.7975 V (20 mA)  VBG 1.1867 V  Iq 91.4 uA  I_gnd(20 mA) 108.6 uA  I_off 1.1 nA
+  ac    0: DC gain  81.7 dB  crossover      2.4 kHz  PM  60.0 deg  GM  17.8 dB
+  ac  10u: DC gain  86.3 dB  crossover      3.9 kHz  PM  69.8 deg  GM  57.8 dB
+  ac 100u: DC gain  95.3 dB  crossover     17.3 kHz  PM  84.8 deg  GM  17.7 dB
+  ac   1m: DC gain  98.1 dB  crossover    114.9 kHz  PM  86.7 deg  GM  25.5 dB
+  ac   5m: DC gain  95.6 dB  crossover    321.9 kHz  PM  82.1 deg  GM  17.5 dB
+  ac  20m: DC gain  90.2 dB  crossover    621.0 kHz  PM  74.5 deg  GM  12.5 dB
+  ac  50m: DC gain  66.9 dB  crossover    468.3 kHz  PM  90.1 deg  GM   9.3 dB
+  capsweep C 0.47 uF ESR 0.005 Ohm   0: crossover     4.3 kHz PM  71.4 deg GM  55.6 dB
+  capsweep C 0.47 uF ESR 0.005 Ohm  1m: crossover   244.5 kHz PM  83.6 deg GM  19.5 dB
+  capsweep C 0.47 uF ESR 0.005 Ohm 20m: crossover  1369.8 kHz PM  47.1 deg GM   6.0 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm   0: crossover     4.3 kHz PM  71.7 deg GM  17.8 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm  1m: crossover   262.3 kHz PM 104.1 deg GM  19.7 dB
+  capsweep C 0.47 uF ESR 0.5 Ohm 20m: crossover  3501.7 kHz PM  43.2 deg GM  10.3 dB
+  capsweep C 1 uF ESR 0.01 Ohm   0: crossover     2.4 kHz PM  60.0 deg GM  17.8 dB
+  capsweep C 1 uF ESR 0.01 Ohm  1m: crossover   114.9 kHz PM  86.7 deg GM  25.5 dB
+  capsweep C 1 uF ESR 0.01 Ohm 20m: crossover   621.0 kHz PM  74.5 deg GM  12.5 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm   0: crossover     1.0 kHz PM  42.4 deg GM  17.8 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm  1m: crossover    52.2 kHz PM  87.3 deg GM  31.4 dB
+  capsweep C 2.2 uF ESR 0.005 Ohm 20m: crossover   278.8 kHz PM  83.1 deg GM  18.7 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm   0: crossover     1.0 kHz PM  42.7 deg GM  17.8 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm  1m: crossover    56.0 kHz PM 108.2 deg GM  21.0 dB
+  capsweep C 2.2 uF ESR 0.5 Ohm 20m: crossover  3460.2 kHz PM  53.0 deg GM  11.4 dB
+  capsweep C 10 uF ESR 0.01 Ohm   0: crossover     nan kHz PM   nan deg GM  17.8 dB
+  capsweep C 10 uF ESR 0.01 Ohm  1m: crossover    11.6 kHz PM  82.9 deg GM  17.7 dB
+  capsweep C 10 uF ESR 0.01 Ohm 20m: crossover    61.3 kHz PM  89.2 deg GM  32.1 dB
+  start: regulator on at VIN 2.654 V, VOUT 90 % 119.9 us later (10-90 % 74.8 us), PG comparator at VOUT 1.619 V, PWR_GOOD 10.7 us later, POR_N 106.4 us later, inrush 74.0 mA, overshoot 0.0 mV
+  en: VOUT 10 % after 47.2 us, 90 % after 121.8 us (rise 74.5 us), PWR_GOOD +10.7 us after the PG comparator, POR_N +106.4 us, inrush 73.5 mA; off: PWR_GOOD low after 25 ns, VOUT < 10 % after 1396 us; restart 90 % after 120.8 us
+  ERROR: phase margin C 2.2e-06 ESR 0.005 0 = 42.41 outside 45 .. 180
+  ERROR: phase margin C 2.2e-06 ESR 0.5 0 = 42.73 outside 45 .. 180
+  ERROR: phase margin C 1e-05 ESR 0.01 0 = nan outside 45 .. 180
+TEST FAILED: 3 error(s)

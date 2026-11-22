@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="560" fill="white"/>
+<line x1="276.7" y1="40" x2="276.7" y2="250" stroke="#d8d8d8"/>
+<text x="276.7" y="267" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="40" x2="510.0" y2="250" stroke="#d8d8d8"/>
+<text x="510.0" y="267" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="40" x2="743.3" y2="250" stroke="#d8d8d8"/>
+<text x="743.3" y="267" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="243.0" x2="860" y2="243.0" stroke="#d8d8d8"/>
+<text x="84" y="247.0" font-size="12" text-anchor="end">1.125</text>
+<line x1="90" y1="208.0" x2="860" y2="208.0" stroke="#d8d8d8"/>
+<text x="84" y="212.0" font-size="12" text-anchor="end">1.15</text>
+<line x1="90" y1="173.0" x2="860" y2="173.0" stroke="#d8d8d8"/>
+<text x="84" y="177.0" font-size="12" text-anchor="end">1.175</text>
+<line x1="90" y1="138.0" x2="860" y2="138.0" stroke="#d8d8d8"/>
+<text x="84" y="142.0" font-size="12" text-anchor="end">1.2</text>
+<line x1="90" y1="103.0" x2="860" y2="103.0" stroke="#d8d8d8"/>
+<text x="84" y="107.0" font-size="12" text-anchor="end">1.225</text>
+<line x1="90" y1="68.0" x2="860" y2="68.0" stroke="#d8d8d8"/>
+<text x="84" y="72.0" font-size="12" text-anchor="end">1.25</text>
+<rect x="90" y="40" width="770" height="210" fill="none" stroke="#333333"/>
+<text transform="translate(38,145.0) rotate(-90)" font-size="13" text-anchor="middle">VBG  [V]</text>
+<text x="90" y="32" font-size="13" font-weight="bold">Bandgap voltage and output voltage vs temperature (5 mA)</text>
+<clipPath id="c126296630613328"><rect x="90" y="40" width="770" height="210"/></clipPath>
+<line x1="276.7" y1="300" x2="276.7" y2="510" stroke="#d8d8d8"/>
+<text x="276.7" y="527" font-size="12" text-anchor="middle">0</text>
+<line x1="510.0" y1="300" x2="510.0" y2="510" stroke="#d8d8d8"/>
+<text x="510.0" y="527" font-size="12" text-anchor="middle">50</text>
+<line x1="743.3" y1="300" x2="743.3" y2="510" stroke="#d8d8d8"/>
+<text x="743.3" y="527" font-size="12" text-anchor="middle">100</text>
+<line x1="90" y1="510.0" x2="860" y2="510.0" stroke="#d8d8d8"/>
+<text x="84" y="514.0" font-size="12" text-anchor="end">1.7</text>
+<line x1="90" y1="457.5" x2="860" y2="457.5" stroke="#d8d8d8"/>
+<text x="84" y="461.5" font-size="12" text-anchor="end">1.75</text>
+<line x1="90" y1="405.0" x2="860" y2="405.0" stroke="#d8d8d8"/>
+<text x="84" y="409.0" font-size="12" text-anchor="end">1.8</text>
+<line x1="90" y1="352.5" x2="860" y2="352.5" stroke="#d8d8d8"/>
+<text x="84" y="356.5" font-size="12" text-anchor="end">1.85</text>
+<line x1="90" y1="300.0" x2="860" y2="300.0" stroke="#d8d8d8"/>
+<text x="84" y="304.0" font-size="12" text-anchor="end">1.9</text>
+<rect x="90" y="300" width="770" height="210" fill="none" stroke="#333333"/>
+<text x="475.0" y="546" font-size="13" text-anchor="middle">Temperature  [°C]</text>
+<text transform="translate(38,405.0) rotate(-90)" font-size="13" text-anchor="middle">VOUT  [V]</text>
+<clipPath id="c126296616904624"><rect x="90" y="300" width="770" height="210"/></clipPath>
+<polyline clip-path="url(#c126296630613328)" points="90.00,163.14 183.33,160.40 276.67,158.38 402.67,156.70 510.00,156.13 673.33,156.68 766.67,157.68 860.00,159.18" fill="none" stroke="#555555" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c126296616904624)" points="90.00,415.45 183.33,412.30 276.67,409.98 402.67,408.09 510.00,407.47 673.33,408.16 766.67,409.41 860.00,411.31" fill="none" stroke="#555555" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c126296630613328)" points="90.00,130.73 183.33,125.23 276.67,120.43 402.67,115.01 510.00,111.26 673.33,106.96 766.67,105.21 860.00,103.94" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c126296616904624)" points="90.00,378.97 183.33,372.70 276.67,367.26 402.67,361.17 510.00,356.97 673.33,352.20 766.67,350.31 860.00,349.01" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c126296630613328)" points="90.00,196.03 183.33,196.16 276.67,197.01 402.67,199.21 510.00,201.98 673.33,207.65 766.67,211.63 860.00,216.11" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline clip-path="url(#c126296616904624)" points="90.00,452.86 183.33,452.96 276.67,453.89 402.67,456.40 510.00,459.56 673.33,466.15 766.67,470.95 860.00,476.64" fill="none" stroke="#1f4e9c" stroke-width="2.2" stroke-linejoin="round"/>
+<rect x="90" y="319.9" width="770" height="170.1" fill="#2e8b57" fill-opacity="0.06"/>
+<rect x="98" y="48" width="131.60000000000002" height="62" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="106" y1="60" x2="128" y2="60" stroke="#555555" stroke-width="2"/>
+<text x="134" y="64" font-size="11.5">tm, VIN 3.3 V</text>
+<line x1="106" y1="78" x2="128" y2="78" stroke="#c0392b" stroke-width="2"/>
+<text x="134" y="82" font-size="11.5">ws, VIN 2.97 V</text>
+<line x1="106" y1="96" x2="128" y2="96" stroke="#1f4e9c" stroke-width="2"/>
+<text x="134" y="100" font-size="11.5">wp, VIN 3.63 V</text>
+</svg>

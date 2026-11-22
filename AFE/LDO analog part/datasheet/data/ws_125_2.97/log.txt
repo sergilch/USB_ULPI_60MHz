@@ -1,0 +1,36 @@
+afe_ldo_tr: corner ws, 125 C, VIN 2.97 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  temp: VBG 1.2052 .. 1.2243 V (95.4 ppm/K box), VOUT 1.8248 .. 1.8533 V, I_gnd 101.5 .. 136.4 uA
+  op: VOUT 1.8559 V (no load) 1.8529 V (20 mA)  VBG 1.2243 V  Iq 110.3 uA  I_gnd(20 mA) 128.9 uA  I_off 6.8 nA
+  line 1m: VOUT 1.8549 .. 1.8554 V for VIN 2.97 .. 3.63 V, -0.14 mV/V; VOUT 1.7740 V at 2.55 V, off below 2.293 V; dropout (-50 mV, UVLO overridden) 107 mV
+  load VIN 3.3: 0 -> 20 mA -3.17 mV (-0.159 Ohm), current limit (VOUT -100 mV) 72.6 mA, max 90.8 mA
+  load VIN 2.97: 0 -> 20 mA -3.84 mV (-0.192 Ohm), current limit (VOUT -100 mV) 67.0 mA, max 89.9 mA
+  line 20m: VOUT 1.8528 .. 1.8539 V for VIN 2.97 .. 3.63 V, 1.05 mV/V; VOUT 0.8739 V at 2.55 V, off below 2.554 V; dropout (-50 mV, UVLO overridden) 621 mV
+  psrr 1m: 53.4 / 53.3 / 53.7 / 57.0 / 74.3 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 53.2 dB at 2 kHz
+  psrr 20m: 47.0 / 46.8 / 46.7 / 47.0 / 53.6 dB at 100 Hz / 1k / 10k / 100k / 1 MHz; minimum 46.7 dB at 3 kHz
+  ac    0: DC gain  75.5 dB  crossover      1.8 kHz  PM  56.0 deg  GM  16.9 dB
+  ac  10u: DC gain  81.0 dB  crossover      3.1 kHz  PM  66.7 deg  GM  58.7 dB
+  ac 100u: DC gain  91.0 dB  crossover     13.9 kHz  PM  84.0 deg  GM  43.7 dB
+  ac   1m: DC gain  93.6 dB  crossover     91.4 kHz  PM  86.9 deg  GM  27.0 dB
+  ac   5m: DC gain  89.3 dB  crossover    244.7 kHz  PM  83.5 deg  GM  19.7 dB
+  ac  20m: DC gain  79.8 dB  crossover    429.6 kHz  PM  79.2 deg  GM  15.9 dB
+  ac  50m: DC gain  51.6 dB  crossover    154.6 kHz  PM  89.9 deg  GM  20.5 dB
+  step 1 -> 20 mA: undershoot 10.5 mV, settles (2 mV) in 98.2 us; 20 -> 1 mA: overshoot 10.3 mV, settles in 90.8 us
+  start: regulator on at VIN 2.737 V, VOUT 90 % 107.1 us later (10-90 % 69.0 us), PWR_GOOD 20.0 us after VOUT > 1.62 V, POR_N 77.1 us later, inrush 69.5 mA, overshoot 0.0 mV
+  uvlo: off at VIN 2.575 V (falling), on at 2.728 V (rising), hysteresis 153 mV; VOUT >= 1.8528 V until off, PWR_GOOD fell at VIN 2.575 V
+  enth: LDO_EN threshold 0.670 V rising, 0.669 V falling
+  en: VOUT 10 % after 39.6 us, 90 % after 108.4 us (rise 68.8 us), PWR_GOOD +19.9 us, POR_N +77.1 us, inrush 68.8 mA; off: PWR_GOOD low after 38 ns, VOUT < 10 % after 2327 us; restart 90 % after 107.8 us
+TEST PASSED
+
+# rerun op ac start en
+afe_ldo_tr: corner ws, 125 C, VIN 2.97 V, COUT 1 uF ESR 0.01 Ohm (afe_ldo_tr.sp)
+  op: VOUT 1.8558 V (no load) 1.8529 V (20 mA)  VBG 1.2243 V  Iq 111.5 uA  I_gnd(20 mA) 128.9 uA  I_off 6.8 nA
+  ac    0: DC gain  76.3 dB  crossover      1.9 kHz  PM  57.5 deg  GM  16.9 dB
+  ac  10u: DC gain  81.1 dB  crossover      3.1 kHz  PM  66.8 deg  GM  58.6 dB
+  ac 100u: DC gain  91.0 dB  crossover     13.9 kHz  PM  84.0 deg  GM  43.7 dB
+  ac   1m: DC gain  93.6 dB  crossover     91.4 kHz  PM  86.9 deg  GM  27.0 dB
+  ac   5m: DC gain  89.3 dB  crossover    244.7 kHz  PM  83.5 deg  GM  19.7 dB
+  ac  20m: DC gain  79.8 dB  crossover    429.6 kHz  PM  79.2 deg  GM  15.9 dB
+  ac  50m: DC gain  51.6 dB  crossover    154.6 kHz  PM  89.9 deg  GM  20.5 dB
+  start: regulator on at VIN 2.737 V, VOUT 90 % 107.1 us later (10-90 % 69.0 us), PG comparator at VOUT 1.670 V, PWR_GOOD 7.8 us later, POR_N 77.1 us later, inrush 69.5 mA, overshoot 0.0 mV
+  en: VOUT 10 % after 39.6 us, 90 % after 108.4 us (rise 68.8 us), PWR_GOOD +7.8 us after the PG comparator, POR_N +77.1 us, inrush 68.8 mA; off: PWR_GOOD low after 38 ns, VOUT < 10 % after 2327 us; restart 90 % after 107.8 us
+TEST PASSED
