@@ -80,7 +80,7 @@ def header(a, drv, title):
     d1, d0 = (drv >> 1) & 1, drv & 1
     return f"""* {title}
 .include "{lib(a.corner)}"
-.include "{NETLIST}"
+.include "{a.netlist}"
 .temp {a.temp}
 .param vdd={a.vdd}
 vdd vdd 0 {{vdd}}
@@ -443,10 +443,13 @@ def main():
     p.add_argument("--tag", default="", help="suffix of the output directory")
     p.add_argument("--burst", type=float, default=0.6, help="ss pre-load burst amplitude [V]")
     p.add_argument("--tss", type=float, default=120e-6, help="ss transient length [s]")
+    p.add_argument("--dut", default="tr", help="tr: transistor netlist, beh: ngspice copy of the "
+                   "Verilog-A model (sim/afe_xosc_beh.sp), or a netlist path")
     a = p.parse_args()
+    a.netlist = {"tr": NETLIST, "beh": os.path.join(HERE, "afe_xosc_beh.sp")}.get(a.dut, a.dut)
     out = os.path.join(ROOT, "build", "xosc", f"{a.corner}_{a.temp:g}_{a.vdd:g}{a.tag}")
     os.makedirs(out, exist_ok=True)
-    print(f"afe_xosc_tr: corner {a.corner}, {a.temp:g} C, VDD {a.vdd:g} V, DRV {a.drv}, ESR {a.esr:g} Ohm"
+    print(f"{os.path.basename(a.netlist)}: corner {a.corner}, {a.temp:g} C, VDD {a.vdd:g} V, DRV {a.drv}, ESR {a.esr:g} Ohm"
           f"  (Lm {LM * 1e3:.4f} mH, fs {FS / 1e6:.6f} MHz)")
     fn = {"op": case_op, "ac": case_ac, "ss": case_ss, "start": case_start, "byp": case_byp, "en": case_en}
     results = {}

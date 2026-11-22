@@ -1,6 +1,6 @@
 # Crystal oscillator driver — `afe_xosc_tr` (24 MHz, xh018)
 
-*Transistor-level design of the 24 MHz crystal oscillator driver of the USB 2.0 ULPI PHY: it drives an external 24 MHz crystal through two analog pads (XI, XO) and delivers the reference clock `REF_CLK` to the PLL input `CDR_FREF` of `afe_pll` ([AFE/doc/pll_datasheet/pll_datasheet.md](../doc/pll_datasheet/pll_datasheet.md)). Process: X-FAB xh018, devices `ne3i` / `pe3i` (isolated 3.3 V MOS) from `X-FAB/spice`, supply VDD18A = 1.8 V. Simulated with ngspice 42 on the xh018 BSIM3v3 cards (converted for ngspice by `sim/xfab2ngspice.py`, output only under `build/`), tm / ws / wp / wo / wz corners at 3 σ. Prototypes: TI SN74LVC1GX04 (unbuffered inverter + buffered output, `DOC/sn74lvc1gx04.pdf`) and the crystal Vectron VXM7A-9001-24M (`DOC/VXM7A-9001-24M0000000_Jan04_2022.pdf`). Status: 2026-11-21, schematic and testbench; no layout, no Verilog-A model yet.*
+*Transistor-level design of the 24 MHz crystal oscillator driver of the USB 2.0 ULPI PHY: it drives an external 24 MHz crystal through two analog pads (XI, XO) and delivers the reference clock `REF_CLK` to the PLL input `CDR_FREF` of `afe_pll` ([AFE/doc/pll_datasheet/pll_datasheet.md](../doc/pll_datasheet/pll_datasheet.md)). Process: X-FAB xh018, devices `ne3i` / `pe3i` (isolated 3.3 V MOS) from `X-FAB/spice`, supply VDD18A = 1.8 V. Simulated with ngspice 42 on the xh018 BSIM3v3 cards (converted for ngspice by `sim/xfab2ngspice.py`, output only under `build/`), tm / ws / wp / wo / wz corners at 3 σ. Prototypes: TI SN74LVC1GX04 (unbuffered inverter + buffered output, `DOC/sn74lvc1gx04.pdf`) and the crystal Vectron VXM7A-9001-24M (`DOC/VXM7A-9001-24M0000000_Jan04_2022.pdf`). Status: 2026-11-22, schematic, testbench and Verilog-A model (`AFE/veriloga/afe_xosc.va`); no layout.*
 
 The same document as a page with the drawn sheets: [xosc_description.html](xosc_description.html). The full characterisation (graphs, corner tables, limits) is the datasheet [datasheet/xosc_datasheet.md](datasheet/xosc_datasheet.md) (Word: `datasheet/xosc_datasheet.docx`).
 
@@ -156,12 +156,16 @@ Leave XO open and drive XI with a 24 MHz clock: either a 0 / 1.8 V CMOS signal d
 | `doc/draw_xosc.py` | Draws the schematic sheets `doc/xosc_*.svg` (+ PNG) from the netlist sizes (uses `AFE/spice/doc/draw_cdr.py`) |
 | `doc/md2html.py` | Builds `xosc_description.html` from this file (inline SVG sheets) |
 | `datasheet/` | Datasheet (Markdown + Word), figures (`gen_figures.py`), simulation data |
+| `AFE/veriloga/afe_xosc.va` | Verilog-A model (same pins, external crystal; ideal-clock mode for system simulations). Spectre testbench `AFE/veriloga/tb/tb_afe_xosc.scs` |
+| `sim/afe_xosc_beh.sp` | ngspice copy of the Verilog-A equations (keep in sync); `tb_xosc_tr.py --dut beh` runs it through the transistor testbench (datasheet section 16) |
 
 ```sh
 python3 "AFE/Crystal Oscillator Driver/sim/xfab2ngspice.py"          # once (needs X-FAB/spice)
 python3 "AFE/Crystal Oscillator Driver/sim/tb_xosc_tr.py"            # op ac ss start byp at tm, 27 C, 1.8 V
 python3 "AFE/Crystal Oscillator Driver/sim/tb_xosc_tr.py" ac ss --corner ws --temp 125 --vdd 1.62
 python3 "AFE/Crystal Oscillator Driver/sim/run_all.py"               # corner regression, ≈ 6 h on 2 cores
+python3 "AFE/Crystal Oscillator Driver/sim/tb_xosc_tr.py" op ac ss start byp en --dut beh --tag _beh --tstart 1e-3   # Verilog-A equations, ≈ 5 min
+AFE/veriloga/tb/run_va_tests.sh xosc                                 # Verilog-A model in Spectre (SKIP without spectre)
 ```
 
 Simulator notes: the motional arm (Q ≈ 23 000) makes transients long (≈ 4 min for 240 µs). The trapezoidal step of 0.4 ns slows the simulated motional resonance by ≈ 300 ppm ((ωh)²/12), so the testbench does not take the frequency from the transient period: it extracts the large-signal load impedance the circuit presents to the motional arm (fundamental phasors of the arm voltage and current) and solves the exact arm resonance with it. The same extraction gives R_ext, which must equal −ESR in steady state (the "settled" check).
@@ -191,5 +195,5 @@ Two steady-state runs (ws 125 °C 1.62 V, wp 125 °C 1.98 V) had not fully settl
 2. Pad model: only 2.5 pF per pin. Add the APR00F ESD diodes / leakage (affects XI bias through RF = 1 MΩ: 100 nA leakage shifts XI by 0.1 V) once the I/O cell SPICE models are available.
 3. I_REF depends on VDD (±25 %). A β-multiplier is not possible with 3.3 V devices at 1.62 V; a bandgap-derived current from the AFE bias would need the bias up before the oscillator, which the power-up order does not allow. Accepted: the start-up margin is met at the low end.
 4. Phase noise / jitter (pnoise) and a Monte-Carlo run (the X-FAB cards contain mismatch hooks `*_avt`, all 0 in the corner files) need Spectre.
-5. Verilog-A / Icarus behavioural model (`afe_xosc.va`, `afe_xosc_bm.v`) with start-up delay, frequency offset and `XTAL_EN`, for the AMS system testbenches.
+5. Verilog-A model `afe_xosc.va` done (datasheet section 16); still open: a Spectre run of `tb_afe_xosc.scs`, wiring it into the AMS system testbenches (`AFE/ams/`), and an Icarus model `afe_xosc_bm.v` for the shadows.
 6. Layout: MA1 and the bank are large (≈ 200 µm + 312 µm gate width); CPK, CVB, CVBL, CB ≈ 14 pF MIM; resistors ≈ 5 MΩ of poly in total.

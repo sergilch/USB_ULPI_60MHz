@@ -1,0 +1,51 @@
+// tb_afe_xosc.scs - testbench of afe_xosc (AFE/veriloga/afe_xosc.va)
+// Run from this directory:  spectre tb_afe_xosc.scs   (or ./run_va_tests.sh xosc)
+// Checker and sequence: tb_afe_xosc.va.  Three instances on one XTAL_EN
+// (DRV = 11):
+//   DUT  with the VXM7A-9001-24M crystal (BVD, ESR 100 Ohm, its maximum) and
+//        C1 = C2 = 12 pF + 2.5 pF pad, 0.5 pF stray: start-up and steady state
+//   DUI  ideal_clk = 1, t_start_ideal = 10 us: ideal 24 MHz REF_CLK
+//   DUB  bypass: 0 / 1.8 V 24 MHz square on XI through 33 Ohm, XO open
+// DUT's supply comes from the checker (it measures the current); DUI and
+// DUB have their own source VDD2.
+// The crystal start-up takes about 0.3 ms (stable clock); the stop time is
+// the watchdog.  maxstep keeps the motional LC's numerical frequency error
+// (about (w h)^2 / 12 = 70 ppm at 0.5 ns) inside the checker's tolerance.
+simulator lang=spectre
+global 0
+
+ahdl_include "../afe_xosc.va"
+ahdl_include "tb_afe_xosc.va"
+
+// ---- crystal oscillator ----
+DUT  (xi xo en drv1 drv0 clk vdd 0) afe_xosc
+C1   (xi 0)   capacitor c=14.5p
+C2   (xo 0)   capacitor c=14.5p
+CS   (xi xo)  capacitor c=0.5p
+C0   (xi xo)  capacitor c=0.83p
+RM   (xi m1)  resistor  r=100
+LM   (m1 m2)  inductor  l=15.2745m
+CM   (m2 xo)  capacitor c=2.88f
+CL   (clk 0)  capacitor c=0.1p
+
+// ---- ideal-clock mode ----
+DUI  (xi2 xo2 en drv1 drv0 clk2 vdd2 0) afe_xosc ideal_clk=1 t_start_ideal=10u
+CI1  (xi2 0)  capacitor c=14.5p
+CI2  (xo2 0)  capacitor c=14.5p
+CL2  (clk2 0) capacitor c=0.1p
+
+// ---- bypass (external clock on XI) ----
+DUB  (xi3 xo3 en drv1 drv0 clk3 vdd2 0) afe_xosc
+VEXT (ext 0)  vsource type=pulse val0=0 val1=1.8 delay=0.3u period=41.6666667n \
+             width=20.3333333n rise=0.5n fall=0.5n
+REXT (ext xi3) resistor  r=33
+CB1  (xi3 0)  capacitor c=2.5p
+CB2  (xo3 0)  capacitor c=2.5p
+CL3  (clk3 0) capacitor c=0.1p
+
+VDD2 (vdd2 0) vsource dc=1.8      // supply of DUI / DUB (DUT's is in the checker)
+CHK  (vdd en drv1 drv0 xi xo clk clk2 xi3 clk3 0) tb_afe_xosc_chk
+
+opts options save=selected
+save vdd en xi xo clk clk2 xi3 clk3 CHK:VDD
+tr   tran stop=1.8m errpreset=conservative maxstep=0.5n

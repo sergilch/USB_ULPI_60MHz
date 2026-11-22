@@ -1,0 +1,166 @@
+//-----------------------------------------------------------------------------
+// tb_afe_xosc.va - stimulus and checker for afe_xosc (netlist: tb_afe_xosc.scs)
+//
+// VDD18A = 1.8 V from the start, DRV = 11, XTAL_EN = 1 at 1 us, 0 at 1.6 ms.
+// Expected values: the transistor simulations of afe_xosc_tr (tm, 27 C,
+// datasheet "AFE/Crystal Oscillator Driver/datasheet/xosc_datasheet.md"),
+// with margins for the model and the transient integration.
+//
+// Checks
+//   crystal DUT   stable REF_CLK (20 periods within +-1 %) before 1 ms
+//                 window 1.4-1.6 ms: frequency 24 MHz +-500 ppm (numerical
+//                 error of the motional LC, not the circuit's: that is
+//                 checked with the phasor method in ngspice), duty 45-55 %,
+//                 XI 0.6-0.9 Vpp, XI peak below 1.2 V (ALC), supply
+//                 current 0.25-0.5 mA
+//                 XTAL_EN = 0: REF_CLK low within 5 ns and stays low
+//   ideal DUI     first REF_CLK edge 10 us after XTAL_EN, then exactly
+//                 24 MHz (+-1 ppm) and 50 % duty
+//   bypass DUB    REF_CLK follows the 24 MHz input, XI -> REF_CLK delay
+//                 0.3-2 ns, duty 47-53 %
+// The checker supplies only the crystal instance (DUI / DUB: VDD2 in the
+// netlist), so I(VDD) is that instance's current.
+//-----------------------------------------------------------------------------
+`include "constants.vams"
+`include "disciplines.vams"
+`include "tb_afe_common.vams"
+
+module tb_afe_xosc_chk (VDD, EN, DRV1, DRV0, XI, XO, CLK, CLK2, XI3, CLK3, GND);
+    output     VDD, EN, DRV1, DRV0;
+    input      XI, XO, CLK, CLK2, XI3, CLK3;
+    inout      GND;
+    electrical VDD, EN, DRV1, DRV0, XI, XO, CLK, CLK2, XI3, CLK3, GND;
+
+    parameter real vdd    = 1.8;
+    parameter real f0     = 24e6;
+    parameter real t_en1  = 1e-6;
+    parameter real t_w0   = 1.4e-3;     // measurement window
+    parameter real t_w1   = 1.6e-3;     // = XTAL_EN off
+    parameter real t_end  = 1.7e-3;
+
+    real    t_last, per, t_stable, t_r0, t_rl, t_f, hi_sum, xi_mx, xi_mn, q_w;
+    real    t2_first, t2_r0, t2_rl, t2_hi, t2_f, t3_in, d3_sum, t3_r0, t3_rl, t3_hi, t3_f;
+    real    clk_off_max, t_clk_fall;
+    integer errors, reported, step, en, n_ok, n_w, n_hi, n2, n2_hi, n3, n3_d, n3_hi;
+    real    iq;
+
+    analog begin
+        @(initial_step) begin
+            errors = 0; reported = 0; step = 0; en = 0;
+            t_last = -1.0; t_stable = -1.0; n_ok = 0;
+            n_w = 0; n_hi = 0; hi_sum = 0.0; t_r0 = 0.0; t_rl = 0.0; t_f = -1.0;
+            xi_mx = -10.0; xi_mn = 10.0;
+            t2_first = -1.0; n2 = 0; n2_hi = 0; t2_hi = 0.0; t2_f = -1.0; t2_r0 = 0.0; t2_rl = 0.0;
+            n3 = 0; n3_d = 0; n3_hi = 0; d3_sum = 0.0; t3_hi = 0.0; t3_in = -1.0; t3_f = -1.0;
+            t3_r0 = 0.0; t3_rl = 0.0;
+            clk_off_max = 0.0; t_clk_fall = -1.0;
+        end
+
+        // ---- stimulus ----
+        V(VDD, GND)  <+ vdd;
+        V(DRV1, GND) <+ vdd;
+        V(DRV0, GND) <+ vdd;
+        V(EN, GND)   <+ vdd * transition(en ? 1.0 : 0.0, 0, 1e-9);
+        @(timer(t_en1)) en = 1;
+        @(timer(t_w1))  en = 0;
+
+        // supply charge in the window (current into the DUT supply pins)
+        iq = -I(VDD, GND);
+        q_w = idt(($abstime > t_w0 && $abstime < t_w1) ? iq : 0.0, 0.0);
+
+        // ---- crystal instance ----
+        @(cross(V(CLK, GND) - 0.5 * vdd, +1)) begin
+            if (en && t_last > 0.0) begin
+                per = $abstime - t_last;
+                if (abs(per * f0 - 1.0) < 0.01) begin
+                    n_ok = n_ok + 1;
+                    if (n_ok == 20 && t_stable < 0.0) t_stable = $abstime - 20.0 / f0 - t_en1;
+                end else
+                    n_ok = 0;
+            end
+            t_last = $abstime;
+            if ($abstime > t_w0 && $abstime < t_w1) begin
+                if (n_w == 0) t_r0 = $abstime;
+                t_rl = $abstime; n_w = n_w + 1;
+            end
+        end
+        @(cross(V(CLK, GND) - 0.5 * vdd, -1)) begin
+            if ($abstime > t_w0 && $abstime < t_w1 && n_w > 0 && $abstime - t_rl < 1.0 / f0) begin
+                hi_sum = hi_sum + ($abstime - t_rl); n_hi = n_hi + 1;
+            end
+            if (!en && t_clk_fall < 0.0) t_clk_fall = $abstime;
+        end
+        if ($abstime > t_w0 && $abstime < t_w1) begin
+            if (V(XI, GND) > xi_mx) xi_mx = V(XI, GND);
+            if (V(XI, GND) < xi_mn) xi_mn = V(XI, GND);
+        end
+        if ($abstime > t_w1 + 5e-9 && V(CLK, GND) > clk_off_max) clk_off_max = V(CLK, GND);
+
+        // ---- ideal-clock instance ----
+        @(cross(V(CLK2, GND) - 0.5 * vdd, +1)) begin
+            if (t2_first < 0.0) t2_first = $abstime;
+            if ($abstime > 20e-6 && $abstime < t_w1) begin
+                if (n2 == 0) t2_r0 = $abstime;
+                t2_rl = $abstime; n2 = n2 + 1;
+            end
+        end
+        @(cross(V(CLK2, GND) - 0.5 * vdd, -1))
+            if (n2 > 0 && $abstime < t_w1 && $abstime - t2_rl < 1.0 / f0) begin
+                t2_hi = t2_hi + ($abstime - t2_rl); n2_hi = n2_hi + 1;
+            end
+
+        // ---- bypass instance ----
+        @(cross(V(XI3, GND) - 0.5 * vdd, +1)) t3_in = $abstime;
+        @(cross(V(CLK3, GND) - 0.5 * vdd, +1)) begin
+            if ($abstime > 20e-6 && $abstime < t_w1) begin
+                if (n3 == 0) t3_r0 = $abstime;
+                t3_rl = $abstime; n3 = n3 + 1;
+                if (t3_in > 0.0 && $abstime - t3_in < 0.5 / f0) begin
+                    d3_sum = d3_sum + ($abstime - t3_in); n3_d = n3_d + 1;
+                end
+            end
+        end
+        @(cross(V(CLK3, GND) - 0.5 * vdd, -1))
+            if (n3 > 0 && $abstime < t_w1 && $abstime - t3_rl < 1.0 / f0) begin
+                t3_hi = t3_hi + ($abstime - t3_rl); n3_hi = n3_hi + 1;
+            end
+
+        // ---- evaluation ----
+        @(timer(t_end)) begin
+            $strobe("afe_xosc: crystal instance");
+            `TB_CHK(t_stable > 0.0, "REF_CLK never stable")
+            if (t_stable > 0.0) begin
+                `TB_RNG("t_stable [s]", t_stable, 10e-6, 1e-3)
+            end
+            `TB_CHK(n_w > 100, "no REF_CLK edges in the window")
+            if (n_w > 100) begin
+                `TB_RNG("f_ref_clk_ppm", ((n_w - 1) / (t_rl - t_r0) / f0 - 1.0) * 1e6, -500.0, 500.0)
+                `TB_RNG("duty [%]", 100.0 * (hi_sum / n_hi) * f0, 45.0, 55.0)
+            end
+            `TB_RNG("XI [Vpp]", xi_mx - xi_mn, 0.6, 0.9)
+            `TB_RNG("XI peak [V]", xi_mx, 0.5, 1.2)
+            `TB_RNG("I(VDD18A) [A]", q_w / (t_w1 - t_w0), 0.25e-3, 0.5e-3)
+            `TB_CHK(t_clk_fall > 0.0 && t_clk_fall < t_w1 + 5e-9, "REF_CLK not low after XTAL_EN = 0")
+            `TB_RNG("REF_CLK max while off [V]", clk_off_max, -0.01, 0.1 * vdd)
+            $strobe("afe_xosc: ideal-clock instance");
+            `TB_RNG("first edge after XTAL_EN [s]", t2_first - t_en1, 9.99e-6, 10.01e-6)
+            `TB_CHK(n2 > 100, "no ideal REF_CLK edges")
+            if (n2 > 100) begin
+                `TB_RNG("f_ideal_ppm", ((n2 - 1) / (t2_rl - t2_r0) / f0 - 1.0) * 1e6, -1.0, 1.0)
+                `TB_RNG("duty ideal [%]", 100.0 * (t2_hi / n2_hi) * f0, 49.5, 50.5)
+            end
+            $strobe("afe_xosc: bypass instance");
+            `TB_CHK(n3 > 100 && n3_d > 100, "no bypass REF_CLK edges")
+            if (n3 > 100 && n3_d > 100) begin
+                `TB_RNG("f_bypass_ppm", ((n3 - 1) / (t3_rl - t3_r0) / f0 - 1.0) * 1e6, -1.0, 1.0)
+                `TB_RNG("delay XI -> REF_CLK [s]", d3_sum / n3_d, 0.3e-9, 2e-9)
+                `TB_RNG("duty bypass [%]", 100.0 * (t3_hi / n3_hi) * f0, 47.0, 53.0)
+            end
+            `TB_FINISH
+        end
+
+        @(final_step) begin
+            `TB_TIMEOUT
+        end
+    end
+endmodule

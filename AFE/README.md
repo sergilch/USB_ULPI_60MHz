@@ -24,6 +24,7 @@ The Verilog-A models are the analog-simulator counterpart of the event-driven Ve
 | `veriloga/afe_transceiver.va` | `afe_hs_tx`, `afe_fsls_xcvr`, `afe_term`, `afe_transceiver` | Line transceiver: HS current driver (the HS TX block), FS/LS drivers and receivers, 1.5 kΩ pull-up / 45 Ω HS terminations / 15 kΩ pull-downs | [doc/transceiver.md](doc/transceiver.md) | `afe_hs_tx_bm.v`, `afe_fsls_bm.v`, `afe_term_bm.v` |
 | `veriloga/afe_receiver.va` | `afe_hs_rx`, `afe_squelch`, `afe_receiver` | HS receiver (the differential Schmitt-trigger HS RX block), squelch and disconnect envelope detectors | [doc/receiver.md](doc/receiver.md) | `afe_hs_rx_bm.v`, `afe_squelch_bm.v` |
 | `veriloga/afe_ldo.va` | `afe_ldo` | 3.3 V → 1.8 V LDO with UVLO, soft start, power-good and power-on reset | [doc/ldo.md](doc/ldo.md) | none (no digital model yet) |
+| `veriloga/afe_xosc.va` | `afe_xosc` | 24 MHz Pierce crystal oscillator driver (external crystal on XI / XO), amplitude regulation, squarer → REF_CLK for `CDR_FREF`; ideal-clock mode | [Crystal Oscillator Driver/xosc_description.md](Crystal%20Oscillator%20Driver/xosc_description.md), datasheet section 16 | none |
 
 ## How the blocks connect
 
@@ -80,6 +81,7 @@ ahdl_include "AFE/veriloga/afe_pll.va"
 ahdl_include "AFE/veriloga/afe_cdr.va"
 ahdl_include "AFE/veriloga/afe_receiver.va"
 ahdl_include "AFE/veriloga/afe_transceiver.va"
+ahdl_include "AFE/veriloga/afe_xosc.va"
 
 V33   (vdd33 0)  vsource dc=3.3
 LDOD  (vdd33 vdd18  0 vdd33 pwr_good  por_n)    afe_ldo
@@ -129,6 +131,7 @@ To vary a model parameter, override it on the `DUT` line of the netlist (for exa
 | Transistor-level receiver `spice/afe_receiver_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-13, [doc/receiver_schematic.md](doc/receiver_schematic.md) section 4); `veriloga/tb/tb_afe_receiver_tr.scs` runs it under the `tb_afe_receiver` checker in Spectre, **not run** |
 | Transistor-level transceiver `spice/afe_transceiver_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-13, [doc/transceiver_schematic.md](doc/transceiver_schematic.md) section 4); `veriloga/tb/tb_afe_transceiver_tr.scs` runs it under the `tb_afe_transceiver` checker in Spectre, **not run** |
 | Transistor-level CDR `spice/afe_cdr_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-12, [doc/cdr_schematic.md](doc/cdr_schematic.md) section 4); `veriloga/tb/tb_afe_cdr_tr.scs` runs it under the `tb_afe_cdr` checker in Spectre, **not run** |
+| `afe_xosc.va` against the transistor-level `Crystal Oscillator Driver/afe_xosc_tr.sp` (xh018) | equations run in ngspice as `sim/afe_xosc_beh.sp` through the transistor testbench, match at tm / 27 °C (2026-11-22, datasheet section 16); `veriloga/tb/tb_afe_xosc.scs` **not run** |
 
 ## Open points that change these models
 

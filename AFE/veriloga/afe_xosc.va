@@ -1,0 +1,192 @@
+//-----------------------------------------------------------------------------
+// afe_xosc.va - 24 MHz Pierce crystal oscillator driver (behavioural model)
+//
+// Verilog-A, for the mixed-signal simulation of the USB 2.0 PHY.  Model of the
+// transistor-level block afe_xosc_tr ("AFE/Crystal Oscillator Driver/
+// afe_xosc_tr.sp"); documentation: "AFE/Crystal Oscillator Driver/
+// xosc_description.md" and datasheet/xosc_datasheet.md.  Same pins (names with
+// the supply suffix of the other AFE models).  REF_CLK feeds CDR_FREF of
+// afe_pll.va (REFSEL = 01, N = 20).
+//
+// The crystal and C1 / C2 are external (board netlist): connect a BVD crystal
+// (Lm, Cm, Rm, C0) between XI and XO and C1, C2 (+ pad capacitance) to VSS18A.
+// The model then oscillates, starts up, regulates its amplitude and pulls the
+// crystal like the transistor circuit.  For long system simulations where the
+// ms start-up of a high-Q crystal is too slow, ideal_clk = 1 replaces REF_CLK
+// by an ideal clock (see below).
+//
+// Structure (one equation per transistor-level function)
+//   amplifier   MA1 + current-source bank.  NMOS sink current, EKV form fitted
+//               to the xh018 ne3i device (tm, 27 C):
+//                 i_n = i_s * ln^2(1 + exp((V(XI) - v_t) / (2 n_ut)))
+//                       * (1 + lambda (V(XO) - v_ref)) * tanh(V(XO) / v_dsn)
+//               PMOS bank source current into XO:
+//                 i_p = I_b * tanh((VDD18A - V(XO)) / v_dsp)
+//               I_b = i_scale * (i_unit0 + i_step * DRV) * f_alc * en
+//               RF from XI to XO sets the DC point (V(XI) = V(XO) = V_GS).
+//               c_xi / c_xo: device capacitance at the pins (pads external).
+//   ALC         XI is AC-coupled (mean over tau_avg) into a peak detector
+//               (attack g_att / c_pk, decay tau_dec); the bank current is
+//                 f_alc = 1 / (1 + exp((V_pk - v_set) / v_alc)),
+//                 v_set = k_set * VDD18A + v_set_off
+//               i.e. the proportional regulation of the transistor circuit
+//               (V_SET = 0.1 VDD from a divider, error pair, current subtract).
+//   squarer     XI AC-coupled (tau_sq = CC * RSB) into a comparator with
+//               threshold k_sq_off * V_pk above the mean (the self-biased
+//               inverter's threshold moves with the amplitude: duty 48.6 %
+//               at any amplitude) and hysteresis v_sq_hys (clock stable
+//               from about 10 mVpp at XI, as the circuit),
+//               delay t_sq, edges t_edge; gated by XTAL_EN (asynchronous, like
+//               the NAND of the circuit: falling XTAL_EN ends REF_CLK at once).
+//   supply      I(VDD18A) = en * (i_ovh * i_scale + i_p) + i_leak.
+//
+// Fitted to the transistor simulations (ngspice, xh018 tm, 27 C, 1.8 V; see
+// "AFE/Crystal Oscillator Driver/sim/afe_xosc_beh.sp", the ngspice copy of
+// these equations, and its comparison in the datasheet):
+//   small-signal: -R_neg(24 MHz) = 473 / 640 / 776 / 889 Ohm for DRV 00..11
+//   (C1 = C2 = 14.5 pF incl. pads), within 2 Ohm over 20-28 MHz; DC bias
+//   0.80-0.86 V; regulated XI amplitude 0.75 Vpp (scales with VDD18A like
+//   V_SET); supply current 0.70 mA before oscillation (DRV 10), 0.36 mA
+//   running.  Process corners are not modelled; i_scale (0.7 for ws / 125 C /
+//   1.62 V, 1.38 for wp / -40 C / 1.98 V) scales the currents, which covers
+//   the start-up margin and current spread to first order.
+//
+// Pins (logic pins: 1.8 V CMOS, threshold VDD18A / 2, referred to VSS18A)
+//   XI        io   crystal terminal / external clock input (bypass: drive XI,
+//                  leave XO open; DC-coupled CMOS or AC-coupled >= 0.3 Vpp)
+//   XO        io   crystal drive
+//   XTAL_EN   in   1 = on.  0: bank off, XI pulled to VSS18A (r_off), ALC
+//                  reset, REF_CLK low, supply current i_leak
+//   DRV1/0    in   start-up current 250 / 375 / 500 / 625 uA (11 recommended)
+//   REF_CLK   out  24 MHz CMOS clock in phase with XI, 0 / VDD18A
+//   VDD18A, VSS18A  1.8 V analog supply.  Below vdd_min the block is off.
+//
+// Ideal-clock mode (ideal_clk = 1): REF_CLK is a clock of f_ideal (50 %
+// duty) that starts t_start_ideal after XTAL_EN = 1 and supply good, phase
+// 0 at that moment; the analog part still runs but REF_CLK ignores XI.
+// t_start_ideal = 300 us is the typical simulated start-up (stable clock);
+// use a small value (e.g. 1 us) to skip it.
+//-----------------------------------------------------------------------------
+`include "constants.vams"
+`include "disciplines.vams"
+
+module afe_xosc (XI, XO, XTAL_EN, DRV1, DRV0, REF_CLK, VDD18A, VSS18A);
+    inout        XI, XO;
+    input        XTAL_EN, DRV1, DRV0;
+    output       REF_CLK;
+    inout        VDD18A, VSS18A;
+    electrical   XI, XO, XTAL_EN, DRV1, DRV0, REF_CLK, VDD18A, VSS18A;
+    electrical   n_av, n_pk, n_sq;          // ALC mean, ALC peak, squarer mean
+
+    // amplifier (EKV fit of MA1, ne3i 200 / 0.5 um, tm 27 C)
+    parameter real    i_s       = 235.4e-6 from (0:inf);  // specific current
+    parameter real    n_ut      = 45.5e-3  from (0:inf);  // n * kT/q
+    parameter real    v_t       = 0.741;                  // threshold
+    parameter real    lambda    = 0.144    from [0:inf);  // 1/V, MA1 + bank output conductance
+    parameter real    v_ref     = 0.85;                   // XO voltage where lambda term = 1
+    parameter real    v_dsn     = 0.10     from (0:inf);  // NMOS triode knee (XO near VSS)
+    parameter real    v_dsp     = 0.20     from (0:inf);  // bank compliance (XO near VDD)
+    parameter real    r_f       = 1e6      from (0:inf);  // RF
+    parameter real    c_xi      = 0.385e-12 from [0:inf); // device capacitance at XI
+    parameter real    c_xo      = 0.37e-12 from [0:inf);  // device capacitance at XO
+    // current bank
+    parameter real    i_unit0   = 250e-6   from (0:inf);  // DRV = 00
+    parameter real    i_step    = 125e-6   from [0:inf);  // per DRV step
+    parameter real    i_scale   = 1.0      from (0:inf);  // corner scaling of all currents
+    parameter real    i_ovh     = 200e-6   from [0:inf);  // bias, ALC and squarer current
+    parameter real    i_leak    = 0.2e-9   from [0:inf);  // XTAL_EN = 0
+    // amplitude regulation
+    parameter real    k_set     = 0.1;                    // V_SET / VDD18A
+    parameter real    v_set_off = 0.175;                  // detector offset (peak = v_set at f_alc = 1/2)
+    parameter real    v_alc     = 0.025    from (0:inf);  // regulation width
+    parameter real    tau_avg   = 2e-6     from (0:inf);  // AC coupling of the detector (CD * RD)
+    parameter real    g_att     = 1e-3     from (0:inf);  // peak detector charge conductance
+    parameter real    c_pk      = 8e-12    from (0:inf);  // CPK
+    parameter real    tau_dec   = 20e-6    from (0:inf);  // peak detector decay
+    // squarer
+    parameter real    tau_sq    = 0.25e-6  from (0:inf);  // CC * RSB
+    parameter real    k_sq_off  = 0.045;                  // threshold above the XI mean / V_pk (duty < 50 %)
+    parameter real    v_sq_hys  = 0.004    from [0:inf);  // input-referred hysteresis
+    parameter real    t_sq      = 0.85e-9  from [0:inf);  // XI crossing -> REF_CLK
+    parameter real    t_edge    = 0.3e-9   from (0:inf);  // REF_CLK 0-100 % edge (10-90 %: 0.24 ns)
+    // control
+    parameter real    vdd_min   = 1.4      from (0:inf);
+    parameter real    r_off     = 1e3      from (0:inf);  // XI pull-down while off (MA2)
+    parameter real    t_en      = 0.5e-6   from (0:inf);  // bias start-up / shut-down
+    // ideal-clock mode
+    parameter integer ideal_clk     = 0       from [0:1];
+    parameter real    f_ideal       = 24e6    from (0:inf);
+    parameter real    t_start_ideal = 300e-6  from [0:inf);
+
+    real    vdd, vxi, vxo, en_r, i_b, f_alc, v_set, x, ln1, i_n, i_p, vd, vsq;
+    real    t_next, r_av, r_sq;
+    integer en, en_q, drv, q, q_ideal;
+
+    analog function real softplus;      // ln(1 + exp(u)) without overflow
+        input u;
+        real  u;
+        softplus = (u > 30.0) ? u : ln(1.0 + exp(u));
+    endfunction
+
+    analog begin
+        @(initial_step) begin
+            q = 0; q_ideal = 0; en_q = 0; t_next = 1e30;
+            r_av = 1e6; r_sq = 1e6;
+        end
+
+        vdd = V(VDD18A, VSS18A);
+        vxi = V(XI, VSS18A);
+        vxo = V(XO, VSS18A);
+
+        // ---- control ----
+        en  = (V(XTAL_EN, VSS18A) > 0.5 * vdd) && (vdd > vdd_min);
+        drv = 2 * (V(DRV1, VSS18A) > 0.5 * vdd) + (V(DRV0, VSS18A) > 0.5 * vdd);
+        en_r = transition(en ? 1.0 : 0.0, 0, t_en);
+
+        // ---- ALC: detector mean, peak, regulation ----
+        I(n_av, VSS18A) <+ (V(n_av, VSS18A) - vxi) / r_av + (tau_avg / r_av) * ddt(V(n_av, VSS18A));
+        vd = vxi - V(n_av, VSS18A) - V(n_pk, VSS18A);
+        I(n_pk, VSS18A) <+ c_pk * ddt(V(n_pk, VSS18A)) + V(n_pk, VSS18A) * c_pk / tau_dec
+                           - g_att * 0.5 * (vd + sqrt(vd * vd + 1e-8))
+                           + (1.0 - en_r) * V(n_pk, VSS18A) / r_off;
+        v_set = k_set * vdd + v_set_off;
+        f_alc = 1.0 / (1.0 + limexp((V(n_pk, VSS18A) - v_set) / v_alc));
+        i_b   = en_r * i_scale * (i_unit0 + i_step * drv) * f_alc;
+
+        // ---- amplifier ----
+        x   = (vxi - v_t) / (2.0 * n_ut);
+        ln1 = softplus(x);
+        i_n = en_r * i_scale * i_s * ln1 * ln1 * (1.0 + lambda * (vxo - v_ref)) * tanh(vxo / v_dsn);
+        i_p = i_b * tanh((vdd - vxo) / v_dsp);
+        I(XO, VSS18A) <+ i_n - i_p;
+        I(XI, XO)     <+ (vxi - vxo) / r_f;
+        I(XI, VSS18A) <+ c_xi * ddt(vxi) + (1.0 - en_r) * vxi / r_off;
+        I(XO, VSS18A) <+ c_xo * ddt(vxo);
+
+        // ---- supply ----
+        I(VDD18A, VSS18A) <+ en_r * i_ovh * i_scale + i_p + i_leak;
+
+        // ---- squarer: AC coupling, comparator with hysteresis ----
+        I(n_sq, VSS18A) <+ (V(n_sq, VSS18A) - vxi) / r_sq + (tau_sq / r_sq) * ddt(V(n_sq, VSS18A));
+        vsq = vxi - V(n_sq, VSS18A) - k_sq_off * V(n_pk, VSS18A);
+        @(cross(vsq - 0.5 * v_sq_hys, +1)) q = 1;
+        @(cross(vsq + 0.5 * v_sq_hys, -1)) q = 0;
+
+        // ---- ideal-clock mode ----
+        @(cross(V(XTAL_EN, VSS18A) - 0.5 * vdd, 0)) ;
+        @(cross(vdd - vdd_min, 0)) ;
+        if (en != en_q) begin
+            en_q = en;
+            q_ideal = 0;
+            t_next = en ? $abstime + t_start_ideal : 1e30;
+        end
+        @(timer(t_next)) begin
+            q_ideal = !q_ideal;
+            t_next = t_next + 0.5 / f_ideal;
+        end
+
+        // ---- output (gated asynchronously by XTAL_EN) ----
+        V(REF_CLK, VSS18A) <+ vdd * transition((en && (ideal_clk ? q_ideal : q)) ? 1.0 : 0.0,
+                                               (ideal_clk ? 0.0 : t_sq), t_edge);
+    end
+endmodule
