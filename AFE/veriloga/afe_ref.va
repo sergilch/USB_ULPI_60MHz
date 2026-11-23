@@ -1,0 +1,196 @@
+//-----------------------------------------------------------------------------
+// afe_ref.va - reference / bias block: TX_VREF, RX_VREF, TX_I_5U (behavioural)
+//
+// Verilog-A, for the mixed-signal simulation of the USB 2.0 PHY.  Model of the
+// transistor-level block afe_ref_tr (AFE/REF/afe_ref_tr.sp); documentation:
+// AFE/REF/ref_description.md and AFE/REF/datasheet/ref_datasheet.md.  Same
+// pins.  TX_VREF feeds afe_transceiver.va (bias_mode 1), RX_VREF
+// afe_receiver.va, TX_I_5U the transceiver's bias_mode 2 input.
+//
+// Structure (one equation per transistor-level function)
+//   reference   vref = v_nom(T) + line * (VDD33 - 3.3)
+//                      + (dv_proc + lsb * (code - 8)) * T / T0
+//               v_nom(T): cubic fit of the transistor TX_VREF (tm, code 1000b,
+//               3.3 V) over -40..125 C.  The trim code and the process (VBE)
+//               shift dv_proc are both PTAT terms, as in the circuit (tap of
+//               the PTAT string; a VBE / saturation-current shift scales with
+//               T), so the code that trims dv_proc away at 27 C also cancels
+//               its temperature slope.  A soft droop limits vref at low VDD33
+//               (0.5 % at 1.86 V).
+//   start-up    after BIAS_EN: vrt = vref * (k1 * s1 + (1 - k1) * s2):
+//               s1 a linear ramp (delay t_d1, duration t_r1: bandgap start),
+//               s2 a step after t_d2 through a first-order lag tau2 (the
+//               plateau and final settling of the bandgap loop / CFL).
+//               vrt carries the output noise (flicker k_fn, white s_wn).
+//   buffers     B_TX, B_RX: transconductors from vrt, current-limited:
+//                 i = i_bf * tanh(g_buf * (vrt - V) / i_bf)
+//               -> DC output resistance 1 / g_buf (7.3 kOhm), slew rate
+//               i_bf / C, load-dependent settling; c_out on chip.  i_bf =
+//               i_buf (23 uA effective, 30 uA tail) times the start-up
+//               profile of the bias (the tails come from the bandgap).
+//               Off: r_off to GND.
+//   current     the RBIAS follower sources (only) the current that holds
+//               V(RBIAS) = vrt + v_rb_off (stiff loop g_rb, limited to
+//               i_rb_max = the shorted-pin current), smooth-limited by the
+//               input-branch ceiling k_hd * (VDD33 - V(RBIAS) - v_hd)^2
+//               (358 uA at 3.3 V).
+//               TX_I_5U = I(RBIAS) / ratio, sourced, with output resistance
+//               r_o5 and the cascode compliance g_c * (VDD33 - V - v_c);
+//               the limits combine as i * l / (i^p + l^p)^(1/p).
+//   supply      I(VDD33) = en * i_core * (T / T0)^x_core + I(RBIAS)
+//               + I(TX_I_5U) + buffer output currents + i_leak.
+//
+// Fitted to the transistor simulations (ngspice, xh018 tm, 27 C, 3.3 V,
+// RBIAS 12 kOhm; AFE/REF/sim/afe_ref_beh.sp is the ngspice copy of these
+// equations, compared with afe_ref_tr in the datasheet, section 16):
+// TX_VREF 1.2009 V, LSB 7.20 mV; v_nom within 0.01 mV of the -40..125 C
+// curve; line +0.67 mV/V (circuit 0.65); 0.5 % droop at 1.82 V (1.86 V);
+// TX_I_5U 4.998 uA, within 0.4 % of the circuit for VDD33 >= 2.97 V (the
+// supply cliff is sharper: 1 % at 2.55 V, circuit 2.79 V); compliance 1 %
+// at 2.80 V (2.86 V); I(RBIAS) * RBIAS / V within 0.997..1.000 for
+// 6..24 kOhm; Zout 7.30 kOhm (7.27), 10 uA DC load -78 mV (-74);
+// settling to 0.5 % 6.6 / 9.0 us with 10 / 100 pF (6.6 / 9.0); core
+// current 146 uA (118 / 183 uA at -40 / 125 C).
+// Process corners: dv_proc = +30.1 mV (ws) / -30.1 mV (wp) at code 1000b
+// (trim codes 0100b / 1100b, as the transistor runs); the other corner
+// effects (supply current, headroom, timing within 15 %) are not modelled.
+// Not modelled: AC supply rejection (the line term is DC only), the enable
+// current peak (645 uA), mismatch.
+//
+// Pins (logic: absolute threshold v_th = 0.8 V, 1.8 V or 3.3 V CMOS)
+//   BIAS_EN   in   1 = on.  0: all off, TX_VREF / RX_VREF pulled to GND,
+//                  TX_I_5U = 0, RBIAS not driven, supply current i_leak
+//   TRIM3..0  in   trim code, 1000b nominal, +lsb per code (0000b while off)
+//   RBIAS     io   external resistor to GND (12.0 kOhm -> 100 uA)
+//   TX_VREF   out  1.200 V reference (gate loads; 7.3 kOhm DC output R)
+//   RX_VREF   out  as TX_VREF, separate buffer
+//   TX_I_5U   out  5 uA = V(RBIAS) / RBIAS / ratio, sourced into the load
+//   VDD33, GND     3.3 V supply.  Below vdd_min the block is off.
+//-----------------------------------------------------------------------------
+`include "constants.vams"
+`include "disciplines.vams"
+
+module afe_ref (VDD33, GND, BIAS_EN, TRIM0, TRIM1, TRIM2, TRIM3, RBIAS, TX_VREF, RX_VREF, TX_I_5U);
+    inout        VDD33, GND, RBIAS;
+    input        BIAS_EN, TRIM0, TRIM1, TRIM2, TRIM3;
+    output       TX_VREF, RX_VREF, TX_I_5U;
+    electrical   VDD33, GND, BIAS_EN, TRIM0, TRIM1, TRIM2, TRIM3, RBIAS, TX_VREF, RX_VREF, TX_I_5U;
+    electrical   n_s2, n_rt;                // start-up lag, noisy reference vrt
+
+    // reference: v_nom(T) = v0 + c1 dT + c2 dT^2 + c3 dT^3, dT = T - 27 C
+    parameter real    v0        = 1.200977;              // incl. +0.073 mV for the droop tail at 3.3 V
+    parameter real    c1        = 31.7766e-6;
+    parameter real    c2        = -0.551225e-6;
+    parameter real    c3        = 0.537794e-9;
+    parameter real    line      = 0.44e-3;               // V/V (+0.21 mV/V from the droop tail: 0.65 mV/V at 3.3 V)
+    parameter real    lsb       = 7.20e-3  from (0:inf); // V per code at 27 C
+    parameter integer code_nom  = 8        from [0:15];  // code with zero trim offset
+    parameter real    dv_proc   = 0.0;                   // process VBE shift at 27 C (ws +30.1m, wp -30.1m)
+    parameter real    h_dr      = -0.784;                // low-VDD droop: vref <= VDD33 - h_dr (soft)
+    parameter real    w_dr      = 0.341    from (0:inf); // droop softness
+    // start-up
+    parameter real    k1        = 0.82     from [0:1];
+    parameter real    t_d1      = 0.35e-6  from [0:inf);
+    parameter real    t_r1      = 1.15e-6  from (0:inf);
+    parameter real    t_d2      = 4.3e-6   from [0:inf);
+    parameter real    tau2      = 0.6e-6   from (0:inf);
+    parameter real    t_off     = 20e-9    from (0:inf); // buffer / follower shut-down
+    // noise at vrt (TX_VREF: 1.04 uV/rtHz at 1 kHz, 0.36 uV/rtHz white)
+    parameter real    k_fn      = 1.08e-9  from [0:inf); // V^2 (S = k_fn / f)
+    parameter real    s_wn      = 1.3e-13  from [0:inf); // V^2/Hz
+    // buffers
+    parameter real    g_buf     = 137e-6   from (0:inf); // 1 / 7.3 kOhm
+    parameter real    i_buf     = 23e-6    from (0:inf); // effective slew current (tail 30 uA)
+    parameter real    c_out     = 2e-12    from [0:inf);
+    parameter real    r_off     = 1e3      from (0:inf);
+    // current reference
+    parameter real    v_rb_off  = 0.526e-3;               // V(RBIAS) - TX_VREF + loop error (100 uA / g_rb)
+    parameter real    g_rb      = 0.05     from (0:inf);  // follower loop transconductance
+    parameter real    i_rb_max  = 640e-6   from (0:inf);  // RBIAS shorted
+    parameter real    k_hd      = 149.4e-6 from (0:inf);  // input-branch current ceiling, A/V^2
+    parameter real    v_hd      = 0.552;
+    parameter real    p_hd      = 5.44     from [1:inf);
+    parameter real    ratio     = 20.0     from (0:inf);
+    parameter real    r_o5      = 894e6    from (0:inf);
+    parameter real    v_o5      = 0.6;                    // TX_I_5U voltage of the nominal value
+    parameter real    g_c       = 21.76e-6 from (0:inf);  // output compliance, A/V
+    parameter real    v_c       = -0.0068;
+    parameter real    p_c       = 4.07     from [1:inf);
+    // supply and control
+    parameter real    i_core    = 145.8e-6 from [0:inf);  // at 27 C
+    parameter real    x_core    = 0.82;                   // (T / T0)^x_core
+    parameter real    i_leak    = 0.6e-9   from [0:inf);
+    parameter real    v_th      = 0.8      from (0:inf);
+    parameter real    vdd_min   = 1.5      from (0:inf);
+
+    real    vdd, en_r, en_f, e1, e2, tk, dt, vnom, vref, vl, code, vrt;
+    real    vtx, vrx, vrb, v5, i_tx, i_rx, x, i_rb, l_hd, i5, l_c, bias, i_bf;
+    integer en;
+
+    analog function real softplus;
+        input u;
+        real  u;
+        softplus = (u > 30.0) ? u : ln(1.0 + exp(u));
+    endfunction
+
+    analog function real smin;          // smooth min of two positive currents
+        input a, b, p;
+        real  a, b, p;
+        smin = max(a, 1e-18) / pow(1.0 + pow(max(a, 1e-18) / max(b, 1e-18), p), 1.0 / p);
+    endfunction
+
+    analog begin
+        vdd = V(VDD33, GND);
+
+        // ---- control ----
+        en   = (V(BIAS_EN, GND) > v_th) && (vdd > vdd_min);
+        @(cross(V(BIAS_EN, GND) - v_th, 0)) ;
+        @(cross(vdd - vdd_min, 0)) ;
+        en_f = transition(en ? 1.0 : 0.0, 0, t_off);
+        code = en ? 8 * (V(TRIM3, GND) > v_th) + 4 * (V(TRIM2, GND) > v_th)
+                    + 2 * (V(TRIM1, GND) > v_th) + (V(TRIM0, GND) > v_th) : 0;
+
+        // ---- reference ----
+        tk   = $temperature;
+        dt   = tk - 300.15;
+        vnom = v0 + dt * (c1 + dt * (c2 + dt * c3));
+        vl   = vnom + line * (vdd - 3.3) + (dv_proc + lsb * (code - code_nom)) * tk / 300.15;
+        vref = vl - w_dr * softplus((vl - (vdd - h_dr)) / w_dr);
+
+        // ---- start-up ----
+        e1 = transition(en ? 1.0 : 0.0, t_d1, t_r1, t_off);
+        e2 = transition(en ? 1.0 : 0.0, t_d2, 10e-9, t_off);
+        I(n_s2, GND) <+ (V(n_s2, GND) - e2) / 1e6 + (tau2 / 1e6) * ddt(V(n_s2, GND));
+        bias = k1 * e1 + (1.0 - k1) * V(n_s2, GND);
+        V(n_rt, GND) <+ vref * bias;
+        V(n_rt, GND) <+ flicker_noise(k_fn, 1.0, "vref_1f") + white_noise(s_wn, "vref_w");
+        vrt = V(n_rt, GND);
+
+        // ---- buffers ----
+        vtx  = V(TX_VREF, GND);
+        vrx  = V(RX_VREF, GND);
+        i_bf = i_buf * max(bias, 0.05);       // the tails follow the bias start-up
+        i_tx = en_f * i_bf * tanh(g_buf * (vrt - vtx) / i_bf);
+        i_rx = en_f * i_bf * tanh(g_buf * (vrt - vrx) / i_bf);
+        I(GND, TX_VREF) <+ i_tx;
+        I(GND, RX_VREF) <+ i_rx;
+        I(TX_VREF, GND) <+ c_out * ddt(vtx) + (1.0 - en_f) * vtx / r_off;
+        I(RX_VREF, GND) <+ c_out * ddt(vrx) + (1.0 - en_f) * vrx / r_off;
+
+        // ---- current reference ----
+        vrb  = V(RBIAS, GND);
+        x    = g_rb * (vrt + v_rb_off - vrb) / i_rb_max;
+        i_rb = en_f * i_rb_max * 0.5 * (tanh(x) + sqrt(tanh(x) * tanh(x) + 1e-12));   // source only
+        l_hd = softplus((vdd - vrb - v_hd) * 50.0) / 50.0;
+        i_rb = smin(i_rb, k_hd * l_hd * l_hd, p_hd);
+        I(GND, RBIAS) <+ i_rb;
+        v5   = V(TX_I_5U, GND);
+        l_c  = g_c * softplus((vdd - v5 - v_c) * 50.0) / 50.0;
+        i5   = smin(max(i_rb / ratio - (v5 - v_o5) / r_o5, 0.0), l_c, p_c);
+        I(GND, TX_I_5U) <+ i5;
+
+        // ---- supply ----
+        I(VDD33, GND) <+ en_f * i_core * pow(tk / 300.15, x_core) + i_rb + i5
+                         + max(i_tx, 0.0) + max(i_rx, 0.0) + i_leak;
+    end
+endmodule

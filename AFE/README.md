@@ -25,6 +25,7 @@ The Verilog-A models are the analog-simulator counterpart of the event-driven Ve
 | `veriloga/afe_receiver.va` | `afe_hs_rx`, `afe_squelch`, `afe_receiver` | HS receiver (the differential Schmitt-trigger HS RX block), squelch and disconnect envelope detectors | [doc/receiver.md](doc/receiver.md) | `afe_hs_rx_bm.v`, `afe_squelch_bm.v` |
 | `veriloga/afe_ldo.va` | `afe_ldo` | 3.3 V → 1.8 V LDO with UVLO, soft start, power-good and power-on reset | [doc/ldo.md](doc/ldo.md) | none (no digital model yet) |
 | `veriloga/afe_xosc.va` | `afe_xosc` | 24 MHz Pierce crystal oscillator driver (external crystal on XI / XO), amplitude regulation, squarer → REF_CLK for `CDR_FREF`; ideal-clock mode | [Crystal Oscillator Driver/xosc_description.md](Crystal%20Oscillator%20Driver/xosc_description.md), datasheet section 16 | none |
+| `veriloga/afe_ref.va` | `afe_ref` | Reference / bias block: trimmable bandgap, TX_VREF / RX_VREF = 1.200 V (separate buffers), TX_I_5U = 5 µA from the external 12 kΩ RBIAS; `BIAS_EN`, start-up, temperature, process (`dv_proc`) and output noise | [REF/ref_description.md](REF/ref_description.md), datasheet section 16 | none |
 
 ## How the blocks connect
 
@@ -82,12 +83,15 @@ ahdl_include "AFE/veriloga/afe_cdr.va"
 ahdl_include "AFE/veriloga/afe_receiver.va"
 ahdl_include "AFE/veriloga/afe_transceiver.va"
 ahdl_include "AFE/veriloga/afe_xosc.va"
+ahdl_include "AFE/veriloga/afe_ref.va"
 
 V33   (vdd33 0)  vsource dc=3.3
 LDOD  (vdd33 vdd18  0 vdd33 pwr_good  por_n)    afe_ldo
 LDOA  (vdd33 vdd18a 0 ldo_en pg_a      porn_a)  afe_ldo
 COD   (vdd18  0) capacitor c=1u
 COA   (vdd18a 0) capacitor c=1u
+REF   (vdd33 0 bias_en trim0 trim1 trim2 trim3 rbias vref_tx vref_rx i5u) afe_ref
+RBIAS (rbias 0) resistor r=12k
 XO    (fref 0) vsource type=pulse val0=0 val1=1.8 period=41.6667n width=20.8333n rise=0.5n fall=0.5n
 PLL   (fref pll_en refsel1 refsel0 clk_bit clk60_a ref_dig vctl_pll vdd18a 0) afe_pll
 CDR   (rx_out_p cdr_en vctl_pll clk_rx hs_rxd_a vctl_cdr vdd18a 0)   afe_cdr
@@ -114,6 +118,7 @@ Each block has a self-checking testbench in `veriloga/tb/`, in the same style as
 | `tb_afe_cdr` | Packet generator (SYNC 12 / 32 bits, PRBS7, EOP, a random start phase per packet). Lock time per packet, in bits from the first transition until the sampling instant stays ≥ 0.15 UI from every data edge: ≤ 6 bits (spec 4.2, `HS_ZMIN` 4 / `LOCK_DLY` 2), with mean and worst case reported; 1027-byte packets at ±1000 ppm without loss of lock or a bit slip; `HS_RXD` equals the previous sample; `HS_RXD` setup ≥ 0.4 ns / hold ≥ 0.1 ns; free-running clock 480 MHz ± 0.25 %; `CDR_EN` = 0 → `CLK_RX` low, `HS_RXD` = 1 | 85 µs |
 | `tb_afe_transceiver` | FS attach (DP = 3.0 V), HS J / K = ±400 mV into 2 × 45 Ω, no current before `t_en`, 10–90 % edge 0.5 ns, `TX_IN` → line delay, P = N split, chirp 800 mV into one 45 Ω, `TX_EN` = 0; FS J / K / SE0 levels and receivers, FS rise 4–20 ns, `RXRCV_A` delay, LS rise 75–300 ns; device pull-ups / pull-downs; isolated receiver values (`FS_RX_EN_A` = 0, VDD33 low). The far end is an `afe_term` | 2.6 µs |
 | `tb_afe_receiver` | Hysteresis thresholds ±10 mV, `RX_OUT_P` delay; squelch release 4 ns after a 400 mV alternating pattern starts, assertion 12 ns after it stops; no release at 90 mV, release at 160 mV, a 2 ns burst ignored; disconnect at 650 mV (static) after 4 ns, not at 500 mV; isolated outputs (`RX_EN` = 0, `RX_VDD` low) | 2.7 µs |
+| `tb_afe_ref` | Off state (outputs 0, IDD ≤ 10 nA); `BIAS_EN` → TX_VREF 99.5 % in 5.5–7.5 µs; TX_VREF / RX_VREF 1.2009 V, V(RBIAS) 1.1994 V, TX_I_5U 4.998 µA ± 1 %, IDD 251 µA; trim 1100b / 0100b = ±28.8 mV; line −0.2 mV for −0.3 V; 10 µA out of TX_VREF → −73 mV with RX_VREF unchanged; `BIAS_EN` = 0 | 39 µs |
 | `tb_afe_ldo` | Start-up from a 100 µs VIN ramp: off below the 2.7 V UVLO, soft start, `PWR_GOOD` 10 µs after 1.62 V, `POR_N` 100 µs later; load regulation at 10 / 40 mA; current limit into 10 Ω with `PWR_GOOD` / `POR_N` falling, then recovery; line regulation −3 mV for −0.3 V; UVLO off at 2.4 V and restart; `LDO_EN` = 0 discharges VOUT | 1.95 ms |
 
 To vary a model parameter, override it on the `DUT` line of the netlist (for example `DUT (...) afe_cdr jit_rms=10p t_amb=30p`). Where a check depends on that parameter, override the matching parameter of `CHK` as well (`t_en`, `v_hys`, `t_on`, …).
@@ -131,6 +136,7 @@ To vary a model parameter, override it on the `DUT` line of the netlist (for exa
 | Transistor-level receiver `spice/afe_receiver_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-13, [doc/receiver_schematic.md](doc/receiver_schematic.md) section 4); `veriloga/tb/tb_afe_receiver_tr.scs` runs it under the `tb_afe_receiver` checker in Spectre, **not run** |
 | Transistor-level transceiver `spice/afe_transceiver_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-13, [doc/transceiver_schematic.md](doc/transceiver_schematic.md) section 4); `veriloga/tb/tb_afe_transceiver_tr.scs` runs it under the `tb_afe_transceiver` checker in Spectre, **not run** |
 | Transistor-level CDR `spice/afe_cdr_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-12, [doc/cdr_schematic.md](doc/cdr_schematic.md) section 4); `veriloga/tb/tb_afe_cdr_tr.scs` runs it under the `tb_afe_cdr` checker in Spectre, **not run** |
+| `afe_ref.va` against the transistor-level `REF/afe_ref_tr.sp` (xh018) | equations run in ngspice as `REF/sim/afe_ref_beh.sp` through the transistor testbench (op, trim, temp, line, zout, comply, rbias, start, tran pass), match at tm / 27 °C and with `dv_proc` at ws (2026-11-23, datasheet section 16); `veriloga/tb/tb_afe_ref.scs` **not run** |
 | `afe_xosc.va` against the transistor-level `Crystal Oscillator Driver/afe_xosc_tr.sp` (xh018) | equations run in ngspice as `sim/afe_xosc_beh.sp` through the transistor testbench, match at tm / 27 °C (2026-11-22, datasheet section 16); `veriloga/tb/tb_afe_xosc.scs` **not run** |
 
 ## Open points that change these models

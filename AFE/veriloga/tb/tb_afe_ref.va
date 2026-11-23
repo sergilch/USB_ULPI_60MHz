@@ -1,0 +1,138 @@
+//-----------------------------------------------------------------------------
+// tb_afe_ref.va - stimulus and checker for afe_ref (netlist: tb_afe_ref.scs)
+//
+// The checker drives VDD33 (and measures its current), BIAS_EN, TRIM[3:0],
+// holds TX_I_5U at 0.6 V (and measures the current) and can pull 10 uA out
+// of TX_VREF.  RBIAS 12 kOhm and 10 pF at each output are in the netlist.
+// Expected values: afe_ref.va defaults (tm, 27 C), as reproduced by the
+// ngspice copy AFE/REF/sim/afe_ref_beh.sp.
+//
+// Sequence
+//   0  VDD33 3.3 V, BIAS_EN = 0      off: outputs 0, supply current ~ i_leak
+//   1  BIAS_EN = 1 at 2 us           TX_VREF reaches 0.995 * final after
+//                                    ~6.6 us (window 5.5 .. 7.5 us)
+//   2  12 us                         TX_VREF, RX_VREF 1.2009 V, V(RBIAS)
+//                                    1.1994 V, TX_I_5U 4.998 uA, IDD 251 uA
+//   3  TRIM 1100b / 0100b            +-4 LSB = +-28.8 mV
+//   4  VDD33 3.3 -> 3.0 V            line: -0.3 V * 0.65 mV/V = -0.2 mV
+//   5  10 uA out of TX_VREF         -73 mV (7.3 kOhm); RX_VREF unchanged
+//   6  BIAS_EN = 0                   all off within 1 us
+//-----------------------------------------------------------------------------
+`include "constants.vams"
+`include "disciplines.vams"
+`include "tb_afe_common.vams"
+
+module tb_afe_ref_chk (VDD, EN, T0, T1, T2, T3, TX, RX, RB, I5, GND);
+    output     EN, T0, T1, T2, T3;
+    input      RX, RB;
+    inout      VDD, TX, I5, GND;
+    electrical VDD, EN, T0, T1, T2, T3, TX, RX, RB, I5, GND;
+
+    parameter real v_nom  = 1.2009;     // TX_VREF, RX_VREF at code 1000b
+    parameter real v_rb   = 1.1994;     // V(RBIAS)
+    parameter real i5_nom = 4.998e-6;
+    parameter real lsb    = 7.2e-3;
+
+    real    t_step, dt, vdd, en, i_ld, t_en, t_x, v0, vr0, idd, i5;
+    integer errors, reported, step, code;
+
+    analog begin
+        @(initial_step) begin
+            errors = 0; reported = 0; step = 0; t_step = 1.5e-6;
+            vdd = 3.3; en = 0.0; code = 8; i_ld = 0.0; t_en = -1.0; t_x = -1.0; v0 = 0.0; vr0 = 0.0;
+        end
+
+        // ---- stimulus ----
+        V(VDD, GND) <+ transition(vdd, 0, 1e-6);
+        V(EN, GND)  <+ transition(en, 0, 1e-9);
+        V(T0, GND)  <+ transition(1.8 * (code % 2), 0, 1e-9);
+        V(T1, GND)  <+ transition(1.8 * ((code / 2) % 2), 0, 1e-9);
+        V(T2, GND)  <+ transition(1.8 * ((code / 4) % 2), 0, 1e-9);
+        V(T3, GND)  <+ transition(1.8 * ((code / 8) % 2), 0, 1e-9);
+        V(I5, GND)  <+ 0.6;
+        I(TX, GND)  <+ transition(i_ld, 0, 50e-9);
+        idd = -I(VDD, GND);
+        i5  = I(I5, GND);
+
+        @(cross(V(TX, GND) - 0.995 * v_nom, +1)) if (t_x < 0.0 && t_en > 0.0) t_x = $abstime;
+
+        // ---- sequence ----
+        @(timer(t_step)) begin
+            case (step)
+                0: begin
+                    `TB_RNG("off: TX_VREF [V]", V(TX, GND), -1e-3, 1e-3)
+                    `TB_RNG("off: RX_VREF [V]", V(RX, GND), -1e-3, 1e-3)
+                    `TB_RNG("off: TX_I_5U [A]", i5, -1e-9, 1e-9)
+                    `TB_RNG("off: IDD33 [A]", idd, -1e-9, 10e-9)
+                    en = 1.8; t_en = $abstime;
+                    dt = 0.5e-6;
+                end
+                1: begin
+                    dt = 10e-6;                                     // -> 12 us
+                end
+                2: begin
+                    `TB_RNG("BIAS_EN -> TX_VREF 99.5 % [s]", t_x - t_en, 5.5e-6, 7.5e-6)
+                    `TB_RNG("TX_VREF [V]", V(TX, GND), v_nom - 2e-3, v_nom + 2e-3)
+                    `TB_RNG("RX_VREF [V]", V(RX, GND), v_nom - 2e-3, v_nom + 2e-3)
+                    `TB_RNG("RX_VREF - TX_VREF [V]", V(RX, GND) - V(TX, GND), -0.1e-3, 0.1e-3)
+                    `TB_RNG("V(RBIAS) [V]", V(RB, GND), v_rb - 2e-3, v_rb + 2e-3)
+                    `TB_RNG("TX_I_5U [A]", i5, i5_nom * 0.99, i5_nom * 1.01)
+                    `TB_RNG("IDD33 [A]", idd, 240e-6, 262e-6)
+                    v0 = V(TX, GND);
+                    code = 12;
+                    dt = 3e-6;
+                end
+                3: begin
+                    `TB_RNG("TRIM 1100b: delta TX_VREF [V]", V(TX, GND) - v0, 4 * lsb - 1e-3, 4 * lsb + 1e-3)
+                    code = 4;
+                    dt = 3e-6;
+                end
+                4: begin
+                    `TB_RNG("TRIM 0100b: delta TX_VREF [V]", V(TX, GND) - v0, -4 * lsb - 1e-3, -4 * lsb + 1e-3)
+                    code = 8;
+                    dt = 3e-6;
+                end
+                5: begin
+                    `TB_RNG("TRIM 1000b again: TX_VREF [V]", V(TX, GND) - v0, -0.1e-3, 0.1e-3)
+                    vdd = 3.0;
+                    dt = 5e-6;
+                end
+                6: begin
+                    `TB_RNG("VDD33 3.3 -> 3.0 V: delta TX_VREF [V]", V(TX, GND) - v0, -0.35e-3, -0.05e-3)
+                    vdd = 3.3;
+                    dt = 5e-6;
+                end
+                7: begin
+                    v0 = V(TX, GND); vr0 = V(RX, GND);
+                    i_ld = 10e-6;                                   // 10 uA out of TX_VREF
+                    dt = 3e-6;
+                end
+                8: begin
+                    `TB_RNG("10 uA load: delta TX_VREF [V]", V(TX, GND) - v0, -80e-3, -66e-3)
+                    `TB_RNG("10 uA load: delta RX_VREF [V]", V(RX, GND) - vr0, -0.1e-3, 0.1e-3)
+                    i_ld = 0.0;
+                    dt = 3e-6;
+                end
+                9: begin
+                    `TB_RNG("load removed: TX_VREF [V]", V(TX, GND) - v0, -0.5e-3, 0.5e-3)
+                    en = 0.0;
+                    dt = 1e-6;
+                end
+                10: begin
+                    `TB_RNG("BIAS_EN = 0: TX_VREF [V]", V(TX, GND), -1e-3, 10e-3)
+                    `TB_RNG("BIAS_EN = 0: RX_VREF [V]", V(RX, GND), -1e-3, 10e-3)
+                    `TB_RNG("BIAS_EN = 0: TX_I_5U [A]", i5, -1e-9, 1e-9)
+                    `TB_RNG("BIAS_EN = 0: IDD33 [A]", idd, -1e-9, 10e-9)
+                    `TB_FINISH
+                    $finish;
+                end
+            endcase
+            step = step + 1;
+            t_step = $abstime + dt;
+        end
+
+        @(final_step) begin
+            `TB_TIMEOUT
+        end
+    end
+endmodule

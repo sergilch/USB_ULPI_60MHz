@@ -285,6 +285,37 @@ def fig_tran():
     save(p, "tran")
 
 
+def fig_beh():
+    """afe_ref.va (ngspice copy afe_ref_beh.sp) against the transistor netlist, tm 27 C."""
+    BH = "tm_27_3.3_beh"
+    st, sb = res(TM, "start"), res(BH, "start")
+    lt, lb = res(TM, "line"), res(BH, "line")
+    tt, tb = res(TM, "temp"), res(BH, "temp")
+    ct, cb = res(TM, "comply"), res(BH, "comply")
+    if not all((st, sb, lt, lb, tt, tb, ct, cb)):
+        return
+    p = Plot(900, 700)
+    a1 = p.panel(80, 40, 360, 250, (0, 16), (-0.05, 1.3), xlabel="Time  [µs]", ylabel="TX_VREF  [V]",
+                 title="Enable at 2 µs, 10 / 100 pF", legend="br")
+    for k, col in (("en10", B), ("en100", R)):
+        a1.line(np.array(st[k]["t"]) * 1e6, st[k]["tx"], col, 2.4, label=f"circuit {k[2:]} pF")
+        a1.line(np.array(sb[k]["t"]) * 1e6, sb[k]["tx"], K, 1.4, dash="5,3", label=f"model {k[2:]} pF")
+    a2 = p.panel(520, 40, 360, 250, (1.8, 3.7), (2.5, 5.3), xlabel="VDD33  [V]", ylabel="TX_I_5U  [µA]",
+                 title="TX_I_5U vs VDD33 (TX_VREF inset text)", legend="br")
+    a2.line(lt["vdd"], np.abs(np.array(lt["i5"])) * 1e6, B, 2.4, label="circuit")
+    a2.line(lb["vdd"], np.abs(np.array(lb["i5"])) * 1e6, K, 1.4, dash="5,3", label="model")
+    a2.text(1.9, 5.15, f"TX_VREF 0.5 % at {lt['vmin']:.2f} / {lb['vmin']:.2f} V", size=10.5)
+    a3 = p.panel(80, 380, 360, 250, (-40, 125), (1.194, 1.203), xlabel="Temperature  [°C]", ylabel="TX_VREF  [V]",
+                 title="Temperature (code 1000b, 3.3 V)", legend="bl")
+    a3.line(tt["temps"], tt["data"]["8_3.3"]["tx"], B, 2.4, label="circuit")
+    a3.line(tb["temps"], tb["data"]["8_3.3"]["tx"], K, 1.4, dash="5,3", label="model")
+    a4 = p.panel(520, 380, 360, 250, (0, 3.3), (0, 5.5), xlabel="V(TX_I_5U)  [V]", ylabel="TX_I_5U  [µA]",
+                 title="Output characteristic", legend="bl")
+    a4.line(ct["v"][::5], np.array(ct["i"][::5]) * 1e6, B, 2.4, label="circuit")
+    a4.line(cb["v"][::5], np.array(cb["i"][::5]) * 1e6, K, 1.4, dash="5,3", label="model")
+    save(p, "beh")
+
+
 # ------------------------------------------------------------------ tables
 def tables():
     L = []
@@ -335,7 +366,7 @@ def main():
     os.makedirs(FIG, exist_ok=True)
     fig_sheets()
     for f in (fig_trim, fig_temp, fig_temp_i, fig_line, fig_psrr, fig_noise, fig_stab, fig_zout, fig_comply,
-              fig_rbias, fig_start, fig_tran):
+              fig_rbias, fig_start, fig_tran, fig_beh):
         f()
     tables()
 

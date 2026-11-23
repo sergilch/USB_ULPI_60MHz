@@ -1,0 +1,21 @@
+// tb_afe_ref.scs - testbench of afe_ref (AFE/veriloga/afe_ref.va)
+// Run from this directory:  spectre tb_afe_ref.scs   (or ./run_va_tests.sh ref)
+// Checker and sequence: tb_afe_ref.va.  RBIAS 12 kOhm and 10 pF at TX_VREF,
+// RX_VREF, RBIAS; the checker drives VDD33, BIAS_EN, TRIM, holds TX_I_5U at
+// 0.6 V and loads TX_VREF.  The stop time is the watchdog (sequence needs
+// about 39 us).
+simulator lang=spectre
+global 0
+
+ahdl_include "../afe_ref.va"
+ahdl_include "tb_afe_ref.va"
+
+DUT  (vdd 0 en t0 t1 t2 t3 rb tx rx i5) afe_ref
+RB   (rb 0)  resistor  r=12k
+CRB  (rb 0)  capacitor c=10p
+CTX  (tx 0)  capacitor c=10p
+CRX  (rx 0)  capacitor c=10p
+CHK  (vdd en t0 t1 t2 t3 tx rx rb i5 0) tb_afe_ref_chk
+
+opts options save=allpub
+tr   tran stop=60u errpreset=conservative maxstep=50n

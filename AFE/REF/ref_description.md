@@ -4,7 +4,7 @@ Transistor-level reference / bias block of the analog section of the USB 2.0 ULP
 references of the HS transmitter and receiver (`TX_VREF`, `RX_VREF`) and the 5 µA reference current `TX_I_5U`
 from a trimmable bandgap and one external precision resistor.  Netlist: [`afe_ref_tr.sp`](afe_ref_tr.sp);
 datasheet: [`datasheet/ref_datasheet.md`](datasheet/ref_datasheet.md) (Word: `datasheet/ref_datasheet.docx`);
-testbench: [`sim/tb_ref_tr.py`](sim/tb_ref_tr.py).  All values below are ngspice simulations with the X-FAB xh018
+testbench: [`sim/tb_ref_tr.py`](sim/tb_ref_tr.py); behavioural model (same pins): [`AFE/veriloga/afe_ref.va`](../veriloga/afe_ref.va).  All values below are ngspice simulations with the X-FAB xh018
 models (corner tm, 27 °C, VDD33 = 3.3 V, RBIAS = 12.0 kΩ, 10 pF at each output, trim code 1000b) unless stated
 otherwise.
 
@@ -153,6 +153,8 @@ The full characterisation over the five process corners, −40…125 °C and 2.9
 | `doc/draw_ref.py`, `doc/ref_*.svg` | schematic sheets |
 | `doc/md2html.py` | this page → `ref_description.html` |
 | `datasheet/gen_figures.py` | datasheet figures and tables |
+| `sim/afe_ref_beh.sp` | ngspice copy of the Verilog-A model `AFE/veriloga/afe_ref.va` (runs through `tb_ref_tr.py --netlist`; datasheet section 16) |
+| `AFE/veriloga/tb/tb_afe_ref.scs`, `tb_afe_ref.va` | Spectre testbench of the Verilog-A model |
 
 The xh018 models are converted at run time from the PDK (`AFE/LDO analog part/sim/xfab2ngspice_ldo.py` →
 `build/ldo/models/`); no PDK data is stored in this directory.
