@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="420" fill="white"/>
+<line x1="70.0" y1="30" x2="70.0" y2="350" stroke="#d8d8d8"/>
+<text x="70.0" y="367" font-size="12" text-anchor="middle">0</text>
+<line x1="150.0" y1="30" x2="150.0" y2="350" stroke="#d8d8d8"/>
+<text x="150.0" y="367" font-size="12" text-anchor="middle">1</text>
+<line x1="230.0" y1="30" x2="230.0" y2="350" stroke="#d8d8d8"/>
+<text x="230.0" y="367" font-size="12" text-anchor="middle">2</text>
+<line x1="310.0" y1="30" x2="310.0" y2="350" stroke="#d8d8d8"/>
+<text x="310.0" y="367" font-size="12" text-anchor="middle">3</text>
+<line x1="390.0" y1="30" x2="390.0" y2="350" stroke="#d8d8d8"/>
+<text x="390.0" y="367" font-size="12" text-anchor="middle">4</text>
+<line x1="70" y1="290.0" x2="450" y2="290.0" stroke="#d8d8d8"/>
+<text x="64" y="294.0" font-size="12" text-anchor="end">400</text>
+<line x1="70" y1="190.0" x2="450" y2="190.0" stroke="#d8d8d8"/>
+<text x="64" y="194.0" font-size="12" text-anchor="end">450</text>
+<line x1="70" y1="90.0" x2="450" y2="90.0" stroke="#d8d8d8"/>
+<text x="64" y="94.0" font-size="12" text-anchor="end">500</text>
+<rect x="70" y="30" width="380" height="320" fill="none" stroke="#333333"/>
+<text x="260.0" y="386" font-size="13" text-anchor="middle">VTUNE  [V]</text>
+<text transform="translate(18,190.0) rotate(-90)" font-size="13" text-anchor="middle">f_VCO  [MHz]</text>
+<text x="70" y="22" font-size="13" font-weight="bold">VCO tuning curve</text>
+<clipPath id="c128599048684368"><rect x="70" y="30" width="380" height="320"/></clipPath>
+<rect x="70" y="90.0" width="380" height="200.0" fill="#2e8b57" fill-opacity="0.08"/>
+<line x1="70" y1="130.0" x2="450" y2="130.0" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="4,3"/>
+<text x="446" y="126.0" font-size="11" fill="#c0392b" text-anchor="end">480 MHz</text>
+<line x1="70" y1="50.0" x2="450" y2="50.0" stroke="#555555" stroke-width="1.3" stroke-dasharray="2,3"/>
+<text x="446" y="46.0" font-size="11" fill="#555555" text-anchor="end">26 MHz x 20</text>
+<polyline clip-path="url(#c128599048684368)" points="70.00,317.83 90.00,296.42 110.00,276.79 150.00,241.72 190.00,210.99 230.00,183.70 270.00,159.25 310.00,137.15 350.00,117.01 390.00,98.60 430.00,81.60 450.00,73.56" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599048684368)" points="70.00,302.98 90.00,281.66 110.00,262.03 150.00,226.87 190.00,196.17 230.00,168.90 270.00,144.48 310.00,122.46 350.00,102.49 390.00,84.24 430.00,67.34 450.00,59.35" fill="none" stroke="#6c3483" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599048684368)" points="70.00,327.43 90.00,305.09 110.00,284.70 150.00,248.36 190.00,216.69 230.00,188.67 270.00,163.56 310.00,140.92 350.00,120.30 390.00,101.49 430.00,84.13 450.00,75.94" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599048684368)" points="70.00,295.48 90.00,273.92 110.00,254.05 150.00,218.59 190.00,187.57 230.00,160.03 270.00,135.40 310.00,113.24 350.00,93.10 390.00,74.56 430.00,57.44 450.00,49.33" fill="none" stroke="#555555" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599048684368)" points="70.00,334.45 90.00,312.35 110.00,292.18 150.00,256.20 190.00,224.84 230.00,197.07 270.00,172.20 310.00,149.78 350.00,129.34 390.00,110.67 430.00,93.53 450.00,85.43" fill="none" stroke="#2e8b57" stroke-width="1.8" stroke-linejoin="round"/>
+<line x1="545.0" y1="30" x2="545.0" y2="350" stroke="#d8d8d8"/>
+<text x="545.0" y="367" font-size="12" text-anchor="middle">0</text>
+<line x1="613.4" y1="30" x2="613.4" y2="350" stroke="#d8d8d8"/>
+<text x="613.4" y="367" font-size="12" text-anchor="middle">1</text>
+<line x1="681.8" y1="30" x2="681.8" y2="350" stroke="#d8d8d8"/>
+<text x="681.8" y="367" font-size="12" text-anchor="middle">2</text>
+<line x1="750.3" y1="30" x2="750.3" y2="350" stroke="#d8d8d8"/>
+<text x="750.3" y="367" font-size="12" text-anchor="middle">3</text>
+<line x1="818.7" y1="30" x2="818.7" y2="350" stroke="#d8d8d8"/>
+<text x="818.7" y="367" font-size="12" text-anchor="middle">4</text>
+<line x1="545" y1="350.0" x2="870" y2="350.0" stroke="#d8d8d8"/>
+<text x="539" y="354.0" font-size="12" text-anchor="end">0</text>
+<line x1="545" y1="278.9" x2="870" y2="278.9" stroke="#d8d8d8"/>
+<text x="539" y="282.9" font-size="12" text-anchor="end">0.2</text>
+<line x1="545" y1="207.8" x2="870" y2="207.8" stroke="#d8d8d8"/>
+<text x="539" y="211.8" font-size="12" text-anchor="end">0.4</text>
+<line x1="545" y1="136.7" x2="870" y2="136.7" stroke="#d8d8d8"/>
+<text x="539" y="140.7" font-size="12" text-anchor="end">0.6</text>
+<line x1="545" y1="65.6" x2="870" y2="65.6" stroke="#d8d8d8"/>
+<text x="539" y="69.6" font-size="12" text-anchor="end">0.8</text>
+<rect x="545" y="30" width="325" height="320" fill="none" stroke="#333333"/>
+<text x="707.5" y="386" font-size="13" text-anchor="middle">VTUNE  [V]</text>
+<text transform="translate(493,190.0) rotate(-90)" font-size="13" text-anchor="middle">[V p-p]</text>
+<text x="545" y="22" font-size="13" font-weight="bold">Amplitude at CDCM1804 IN</text>
+<clipPath id="c128599014560960"><rect x="545" y="30" width="325" height="320"/></clipPath>
+<polyline clip-path="url(#c128599014560960)" points="545.00,132.53 562.11,132.77 579.21,133.08 613.42,135.24 647.63,138.41 681.84,139.64 716.05,141.35 750.26,143.49 784.47,145.97 818.68,149.13 852.89,152.08 870.00,153.27" fill="none" stroke="#d4860b" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599014560960)" points="545.00,112.85 562.11,113.54 579.21,114.18 613.42,116.87 647.63,120.50 681.84,122.06 716.05,123.69 750.26,126.26 784.47,128.78 818.68,132.03 852.89,135.73 870.00,137.15" fill="none" stroke="#1f4e9c" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline clip-path="url(#c128599014560960)" points="545.00,96.63 562.11,97.80 579.21,98.76 613.42,101.87 647.63,105.75 681.84,107.69 716.05,109.38 750.26,112.08 784.47,114.85 818.68,118.12 852.89,122.16 870.00,123.81" fill="none" stroke="#6c3483" stroke-width="1.8" stroke-linejoin="round"/>
+<line x1="545" y1="172.2" x2="870" y2="172.2" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="4,3"/>
+<text x="866" y="168.2" font-size="11" fill="#c0392b" text-anchor="end">CDCM1804: 500 mV for AC specs</text>
+<line x1="545" y1="296.7" x2="870" y2="296.7" stroke="#555555" stroke-width="1.3" stroke-dasharray="2,3"/>
+<text x="866" y="292.7" font-size="11" fill="#555555" text-anchor="end">150 mV functional</text>
+<rect x="316.8" y="244" width="125.2" height="98" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="324.8" y1="256" x2="346.8" y2="256" stroke="#1f4e9c" stroke-width="2"/>
+<text x="352.8" y="260" font-size="11.5">27 C</text>
+<line x1="324.8" y1="274" x2="346.8" y2="274" stroke="#6c3483" stroke-width="2"/>
+<text x="352.8" y="278" font-size="11.5">-40 C</text>
+<line x1="324.8" y1="292" x2="346.8" y2="292" stroke="#d4860b" stroke-width="2"/>
+<text x="352.8" y="296" font-size="11.5">85 C</text>
+<line x1="324.8" y1="310" x2="346.8" y2="310" stroke="#555555" stroke-width="2"/>
+<text x="352.8" y="314" font-size="11.5">L -2 %, -40 C</text>
+<line x1="324.8" y1="328" x2="346.8" y2="328" stroke="#2e8b57" stroke-width="2"/>
+<text x="352.8" y="332" font-size="11.5">L +2 %, 85 C</text>
+<rect x="756.0" y="280" width="106.0" height="62" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="764.0" y1="292" x2="786.0" y2="292" stroke="#d4860b" stroke-width="2"/>
+<text x="792.0" y="296" font-size="11.5">VDD 4.60 V</text>
+<line x1="764.0" y1="310" x2="786.0" y2="310" stroke="#1f4e9c" stroke-width="2"/>
+<text x="792.0" y="314" font-size="11.5">4.82 V</text>
+<line x1="764.0" y1="328" x2="786.0" y2="328" stroke="#6c3483" stroke-width="2"/>
+<text x="792.0" y="332" font-size="11.5">5.00 V</text>
+</svg>
