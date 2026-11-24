@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="380" fill="white"/>
+<line x1="70" y1="310.0" x2="450" y2="310.0" stroke="#d8d8d8"/>
+<text x="64" y="314.0" font-size="12" text-anchor="end">60</text>
+<line x1="70" y1="263.3" x2="450" y2="263.3" stroke="#d8d8d8"/>
+<text x="64" y="267.3" font-size="12" text-anchor="end">80</text>
+<line x1="70" y1="216.7" x2="450" y2="216.7" stroke="#d8d8d8"/>
+<text x="64" y="220.7" font-size="12" text-anchor="end">100</text>
+<line x1="70" y1="170.0" x2="450" y2="170.0" stroke="#d8d8d8"/>
+<text x="64" y="174.0" font-size="12" text-anchor="end">120</text>
+<line x1="70" y1="123.3" x2="450" y2="123.3" stroke="#d8d8d8"/>
+<text x="64" y="127.3" font-size="12" text-anchor="end">140</text>
+<line x1="70" y1="76.7" x2="450" y2="76.7" stroke="#d8d8d8"/>
+<text x="64" y="80.7" font-size="12" text-anchor="end">160</text>
+<line x1="70" y1="30.0" x2="450" y2="30.0" stroke="#d8d8d8"/>
+<text x="64" y="34.0" font-size="12" text-anchor="end">180</text>
+<rect x="70" y="30" width="380" height="280" fill="none" stroke="#333333"/>
+<text transform="translate(18,170.0) rotate(-90)" font-size="13" text-anchor="middle">[mV] at the tap</text>
+<text x="70" y="22" font-size="13" font-weight="bold">Squelch trip |vd|</text>
+<clipPath id="c139596726613152"><rect x="70" y="30" width="380" height="280"/></clipPath>
+<rect x="70" y="100.0" width="380" height="116.7" fill="#2e8b57" fill-opacity="0.1"/>
+<line x1="70" y1="216.7" x2="450" y2="216.7" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="70" y1="100.0" x2="450" y2="100.0" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="4,3"/>
+<polyline clip-path="url(#c139596726613152)" points="87.27,169.28 87.27,159.05" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="87.3" cy="164.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="87.3" y="301.6" font-size="8" fill="#555555" text-anchor="middle">nom</text>
+<polyline clip-path="url(#c139596726613152)" points="121.82,165.34 121.82,155.01" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="121.8" cy="160.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="121.8" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.135/-40</text>
+<polyline clip-path="url(#c139596726613152)" points="156.36,167.91 156.36,157.65" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="156.4" cy="162.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="156.4" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.135/27</text>
+<polyline clip-path="url(#c139596726613152)" points="190.91,170.48 190.91,160.29" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="190.9" cy="165.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="190.9" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.135/85</text>
+<polyline clip-path="url(#c139596726613152)" points="225.45,166.67 225.45,156.33" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="225.5" cy="161.5" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="225.5" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.3/-40</text>
+<polyline clip-path="url(#c139596726613152)" points="260.00,171.93 260.00,161.74" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="260.0" cy="166.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="260.0" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.3/85</text>
+<polyline clip-path="url(#c139596726613152)" points="294.55,168.09 294.55,157.80" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="294.5" cy="162.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="294.5" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.465/-40</text>
+<polyline clip-path="url(#c139596726613152)" points="329.09,170.77 329.09,160.56" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="329.1" cy="165.7" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="329.1" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.465/27</text>
+<polyline clip-path="url(#c139596726613152)" points="363.64,173.47 363.64,163.33" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="363.6" cy="168.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="363.6" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.465/85</text>
+<polyline clip-path="url(#c139596726613152)" points="398.18,159.05 398.18,148.80" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="398.2" cy="153.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="398.2" y="287.6" font-size="8" fill="#555555" text-anchor="middle">vos+5</text>
+<polyline clip-path="url(#c139596726613152)" points="432.73,179.52 432.73,169.28" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="432.7" cy="174.4" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="432.7" y="301.6" font-size="8" fill="#555555" text-anchor="middle">vos-5</text>
+<text x="76.9" y="52.4" font-size="9" fill="#555555" text-anchor="start">USB 2.0: 100 .. 150 mV (VDD/T corners, comparator offset +-5 mV)</text>
+<line x1="500" y1="310.0" x2="880" y2="310.0" stroke="#d8d8d8"/>
+<text x="494" y="314.0" font-size="12" text-anchor="end">450</text>
+<line x1="500" y1="254.0" x2="880" y2="254.0" stroke="#d8d8d8"/>
+<text x="494" y="258.0" font-size="12" text-anchor="end">500</text>
+<line x1="500" y1="198.0" x2="880" y2="198.0" stroke="#d8d8d8"/>
+<text x="494" y="202.0" font-size="12" text-anchor="end">550</text>
+<line x1="500" y1="142.0" x2="880" y2="142.0" stroke="#d8d8d8"/>
+<text x="494" y="146.0" font-size="12" text-anchor="end">600</text>
+<line x1="500" y1="86.0" x2="880" y2="86.0" stroke="#d8d8d8"/>
+<text x="494" y="90.0" font-size="12" text-anchor="end">650</text>
+<line x1="500" y1="30.0" x2="880" y2="30.0" stroke="#d8d8d8"/>
+<text x="494" y="34.0" font-size="12" text-anchor="end">700</text>
+<rect x="500" y="30" width="380" height="280" fill="none" stroke="#333333"/>
+<text x="500" y="22" font-size="13" font-weight="bold">Disconnect trip |vd|</text>
+<clipPath id="c139596726612864"><rect x="500" y="30" width="380" height="280"/></clipPath>
+<rect x="500" y="114.0" width="380" height="112.0" fill="#2e8b57" fill-opacity="0.1"/>
+<line x1="500" y1="226.0" x2="880" y2="226.0" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="500" y1="114.0" x2="880" y2="114.0" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="4,3"/>
+<polyline clip-path="url(#c139596726612864)" points="517.27,184.31 517.27,174.16" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="517.3" cy="179.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="517.3" y="301.6" font-size="8" fill="#555555" text-anchor="middle">nom</text>
+<polyline clip-path="url(#c139596726612864)" points="551.82,180.23 551.82,170.04" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="551.8" cy="175.1" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="551.8" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.135/-40</text>
+<polyline clip-path="url(#c139596726612864)" points="586.36,183.24 586.36,173.15" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="586.4" cy="178.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="586.4" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.135/27</text>
+<polyline clip-path="url(#c139596726612864)" points="620.91,185.76 620.91,175.62" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="620.9" cy="180.7" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="620.9" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.135/85</text>
+<polyline clip-path="url(#c139596726612864)" points="655.45,181.17 655.45,171.03" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="655.5" cy="176.1" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="655.5" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.3/-40</text>
+<polyline clip-path="url(#c139596726612864)" points="690.00,186.82 690.00,176.71" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="690.0" cy="181.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="690.0" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.3/85</text>
+<polyline clip-path="url(#c139596726612864)" points="724.55,182.30 724.55,172.12" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="724.5" cy="177.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="724.5" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.465/-40</text>
+<polyline clip-path="url(#c139596726612864)" points="759.09,185.40 759.09,175.29" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="759.1" cy="180.3" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="759.1" y="287.6" font-size="8" fill="#555555" text-anchor="middle">3.465/27</text>
+<polyline clip-path="url(#c139596726612864)" points="793.64,187.92 793.64,177.83" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="793.6" cy="182.9" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="793.6" y="301.6" font-size="8" fill="#555555" text-anchor="middle">3.465/85</text>
+<polyline clip-path="url(#c139596726612864)" points="828.18,174.15 828.18,164.18" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="828.2" cy="169.2" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="828.2" y="287.6" font-size="8" fill="#555555" text-anchor="middle">vos+5</text>
+<polyline clip-path="url(#c139596726612864)" points="862.73,194.76 862.73,184.31" fill="none" stroke="#1f4e9c" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="862.7" cy="189.5" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<text x="862.7" y="301.6" font-size="8" fill="#555555" text-anchor="middle">vos-5</text>
+<text x="506.9" y="52.4" font-size="9" fill="#555555" text-anchor="start">USB 2.0: 525 .. 625 mV (VDD/T corners, comparator offset +-5 mV)</text>
+</svg>

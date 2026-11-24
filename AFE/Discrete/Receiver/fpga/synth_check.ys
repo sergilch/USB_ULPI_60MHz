@@ -1,0 +1,6 @@
+# synth_check.ys - Yosys smoke synthesis of the FPGA design for xc7 (no Vivado needed)
+#   yosys -q -s synth_check.ys    (from AFE/Discrete/Receiver/fpga)
+read_verilog rtl/rx_sampler_7s.v rtl/rx_capture.v rtl/rx_ctrl.v rtl/rx_fpga_top.v
+synth_xilinx -family xc7 -top rx_fpga_top -flatten
+check -assert
+stat

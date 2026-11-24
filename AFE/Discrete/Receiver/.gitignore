@@ -1,0 +1,11 @@
+# regenerable simulation / build outputs
+sim/results/*/wave.txt
+sim/results/*/*.txt.tmp
+sim/results_run*.log
+sim/__pycache__/
+host/__pycache__/
+fpga/build/
+fpga/build_synth.log
+fpga/sim/sim_rxfpga
+fpga/sim/sim_rxfpga.log
+fpga/sim/capture.txt

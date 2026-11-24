@@ -1,0 +1,80 @@
+* rx_models.lib - device models for the discrete USB 2.0 receiver board (ngspice)
+*
+* BFT92    NXP / Philips Semiconductors BFT92.PRM, version 2.0, July 1992
+*          (https://www.nxp.com/downloads/en/spice-model/BFT92.prm), die model;
+*          the testbench adds the SOT-23 leads.  Same model as the transmitter board.
+* BAS70    Schottky diode (one half of BAS70-05), fitted to the Nexperia datasheet:
+*          VF <= 410 mV at 1 mA, <= 1 V at 15 mA, Cd <= 2 pF at 0 V.
+* tlv360x  behavioural comparator (TLV3603 window comparators with LE/HYS open,
+*          TLV3603 envelope comparators with RHYST) with the TI datasheet values (SNOSDB1E): tPD 2.5 ns at 50 mV
+*          overdrive, tr / tf 0.75 ns, hysteresis 3 mV (TLV3601/2) or set by RHYST
+*          (TLV3603: 30 mV with 150 kOhm), C_IN 1 pF, offset parameter vos (spec
+*          max +-5 mV).  TI's own PSpice macro (SBOMBZ3) is also an ideal switch
+*          with a fixed 2.5 ns delay line; this model adds a 0.3 ns pre-amplifier
+*          pole, so small overdrives switch later (overdrive dispersion).
+* lvds100  behavioural SN65LVDS100 (2 Gbps LVDS repeater): input 0..4 V,
+*          hysteresis 25 mV typ, tPD 470 ps typ, C_IN 0.6 pF, LVDS output
+*          VOD 340 mV into 100 Ohm around VOC 1.2 V, 10-90 % edges about 150 ps.
+
+.model BFT92 PNP (IS=4.37563E-016 BF=3.35815E+001 NF=1.00972E+000 VAF=2.33946E+001
++ IKF=9.95381E-002 ISE=8.70539E-014 NE=1.94395E+000 BR=4.94721E+000 NR=1.00254E+000
++ VAR=3.90385E+000 IKR=5.28157E-003 ISC=3.58864E-014 NC=1.39333E+000 RB=5.00000E+000
++ IRB=1.00000E-006 RBM=5.00000E+000 RE=1.00000E+000 RC=1.00000E+001 EG=1.11000E+000
++ XTI=3.00000E+000 CJE=7.46659E-013 VJE=6.00000E-001 MJE=3.56829E-001 TF=1.74921E-011
++ XTF=1.35455E+000 VTF=1.55654E-001 ITF=1.00000E-003 PTF=4.50000E+001 CJC=9.37103E-013
++ VJC=3.96455E-001 MJC=1.99949E-001 XCJC=1.06000E-001 TR=8.42200E-009 VJS=7.50000E-001
++ FC=7.67856E-001)
+
+.model BAS70 D (IS=1.3e-10 N=1.0 RS=35 CJO=1.6p VJ=0.35 M=0.33 BV=70 IBV=1e-5 EG=0.69 XTI=2)
+
+* comparator: inp inn vcc out
+.subckt tlv360x inp inn vcc out vos=0 hys=3m tdel=1.9n tpre=0.3n
+Cip inp 0 1p
+Cin inn 0 1p
+* pre-amplifier: +-1 V saturating, gain 1/2.5 mV, one pole tpre
+Bpre pa 0 V = tanh((V(inp) - V(inn) - {vos} + {hys} * (V(dq) - 0.5)) / 2.5m)
+Rpa pa pb 1k
+Cpa pb 0 {tpre / 1k}
+* decision (hysteresis through dq), 0 .. 1
+Bdq dqa 0 V = 0.5 + 0.5 * tanh(V(pb) / 0.05)
+Rdq dqa dq 1
+Cdq dq 0 2p
+* fixed delay (matched lossless line)
+Edl dl1 0 dq 0 2
+Rdl dl1 dl2 50
+Odl dl2 0 dl3 0 ltra_tlv
+.model ltra_tlv ltra r=0 g=0 l={50 * tdel} c={tdel / 50} len=1
+Rdt dl3 0 50
+* push-pull output: 0.75 ns 10-90 % (RC 0.34 ns), 30 Ohm
+Bo oa 0 V = V(vcc) * min(max(V(dl3), 0), 1)
+Ro oa ob 1k
+Co ob 0 0.34p
+Bout oc 0 V = V(ob)
+Rout oc out 30
+Bq vcc 0 I = 6m
+.ends tlv360x
+
+* SN65LVDS100: a b vcc y z
+.subckt lvds100 a b vcc y z vos=0 hys=25m tdel=0.32n
+Cia a 0 0.6p
+Cib b 0 0.6p
+Bpre pa 0 V = tanh((V(a) - V(b) - {vos} + {hys} * (V(dq) - 0.5)) / 2m)
+Rpa pa pb 1k
+Cpa pb 0 0.06p
+Bdq dqa 0 V = 0.5 + 0.5 * tanh(V(pb) / 0.05)
+Rdq dqa dq 1
+Cdq dq 0 1p
+Edl dl1 0 dq 0 2
+Rdl dl1 dl2 50
+Odl dl2 0 dl3 0 ltra_lvds
+.model ltra_lvds ltra r=0 g=0 l={50 * tdel} c={tdel / 50} len=1
+Rdt dl3 0 50
+* output: VOC 1.2 V, VOD 0.34 V, 10-90 % ~150 ps (RC 68 ps), 50 Ohm per side
+Ro dl3 dlx 1k
+Co dlx 0 0.068p
+By ya 0 V = 1.2 + 0.34 * (2 * min(max(V(dlx), 0), 1) - 1)
+Bz za 0 V = 1.2 - 0.34 * (2 * min(max(V(dlx), 0), 1) - 1)
+Ry ya y 50
+Rz za z 50
+Bq vcc 0 I = 25m
+.ends lvds100
