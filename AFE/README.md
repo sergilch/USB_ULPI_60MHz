@@ -138,6 +138,7 @@ To vary a model parameter, override it on the `DUT` line of the netlist (for exa
 | Transistor-level CDR `spice/afe_cdr_tr.sp` | simulated in ngspice on generic 180 nm models (2026-11-12, [doc/cdr_schematic.md](doc/cdr_schematic.md) section 4); `veriloga/tb/tb_afe_cdr_tr.scs` runs it under the `tb_afe_cdr` checker in Spectre, **not run** |
 | `afe_ref.va` against the transistor-level `REF/afe_ref_tr.sp` (xh018) | equations run in ngspice as `REF/sim/afe_ref_beh.sp` through the transistor testbench (op, trim, temp, line, zout, comply, rbias, start, tran pass), match at tm / 27 °C and with `dv_proc` at ws (2026-11-23, datasheet section 16); `veriloga/tb/tb_afe_ref.scs` **not run** |
 | `afe_xosc.va` against the transistor-level `Crystal Oscillator Driver/afe_xosc_tr.sp` (xh018) | equations run in ngspice as `sim/afe_xosc_beh.sp` through the transistor testbench, match at tm / 27 °C (2026-11-22, datasheet section 16); `veriloga/tb/tb_afe_xosc.scs` **not run** |
+| Discrete transmitter board `Discrete/Transmitter/` (afe_transceiver TX on an FMC mezzanine: BFT92 current steering, TUSB1105, FSUSB42; 7-Series FPGA with the repo TX RTL) | HS driver simulated in ngspice with vendor transistor models (Test_Packet eye, corners, 2026-11-24, [Discrete/Transmitter/doc/tx_board.md](Discrete/Transmitter/doc/tx_board.md) section 5); FPGA testbench passes; EasyEDA schematic checked (80 nets); PCB layout and bench measurements **open** |
 
 ## Open points that change these models
 

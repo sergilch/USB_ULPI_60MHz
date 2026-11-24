@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="400" viewBox="0 0 900 400" font-family="Arial, Helvetica, sans-serif">
+<rect width="900" height="400" fill="white"/>
+<line x1="80.0" y1="30" x2="80.0" y2="350" stroke="#d8d8d8"/>
+<text x="80.0" y="367" font-size="12" text-anchor="middle">0</text>
+<line x1="228.6" y1="30" x2="228.6" y2="350" stroke="#d8d8d8"/>
+<text x="228.6" y="367" font-size="12" text-anchor="middle">20</text>
+<line x1="377.1" y1="30" x2="377.1" y2="350" stroke="#d8d8d8"/>
+<text x="377.1" y="367" font-size="12" text-anchor="middle">40</text>
+<line x1="525.7" y1="30" x2="525.7" y2="350" stroke="#d8d8d8"/>
+<text x="525.7" y="367" font-size="12" text-anchor="middle">60</text>
+<line x1="674.3" y1="30" x2="674.3" y2="350" stroke="#d8d8d8"/>
+<text x="674.3" y="367" font-size="12" text-anchor="middle">80</text>
+<line x1="822.9" y1="30" x2="822.9" y2="350" stroke="#d8d8d8"/>
+<text x="822.9" y="367" font-size="12" text-anchor="middle">100</text>
+<line x1="80" y1="350.0" x2="860" y2="350.0" stroke="#d8d8d8"/>
+<text x="74" y="354.0" font-size="12" text-anchor="end">0</text>
+<line x1="80" y1="296.7" x2="860" y2="296.7" stroke="#d8d8d8"/>
+<text x="74" y="300.7" font-size="12" text-anchor="end">250</text>
+<line x1="80" y1="243.3" x2="860" y2="243.3" stroke="#d8d8d8"/>
+<text x="74" y="247.3" font-size="12" text-anchor="end">500</text>
+<line x1="80" y1="190.0" x2="860" y2="190.0" stroke="#d8d8d8"/>
+<text x="74" y="194.0" font-size="12" text-anchor="end">750</text>
+<line x1="80" y1="136.7" x2="860" y2="136.7" stroke="#d8d8d8"/>
+<text x="74" y="140.7" font-size="12" text-anchor="end">1000</text>
+<line x1="80" y1="83.3" x2="860" y2="83.3" stroke="#d8d8d8"/>
+<text x="74" y="87.3" font-size="12" text-anchor="end">1250</text>
+<line x1="80" y1="30.0" x2="860" y2="30.0" stroke="#d8d8d8"/>
+<text x="74" y="34.0" font-size="12" text-anchor="end">1500</text>
+<rect x="80" y="30" width="780" height="320" fill="none" stroke="#333333"/>
+<text x="470.0" y="386" font-size="13" text-anchor="middle">base resistor R_B  [Ohm]</text>
+<text transform="translate(28,190.0) rotate(-90)" font-size="13" text-anchor="middle">10-90 % rise time, near end  [ps]</text>
+<text x="80" y="22" font-size="13" font-weight="bold">Edge rate vs. R_B and TX_CAP (3.3 V, 27 C)</text>
+<clipPath id="c136046661002416"><rect x="80" y="30" width="780" height="320"/></clipPath>
+<polyline clip-path="url(#c136046661002416)" points="154.29,299.70 243.43,294.02 325.14,288.55 429.14,286.78" fill="none" stroke="#1f4e9c" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="154.3" cy="299.7" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="243.4" cy="294.0" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="325.1" cy="288.6" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<circle cx="429.1" cy="286.8" r="4.5" fill="white" stroke="#1f4e9c" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="429.14,276.01 585.14,258.31 822.86,230.07" fill="none" stroke="#c0392b" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="429.1" cy="276.0" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="585.1" cy="258.3" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<circle cx="822.9" cy="230.1" r="4.5" fill="white" stroke="#c0392b" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="585.14,249.35 822.86,221.32" fill="none" stroke="#2e8b57" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="585.1" cy="249.4" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<circle cx="822.9" cy="221.3" r="4.5" fill="white" stroke="#2e8b57" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="585.14,230.86" fill="none" stroke="#d4860b" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="585.1" cy="230.9" r="4.5" fill="white" stroke="#d4860b" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="154.29,274.53 243.43,249.10 325.14,226.87 429.14,195.36" fill="none" stroke="#6c3483" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="154.3" cy="274.5" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="243.4" cy="249.1" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="325.1" cy="226.9" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<circle cx="429.1" cy="195.4" r="4.5" fill="white" stroke="#6c3483" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="429.14,184.26 585.14,131.13 822.86,50.39" fill="none" stroke="#555555" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="429.1" cy="184.3" r="4.5" fill="white" stroke="#555555" stroke-width="1.8"/>
+<circle cx="585.1" cy="131.1" r="4.5" fill="white" stroke="#555555" stroke-width="1.8"/>
+<circle cx="822.9" cy="50.4" r="4.5" fill="white" stroke="#555555" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="585.14,126.95 822.86,47.39" fill="none" stroke="#0b7a75" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="585.1" cy="127.0" r="4.5" fill="white" stroke="#0b7a75" stroke-width="1.8"/>
+<circle cx="822.9" cy="47.4" r="4.5" fill="white" stroke="#0b7a75" stroke-width="1.8"/>
+<polyline clip-path="url(#c136046661002416)" points="585.14,120.12" fill="none" stroke="#8e44ad" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="585.1" cy="120.1" r="4.5" fill="white" stroke="#8e44ad" stroke-width="1.8"/>
+<rect x="80" y="30.0" width="780" height="213.3" fill="#2e8b57" fill-opacity="0.05"/>
+<line x1="80" y1="243.3" x2="860" y2="243.3" stroke="#2e8b57" stroke-width="1.3" stroke-dasharray="5,4"/>
+<text x="84" y="239.3" font-size="11" fill="#2e8b57" text-anchor="start">USB 2.0 HS: t_r, t_f &gt;= 500 ps</text>
+<rect x="88" y="38" width="182.8" height="152" fill="white" fill-opacity="0.92" stroke="#bbbbbb"/>
+<line x1="96" y1="50" x2="118" y2="50" stroke="#1f4e9c" stroke-width="2"/>
+<text x="124" y="54" font-size="11.5">BFT92, TX_CAP 0.0 pF</text>
+<line x1="96" y1="68" x2="118" y2="68" stroke="#c0392b" stroke-width="2"/>
+<text x="124" y="72" font-size="11.5">BFT92, TX_CAP 3.3 pF</text>
+<line x1="96" y1="86" x2="118" y2="86" stroke="#2e8b57" stroke-width="2"/>
+<text x="124" y="90" font-size="11.5">BFT92, TX_CAP 4.7 pF</text>
+<line x1="96" y1="104" x2="118" y2="104" stroke="#d4860b" stroke-width="2"/>
+<text x="124" y="108" font-size="11.5">BFT92, TX_CAP 6.8 pF</text>
+<line x1="96" y1="122" x2="118" y2="122" stroke="#6c3483" stroke-width="2"/>
+<text x="124" y="126" font-size="11.5">MMBTH81, TX_CAP 0.0 pF</text>
+<line x1="96" y1="140" x2="118" y2="140" stroke="#555555" stroke-width="2"/>
+<text x="124" y="144" font-size="11.5">MMBTH81, TX_CAP 3.3 pF</text>
+<line x1="96" y1="158" x2="118" y2="158" stroke="#0b7a75" stroke-width="2"/>
+<text x="124" y="162" font-size="11.5">MMBTH81, TX_CAP 4.7 pF</text>
+<line x1="96" y1="176" x2="118" y2="176" stroke="#8e44ad" stroke-width="2"/>
+<text x="124" y="180" font-size="11.5">MMBTH81, TX_CAP 6.8 pF</text>
+</svg>

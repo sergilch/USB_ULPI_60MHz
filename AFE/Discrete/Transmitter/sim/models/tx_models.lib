@@ -1,0 +1,42 @@
+* tx_models.lib - device models for the discrete USB 2.0 transmitter board (ngspice)
+*
+* BFT92   NXP / Philips Semiconductors BFT92.PRM, version 2.0, July 1992
+*         (https://www.nxp.com/downloads/en/spice-model/BFT92.prm).  Die model,
+*         no package parasitics (the testbench adds the SOT-23 leads).
+* MMBTH81 onsemi datasheet MMBTH81/D, "SPICE MODEL" section.  PSpice NK is
+*         ngspice NKF.
+* Q2N3906, Q2N3904  generic small-signal models (LTspice standard.bjt values),
+*         used for MMBT3906 / MMBT3904 in the bias loops.  Both sit inside DC
+*         op-amp loops, so their exact parameters only change the loop's
+*         operating point, not the regulated current.
+
+.model BFT92 PNP (IS=4.37563E-016 BF=3.35815E+001 NF=1.00972E+000 VAF=2.33946E+001
++ IKF=9.95381E-002 ISE=8.70539E-014 NE=1.94395E+000 BR=4.94721E+000 NR=1.00254E+000
++ VAR=3.90385E+000 IKR=5.28157E-003 ISC=3.58864E-014 NC=1.39333E+000 RB=5.00000E+000
++ IRB=1.00000E-006 RBM=5.00000E+000 RE=1.00000E+000 RC=1.00000E+001 EG=1.11000E+000
++ XTI=3.00000E+000 CJE=7.46659E-013 VJE=6.00000E-001 MJE=3.56829E-001 TF=1.74921E-011
++ XTF=1.35455E+000 VTF=1.55654E-001 ITF=1.00000E-003 PTF=4.50000E+001 CJC=9.37103E-013
++ VJC=3.96455E-001 MJC=1.99949E-001 XCJC=1.06000E-001 TR=8.42200E-009 VJS=7.50000E-001
++ FC=7.67856E-001)
+
+.model MMBTH81 PNP (Is=10f Xti=3 Eg=1.11 Vaf=100 Bf=133.8 Ise=1.678p Ne=2.159 Ikf=.1658
++ Nkf=.901 Xtb=1.5 Var=100 Br=1 Isc=9.519n Nc=3.88 Ikr=5.813 Rc=7.838 Cjc=2.81p
++ Mjc=.1615 Vjc=.8282 Fc=.5 Cje=2.695p Mje=.3214 Vje=.7026 Tr=11.32n Tf=97.83p
++ Itf=69.29 Xtf=599u Vtf=10)
+
+.model Q2N3904 NPN (IS=1E-14 VAF=100 BF=300 IKF=0.4 XTB=1.5 BR=4 CJC=4E-12 CJE=8E-12
++ RB=20 RC=0.1 RE=0.1 TR=250E-9 TF=350E-12 ITF=1 VTF=2 XTF=3)
+.model Q2N3906 PNP (IS=1E-14 VAF=100 BF=200 IKF=0.4 XTB=1.5 BR=4 CJC=4.5E-12 CJE=10E-12
++ RB=20 RC=0.1 RE=0.1 TR=250E-9 TF=350E-12 ITF=1 VTF=2 XTF=3)
+
+* Rail-to-rail op-amp macro (MCP6V02 / OPA2333 class): gain 100 dB, one pole at
+* GBW, 50 Ohm output resistance.  Linear (no output limit): both op-amps of the
+* board stay inside their output range in every case simulated here (the
+* testbench checks the op-amp outputs: run_sims.py eval_static).
+.subckt opamp_rr inp inn out vdd gbw=1.3e6
+G1 0 n1 inp inn 1m
+R1 n1 0 100Meg
+C1 n1 0 {1m/(6.2832*gbw)}
+E2 n2 0 n1 0 1
+Ro n2 out 50
+.ends opamp_rr

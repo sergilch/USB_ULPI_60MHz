@@ -1,0 +1,7 @@
+# synth_check.ys - Yosys smoke synthesis of the FPGA design for xc7 (no Vivado needed)
+#   yosys -q -s synth_check.ys    (from AFE/Discrete/Transmitter/fpga)
+read_verilog rtl/tx_ctrl.v rtl/tx_seq.v rtl/tx_piso_7s.v rtl/tx_fpga_top.v
+read_verilog ../../../../usb_bit_stuffer.v ../../../../usb_nrzi_encoder.v ../../../../usb_tx_serializer8.v ../../../../usb_tx_path.v ../../../../usb_afe_tx_if8.v
+synth_xilinx -family xc7 -top tx_fpga_top -flatten
+check -assert
+stat
