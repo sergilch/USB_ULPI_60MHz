@@ -9,8 +9,8 @@
 ## I/O standard: all LA pins sit in the bank powered by the carrier's VADJ.
 ##   VADJ = 2.5 V (HR bank, e.g. AC701, Nexys Video at 2.5 V): IOSTD_DIFF = LVDS_25, IOSTD_SE = LVCMOS25
 ##   VADJ = 1.8 V (HP bank, e.g. KC705 LPC):                   IOSTD_DIFF = LVDS,    IOSTD_SE = LVCMOS18
-## The board's translators (SN74LVC8T245, SN74LVC1T45, TUSB1105 VCC(I/O),
-## SN74LVC2G86) run from VADJ, 1.65 .. 3.6 V.  LVDS outputs need no
+## The board's translators (SN74LVC8T245, SN74LVC1T45, SN74LVC3G04) run
+## from VADJ, 1.65 .. 3.6 V.  LVDS outputs need no
 ## termination on the carrier: the SN65LVDT101 inputs carry 110 Ohm.
 
 set IOSTD_DIFF LVDS_25

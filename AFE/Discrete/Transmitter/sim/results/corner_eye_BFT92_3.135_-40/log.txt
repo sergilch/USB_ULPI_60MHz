@@ -26,16 +26,18 @@ xu1a.n2                                1.86651
 ot                                     1.87363
 bt                                     2.01602
 nem                                    1.61734
-cp                                 3.33417e-11
+cp                                  0.00856015
 bpq                                    1.48682
-cn                                 4.49555e-11
+cn                                   0.0108741
 bnq                                    2.00473
 cd                                           0
 bdi                                    0.68415
-cpl                                3.33417e-11
-cnl                                4.49555e-11
-dpi                                3.33417e-11
-dmi                                4.49555e-11
+cpl                                 0.00856015
+cnl                                  0.0108741
+cpk                                3.31498e-11
+cnk                                4.47117e-11
+dpi                                3.31498e-11
+dmi                                4.47117e-11
 pep                                      1.525
 bpx                                    1.48682
 bpi                                    1.48682
@@ -44,54 +46,59 @@ bnx                                    2.00473
 bni                                    2.00473
 en                                           0
 en3                                  0.0652815
-xcp                                3.33417e-11
-s2p                                2.99852e-11
-np                                 3.33417e-11
-fp                                 3.33417e-11
-xcm                                4.49555e-11
-s2m                                4.04298e-11
-nm                                 4.49555e-11
-fm                                 4.49555e-11
-lcn#branch                         2.00473e-12
-lcp#branch                         1.48683e-12
+xcp                                3.31498e-11
+rxp                                3.31498e-11
+s2p                                2.98126e-11
+np                                 3.31498e-11
+fp                                 3.31498e-11
+xcm                                4.47117e-11
+rxm                                4.47117e-11
+s2m                                4.02105e-11
+nm                                 4.47117e-11
+fm                                 4.47117e-11
+lcn#branch                         1.99385e-12
+lcp#branch                         1.47827e-12
 e.xu1a.e2#branch                   0.000142392
 e.xu1b.e2#branch                  -8.02544e-07
 ven#branch                          0.00261126
 vpen#branch                         -0.0157535
 vpep#branch                        -0.00545372
 vid#branch                           0.0178736
-vin#branch                         2.00473e-12
-vip#branch                         1.48683e-12
+vin#branch                         1.99385e-12
+vip#branch                         1.47827e-12
 vctl#branch                                  0
 vdd#branch                          -0.0448501
 
- Reference value :  4.61214e-08
- Reference value :  8.11734e-08
- Reference value :  1.16330e-07
- Reference value :  1.58616e-07
- Reference value :  2.01143e-07
- Reference value :  2.44168e-07
- Reference value :  2.85731e-07
- Reference value :  3.27778e-07
- Reference value :  3.76370e-07
- Reference value :  4.32036e-07
- Reference value :  4.78663e-07
- Reference value :  5.24268e-07
- Reference value :  5.72710e-07
- Reference value :  6.18391e-07
- Reference value :  6.60725e-07
- Reference value :  7.01774e-07
- Reference value :  7.41953e-07
- Reference value :  7.84581e-07
- Reference value :  8.29163e-07
- Reference value :  8.80061e-07
- Reference value :  9.30507e-07
- Reference value :  9.80949e-07
- Reference value :  1.03257e-06
- Reference value :  1.08232e-06
- Reference value :  1.13171e-06
- Reference value :  1.18382e-06
- Reference value :  1.21696e-06
-No. of Data Rows : 301295
+ Reference value :  5.65414e-08
+ Reference value :  8.94909e-08
+ Reference value :  1.21953e-07
+ Reference value :  1.75021e-07
+ Reference value :  2.18721e-07
+ Reference value :  2.61967e-07
+ Reference value :  3.10040e-07
+ Reference value :  3.54610e-07
+ Reference value :  3.99856e-07
+ Reference value :  4.43242e-07
+ Reference value :  4.86301e-07
+ Reference value :  5.19442e-07
+ Reference value :  5.53889e-07
+ Reference value :  5.98619e-07
+ Reference value :  6.36948e-07
+ Reference value :  6.72437e-07
+ Reference value :  7.06944e-07
+ Reference value :  7.45537e-07
+ Reference value :  7.80790e-07
+ Reference value :  8.15907e-07
+ Reference value :  8.56920e-07
+ Reference value :  8.97897e-07
+ Reference value :  9.42817e-07
+ Reference value :  9.87532e-07
+ Reference value :  1.03237e-06
+ Reference value :  1.07614e-06
+ Reference value :  1.11801e-06
+ Reference value :  1.16459e-06
+ Reference value :  1.20303e-06
+ Reference value :  1.22625e-06
+No. of Data Rows : 317632
 ngspice-42 done
 Using SPARSE 1.3 as Direct Linear Solver

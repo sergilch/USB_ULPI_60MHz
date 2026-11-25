@@ -10,13 +10,14 @@
 //     -> usb_afe_tx_if8   (repo: driver select, TX_LEAD / TX_LAG window)  |
 //     -> tx_piso_7s       (OSERDESE2 x 7, replaces usb_tx_piso)           |
 //     -> FMC: TX_IN_P, TX_IN_N (LVDS), TX_EN, FS_OE, FS_DAT, FS_SE0, FS_LS|
-//   TERM register -> DP_PULLUP_EN, HS_TERM_EN, PD_EN0, PD_EN1, FS_SUSPND  |
+//   TERM register -> DP_PULLUP_EN, HS_TERM_EN, PD_EN0, PD_EN1, FS_SUSPND* |
 //   MCP4821 SPI   -> HS amplitude (V_CTL)  <------------------------------+
-//   FMC inputs RXRCV / RXDP / RXDM (TUSB1105), VBUS_DET -> STATUS register
+//   FMC inputs RXRCV / RXDP / RXDM (comparators), VBUS_DET -> STATUS register
+//   (* FS_SUSPND is not connected on board Rev 0.2: no suspend mode)
 //
 // Board pin semantics are those of afe_transceiver.va (AFE/veriloga), i.e. of
 // the ASIC's AFE pins; the board adds only the glue described in
-// doc/tx_board.md section 4 (TX_IN_P/N via SN65LVDT101, VO = FS_DAT ^ FS_LS ...).
+// doc/tx_board.md section 4 (TX_IN_P/N via SN65LVDT101, FS/LS line-state decode ...).
 //
 // Clocking: CLKIN (board oscillator, CLKIN_MHZ) -> MMCME2_BASE, VCO 960 MHz
 //   -> clk60 (/16) and clk240 (/4), both on BUFG, phase-aligned.  OSERDESE2
@@ -126,7 +127,7 @@ module tx_fpga_top #(
     wire [4:0]  tx_lead;
     wire        seq_busy, tx_active;
 
-    // input synchronizers (TUSB1105 receivers, VBUS detect)
+    // input synchronizers (FS/LS comparators, VBUS detect)
     reg [3:0] rx_s1, rx_s2;
     always @(posedge clk60) begin
         rx_s1 <= {vbus_det, rxdm_a, rxdp_a, rxrcv_a};

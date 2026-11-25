@@ -41,7 +41,10 @@ RES = {  # value -> (MPN, LCSC)   UNI-ROYAL 0603 1 %
     "120k": ("0603WAF1203T5E", "C25808"), "45.3": ("0603WAF453JT5E", "C23176"),
     "10k": ("0603WAF1002T5E", "C25804"), "100k": ("0603WAF1003T5E", "C25803"),
     "1k": ("0603WAF1001T5E", "C21190"), "47k": ("0603WAF4702T5E", "C25819"),
-    "100": ("0603WAF1000T5E", "C22775"),
+    "100": ("0603WAF1000T5E", "C22775"), "18": ("0603WAF180JT5E", "C22830"),
+    "470": ("0603WAF4700T5E", "C23179"), "1.2k": ("0603WAF1201T5E", "C22765"), "13k": ("0603WAF1302T5E", "C22797"),
+    "82k": ("0603WAF8202T5E", "C23254"), "560": ("0603WAF5600T5E", "C23204"),
+    "43": ("0603WAF430JT5E", "C23173"),
 }
 CAP = {  # value -> (MPN, LCSC, manufacturer)
     "100n": ("CC0603KRX7R7BB104", "C108079", "YAGEO"),
@@ -49,7 +52,14 @@ CAP = {  # value -> (MPN, LCSC, manufacturer)
     "10n": ("CL10B103KB8NNNC", "C1589", "Samsung"),
     "6.8p": ("0603CG6R8C500NT", "C1679", "FH"),
     "1n": ("0603CG102J500NT", "C1636", "FH"),
+    "8.2p": ("0603CG8R2C500NT", "C1685", "FH"), "10p": ("0603CG100J500NT", "C91367", "FH"),
+    "47p": ("0603CG470J500NT", "C94904", "FH"), "150p": ("0603CG151J500NT", "C1645", "FH"),
+    "39p": ("0603CG390J500NT", "C1666", "FH"),
 }
+
+# FS/LS driver gate network (sheet 3); keep equal to VAL in sim/run_fsls.py
+FSV = dict(RLS_N="560", RLS_P="1.2k", RFS_N="18", RFS_P="43", CM_N="150p", CM_P="8.2p",
+           CK_P="10p", CKF_N="39p", CM2_P="47p", RM2_P="470")
 
 PARTS = {}
 DNP = {"R34", "R35", "R40", "R41"}
@@ -116,25 +126,68 @@ c("C16", S2, "100n", note="across Rr"); c("C17", S2, "10n", note="Q4 base to +3V
 c("C18", S2, "6.8p", note="TX_CAP_P (DNP with MMBTH81)")
 c("C19", S2, "6.8p", note="TX_CAP_N (DNP with MMBTH81)")
 c("C20", S2, "100n"); c("C21", S2, "100n"); c("C22", S2, "100n"); c("C23", S2, "10u")
+ic("D6", S2, "C477990", "RB751S40,115", "C477990", "Nexperia", "RB751S40",
+   note="HS collector blocking diode D+ (FS/LS high level must not forward-bias Q_P's C-B junction)")
+ic("D7", S2, "C477990", "RB751S40,115", "C477990", "Nexperia", "RB751S40", note="as D6, D-")
 
 # ---- sheet 3: FS/LS transceiver, HS termination switch, pull-downs, ESD, USB-C ----
-ic("U8", S3, "C133946", "TUSB1105RGTR", "C133946", "TI")
-ic("U9", S3, "C130023", "SN74LVC2G86DCTR", "C130023", "TI", note="VO, FSE0")
-ic("U10", S3, "C130023", "SN74LVC2G86DCTR", "C130023", "TI", note="OE#, SPEED")
+ic("U8", S3, "C27643", "SN74LVC8T245PWR", "C27643", "TI", note="FS_OE/DAT/SE0/LS, DP_PULLUP_EN VADJ -> +3V3")
+ic("U9", S3, "C485077", "SN74LVC138APWR", "C485077", "TI", note="FS/LS line-state decoder")
+for u, n in (("U10", "GP_P: P gate D+ (Y1# & Y2#)"), ("U14", "GN_P: N gate D+ (OE & Y1# & Y2#)"),
+             ("U15", "GP_M: P gate D- (Y0# & Y3#)"), ("U16", "GN_M: N gate D- (OE & Y0# & Y3#)")):
+    ic(u, S3, "C22046", "SN74LVC1G11DBVR", "C22046", "TI", note=n)
+ic("U17", S3, "C7813", "SN74LVC125APWR", "C7813", "TI", note="FS gate-drive path, enabled while FS_LS = 0")
+ic("Q7", S3, "C456076", "NX3008CBKS,115", "C456076", "Nexperia", note="D+ driver: TR1 N to GND, TR2 P to +3V3")
+ic("Q8", S3, "C456076", "NX3008CBKS,115", "C456076", "Nexperia", note="D- driver")
+ic("Q9", S3, "C456076", "NX3008CBKS,115", "C456076", "Nexperia",
+   note="DP pull-up switch: TR2 P switch, TR1 N gate inverter")
+for k, d in (("2", "P"), ("3", "N"), ("4", "P"), ("5", "N")):
+    ic("D" + k, S3, "C124205", "BAT54WS-7-F", "C124205", "Diodes Inc", "BAT54WS",
+       note="fast gate turn-off (%s gate)" % d)
+ic("U18", S3, "C48618", "TLV3502AIDCNR", "C48618", "TI", note="single-ended receivers VP / VM (Schmitt)")
+ic("U19", S3, "C193413", "TLV3501AIDBVR", "C193413", "TI", note="differential receiver RCV")
+ic("U20", S3, "C139324", "SN74LVC3G04DCTR", "C139324", "TI", note="receiver outputs 3.3 V -> VADJ (inverting)")
+ic("U21", S3, "C113520", "SN74LVC1G02DCKR", "C113520", "TI",
+   note="FSUSB42 OE# = NOR(FS_OE, HS_TERM_EN): FS driver off the line in receive mode")
 ic("U11", S3, "C11355", "FSUSB42MUX", "C11355", "onsemi", note="HS termination switch")
 ic("Q6", S3, "C194045", "2N7002DW-TP", "C194045", "MCC")
 ic("U12", S3, "C7519", "USBLC6-2SC6", "C7519", "ST")
 ic("J2", S3, "C165948", "TYPE-C-31-M-12", "C165948", "Korean Hroparts")
-r("R25", S3, "33"); r("R26", S3, "33")
+r("R25", S3, "33", note="R_S D+ (driver 1.2 / 3.8 Ohm + 33 + Ron 4.5 = 38.7 / 41.3 Ohm)")
+r("R26", S3, "33", note="R_S D-")
 r("R27", S3, "40.2", note="HS termination D+ (+ Ron 4.5R = 45R)")
 r("R28", S3, "40.2", note="HS termination D-")
 r("R29", S3, "15k"); r("R30", S3, "15k")
-r("R31", S3, "1.5k", note="FS pull-up (SOFTCON)")
+r("R31", S3, "1.5k", note="FS pull-up (switched by Q9)")
 r("R32", S3, "5.1k"); r("R33", S3, "5.1k")
 r("R34", S3, "45.3", note="DNP: host load emulation")
 r("R35", S3, "45.3", note="DNP: host load emulation")
 c("C24", S3, "100n"); c("C25", S3, "100n"); c("C26", S3, "10u"); c("C27", S3, "100n")
 c("C28", S3, "100n"); c("C29", S3, "100n"); c("C30", S3, "100n")
+# FS/LS gate networks: R42-R45 R_LS, R46-R49 R_FS, C34-C37 C_M, C38/C39 C_K (P), C40/C41 C_M2 (P)
+#   + R50/R51 R_M2 (P); gates in the order GP_P, GN_P, GP_M, GN_M
+for k, (g, t) in enumerate((("GP_P", "P"), ("GN_P", "N"), ("GP_M", "P"), ("GN_M", "N"))):
+    r("R%d" % (42 + k), S3, FSV["RLS_" + t], note="R_LS %s (LS edge rate, always in)" % g)
+    r("R%d" % (46 + k), S3, FSV["RFS_" + t], note="R_FS %s (FS path, LVC125)" % g)
+    c("C%d" % (34 + k), S3, FSV["CM_" + t], note="C_M %s Miller drain-gate, C0G" % g)
+c("C38", S3, FSV["CK_P"], note="C_K across R_LS GP_P (LS crossover), C0G")
+c("C39", S3, FSV["CK_P"], note="C_K across R_LS GP_M, C0G")
+c("C40", S3, FSV["CM2_P"], note="C_M2 GP_P: LS Miller capacitor behind R_M2, C0G")
+c("C41", S3, FSV["CM2_P"], note="C_M2 GP_M, C0G")
+c("C53", S3, FSV["CKF_N"], note="C_KF across R_FS GN_P (FS crossover: N turns on earlier), C0G")
+c("C54", S3, FSV["CKF_N"], note="C_KF across R_FS GN_M, C0G")
+r("R50", S3, FSV["RM2_P"], note="R_M2 GP_P (isolates C_M2 from the FS edges)")
+r("R51", S3, FSV["RM2_P"], note="R_M2 GP_M")
+r("R52", S3, "100k", note="FS_OE pull-down (driver off while VADJ is down)")
+r("R53", S3, "100k", note="PU_EN pull-down")
+r("R54", S3, "10k", note="Q9 P gate pull-up")
+r("R55", S3, "1k", note="receiver input isolation D+ (hides the comparator inputs from HS)")
+r("R56", S3, "1k", note="receiver input isolation D-")
+r("R57", S3, "13k"); r("R58", S3, "10k"); r("R59", S3, "82k", note="Schmitt VP: 1.56 / 1.34 V")
+r("R60", S3, "13k"); r("R61", S3, "10k"); r("R62", S3, "82k", note="Schmitt VM: 1.56 / 1.34 V")
+for k in range(42, 53):
+    c("C%d" % k, S3, "100n")
+c("C55", S3, "100n")
 
 # ---- sheet 4: amplitude bias (DAC / TX_VREF / TX_I_5U) ----
 ic("U13", S4, "C36865", "MCP4821-E/SN", "C36865", "Microchip")
@@ -207,8 +260,10 @@ two("R11", "+3V3A", "BN_T"); two("R12", "BN_T", "GND")
 two("R13", "+3V3A", "YN_T"); two("R14", "YN_T", "GND")
 two("R15", "BP_T", "BP"); two("R16", "BN_T", "BN")
 two("R40", "TX_IN_P_P", "TX_IN_P_N"); two("R41", "TX_IN_N_P", "TX_IN_N_N")
-con("Q1", _1="BP", _2="NEM", _3="DP")          # BFT92: 1 B, 2 E, 3 C
-con("Q2", _1="BN", _2="NEM", _3="DM")
+con("Q1", _1="BP", _2="NEM", _3="DP_C")        # BFT92: 1 B, 2 E, 3 C
+con("Q2", _1="BN", _2="NEM", _3="DM_C")
+con("D6", _2="DP_C", _1="DP")                   # RB751S40: 1 K, 2 A
+con("D7", _2="DM_C", _1="DM")
 con("Q3", _1="BD", _2="NEM", _3="GND")
 two("R17", "TX_EN_3V3", "BD"); two("R18", "BD", "GND"); two("R19", "+3V3A", "BD")
 con("Q4", _1="QT_B", _2="ET", _3="NEM")        # MMBT3906: 1 B, 2 E, 3 C
@@ -223,16 +278,46 @@ two("C20", "+3V3A", "GND"); two("C21", "+3V3A", "GND"); two("C22", "+3V3A", "GND
 two("C23", "+3V3A", "GND")
 
 # sheet 3
-con("U8", _1="OE_N_X", _2="RXRCV_F", _3="RXDP_F", _4="RXDM_F", _5="FS_SUSPND_F", _6="GND",
-    _7="VADJ", _8="SPEED_X", _9="FSDM", _10="FSDP", _11="VO_X", _12="FSE0_X",
-    _13="+3V3", _14="+3V3", _15="VPU", _16="DP_PULLUP_EN_F", _17="GND")
-con("U9", _1="FS_DAT_F", _2="FS_LS_F", _7="VO_X", _5="FS_SE0_F", _6="GND", _3="FSE0_X",
-    _4="GND", _8="VADJ")
-con("U10", _1="FS_OE_F", _2="VADJ", _7="OE_N_X", _5="FS_LS_F", _6="VADJ", _3="SPEED_X",
-    _4="GND", _8="VADJ")
+con("U8", _1="VADJ", _2="VADJ", _3="FS_OE_F", _4="FS_DAT_F", _5="FS_SE0_F", _6="FS_LS_F",
+    _7="DP_PULLUP_EN_F", _8="GND", _9="GND", _10="GND", _11="GND", _12="GND", _13="GND",
+    _21="FS_OE", _20="FS_DAT", _19="FS_SE0", _18="FS_LS", _17="PU_EN",
+    _22="GND", _23="+3V3", _24="+3V3")
+con("U9", _1="FS_DAT", _2="FS_LS", _3="FS_SE0", _4="GND", _5="GND", _6="FS_OE", _8="GND",
+    _15="Y0_N", _14="Y1_N", _13="Y2_N", _12="Y3_N", _16="+3V3")
+con("U10", _1="Y1_N", _3="Y2_N", _6="+3V3", _4="GPP_X", _2="GND", _5="+3V3")   # LVC1G11: 1 A 3 B 6 C 4 Y
+con("U14", _1="FS_OE", _3="Y1_N", _6="Y2_N", _4="GNP_X", _2="GND", _5="+3V3")
+con("U15", _1="Y0_N", _3="Y3_N", _6="+3V3", _4="GPM_X", _2="GND", _5="+3V3")
+con("U16", _1="FS_OE", _3="Y0_N", _6="Y3_N", _4="GNM_X", _2="GND", _5="+3V3")
+con("U17", _1="FS_LS", _2="GPP_X", _3="GPP_F", _4="FS_LS", _5="GNP_X", _6="GNP_F", _7="GND",
+    _10="FS_LS", _9="GPM_X", _8="GPM_F", _13="FS_LS", _12="GNM_X", _11="GNM_F", _14="+3V3")
+for k, (g, x, f, dr) in enumerate((("GP_P", "GPP_X", "GPP_F", "FSDP"), ("GN_P", "GNP_X", "GNP_F", "FSDP"),
+                                   ("GP_M", "GPM_X", "GPM_F", "FSDM"), ("GN_M", "GNM_X", "GNM_F", "FSDM"))):
+    two("R%d" % (42 + k), x, g)
+    two("R%d" % (46 + k), f, g)
+    two("C%d" % (34 + k), dr, g)
+    if g.startswith("GP"):                         # BAT54WS: 1 K, 2 A; P gate pulled up
+        con("D%d" % (2 + k), _2=x, _1=g)
+    else:                                          # N gate pulled down
+        con("D%d" % (2 + k), _2=g, _1=x)
+two("C38", "GPP_X", "GP_P"); two("C39", "GPM_X", "GP_M")
+two("C53", "GNP_F", "GN_P"); two("C54", "GNM_F", "GN_M")
+two("C40", "FSDP", "M2_P"); two("R50", "M2_P", "GP_P")
+two("C41", "FSDM", "M2_M"); two("R51", "M2_M", "GP_M")
+con("Q7", _1="GND", _2="GN_P", _6="FSDP", _4="+3V3", _5="GP_P", _3="FSDP")   # 1 S1 2 G1 6 D1 (N), 4 S2 5 G2 3 D2 (P)
+con("Q8", _1="GND", _2="GN_M", _6="FSDM", _4="+3V3", _5="GP_M", _3="FSDM")
+con("Q9", _1="GND", _2="PU_EN", _6="PU_G", _4="+3V3", _5="PU_G", _3="VPU")
+two("R52", "FS_OE", "GND"); two("R53", "PU_EN", "GND"); two("R54", "+3V3", "PU_G")
+two("R55", "DP", "RX_P"); two("R56", "DM", "RX_M")
+con("U18", _1="VTH_P", _2="RX_P", _3="VTH_M", _4="RX_M", _5="GND", _6="VM_N", _7="VP_N", _8="+3V3")
+two("R57", "+3V3", "VTH_P"); two("R58", "VTH_P", "GND"); two("R59", "VP_N", "VTH_P")
+two("R60", "+3V3", "VTH_M"); two("R61", "VTH_M", "GND"); two("R62", "VM_N", "VTH_M")
+con("U19", _1="RX_P", _2="GND", _3="RX_M", _4="+3V3", _5="RCV_N", _6="GND")
+con("U20", _1="VP_N", _7="RXDP_F", _3="VM_N", _5="RXDM_F", _6="RCV_N", _2="RXRCV_F", _4="GND", _8="VADJ")
 two("R25", "FSDP", "HSD1P"); two("R26", "FSDM", "HSD1M")
 con("U11", _1="+3V3", _2="HS_TERM_EN", _3="DP", _4="DM", _5="GND",
-    _6="HSD1M", _7="HSD1P", _8="TERM_M", _9="TERM_P", _10="GND")
+    _6="HSD1M", _7="HSD1P", _8="TERM_M", _9="TERM_P", _10="SW_OE_N")
+con("U21", _2="FS_OE", _1="HS_TERM_EN", _4="SW_OE_N", _3="GND", _5="+3V3")   # LVC1G02: 2 A 1 B 4 Y
+two("C55", "+3V3", "GND")
 two("R27", "TERM_P", "GND"); two("R28", "TERM_M", "GND")
 con("Q6", _1="GND", _2="PD_EN0", _6="PD_P", _4="GND", _5="PD_EN1", _3="PD_M")
 two("R29", "DP", "PD_P"); two("R30", "DM", "PD_M")
@@ -243,9 +328,11 @@ con("J2", A1B12="GND", B1A12="GND", A4B9="VBUS", B4A9="VBUS", A5="CC1", B5="CC2"
 # J2 symbol pin numbers are "A6" etc.; DP2/DN2 are B6/B7
 two("R32", "CC1", "GND"); two("R33", "CC2", "GND")
 two("R34", "DP", "GND"); two("R35", "DM", "GND")
-two("C24", "VADJ", "GND"); two("C25", "+3V3", "GND"); two("C26", "+3V3", "GND")
-two("C27", "VADJ", "GND"); two("C28", "VADJ", "GND"); two("C29", "+3V3", "GND")
+two("C24", "VADJ", "GND"); two("C25", "+3V3", "GND"); two("C26", "+3V3", "GND")   # U8, bulk
+two("C27", "VADJ", "GND"); two("C28", "+3V3", "GND"); two("C29", "+3V3", "GND")   # U20, U9, U11
 two("C30", "VBUS", "GND")
+for k in range(42, 53):                            # U10 U14-U19 (U18 x2), Q7-Q9 sources
+    two("C%d" % k, "+3V3", "GND")
 
 # sheet 4
 con("U13", _1="+3V3A", _2="DAC_CS_N", _3="DAC_SCK", _4="DAC_SDI", _5="GND", _6="+3V3A",
@@ -447,7 +534,7 @@ def extent(ref):
 # ---------------------------------------------------------------------------
 TITLES = {S1: "FMC LPC, power, level translation, IPMI EEPROM",
           S2: "HS current-steering driver (afe_hs_tx)",
-          S3: "FS/LS transceiver, HS termination, pulls, ESD, USB-C (afe_fsls_xcvr, afe_term)",
+          S3: "Discrete FS/LS driver and receivers, HS termination, pulls, ESD, USB-C (afe_fsls_xcvr, afe_term)",
           S4: "HS amplitude bias: MCP4821 DAC / TX_VREF / TX_I_5U"}
 
 
@@ -475,15 +562,24 @@ GROUPS = {
          ("Power LED", ["R3", "D1"])],
     S2: [("TX_IN_P / TX_IN_N: LVDS -> LVPECL (Z = inverted), Thevenin 130/82 = 50R to VCC-2, base resistors R_B",
           ["U5", "U6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "R16", "R40", "R41", "C20", "C21"]),
-         ("Current steering: Q1 = Q_P -> DP, Q2 = Q_N -> DM, Q3 = Q_D dump; TX_CAP_P/N",
-          ["Q1", "Q2", "Q3", "C18", "C19"]),
+         ("Current steering: Q1 = Q_P -> DP, Q2 = Q_N -> DM (RB751S40 blocking diodes), Q3 = Q_D dump; TX_CAP_P/N",
+          ["Q1", "Q2", "Q3", "D6", "D7", "C18", "C19"]),
          ("Dump base: TX_EN = 0 -> 0.60 V, TX_EN = 1 -> 2.00 V", ["R17", "R18", "R19"]),
          ("Tail current I = V(Rr) / Rs  (U7A, Q4)", ["U7", "Q4", "R20", "R23", "C17", "C22", "C23"]),
          ("I_CTL = V_CTL / Rg into Rr  (U7B, Q5)", ["Q5", "R21", "R22", "R24", "C16"])],
-    S3: [("FS/LS transceiver (MODE = 0: VO/FSE0), XOR glue, FS pull-up",
-          ["U8", "U9", "U10", "R31", "C24", "C25", "C26", "C27", "C28"]),
-         ("HS termination switch: SEL = HS_TERM_EN (40.2R + Ron = 45R)",
-          ["U11", "R25", "R26", "R27", "R28", "C29"]),
+    S3: [("FS/LS logic: VADJ -> 3.3 V, LVC138 decode, LVC1G11 gate commands, LVC125 FS path",
+          ["U8", "C24", "C25", "C26", "R52", "U9", "C28", "U10", "U14", "U15", "U16", "U17",
+           "C42", "C43", "C44", "C45", "C46"]),
+         ("FS/LS driver D+ (Q7): R_LS, R_FS, BAT54WS turn-off, C_M, C_K (P, LS), C_M2+R_M2 (P), C_KF (N, FS)",
+          ["Q7", "R42", "R46", "D2", "C34", "C38", "C40", "R50", "R43", "R47", "C53", "D3", "C35", "C47"]),
+         ("FS/LS driver D- (Q8)",
+          ["Q8", "R44", "R48", "D4", "C36", "C39", "C41", "R51", "R45", "R49", "C54", "D5", "C37", "C48"]),
+         ("DP pull-up switch (Q9, DP_PULLUP_EN)", ["Q9", "R53", "R54", "R31", "C49"]),
+         ("Receivers: TLV3502 VP/VM (Schmitt 1.56/1.34 V), TLV3501 RCV, LVC3G04 to VADJ",
+          ["R55", "R56", "U18", "R57", "R58", "R59", "R60", "R61", "R62", "U19", "U20",
+           "C50", "C51", "C52", "C27"]),
+         ("HS termination switch: SEL = HS_TERM_EN (40.2R + Ron = 45R), OE# = NOR(FS_OE, HS_TERM_EN)",
+          ["U11", "U21", "R25", "R26", "R27", "R28", "C29", "C55"]),
          ("15k pull-downs (PD_EN0 = DP, PD_EN1 = DM)", ["Q6", "R29", "R30"]),
          ("ESD, USB-C receptacle, host-load emulation (DNP)",
           ["U12", "J2", "R32", "R33", "R34", "R35", "C30"])],

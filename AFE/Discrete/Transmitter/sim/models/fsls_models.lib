@@ -1,0 +1,38 @@
+* fsls_models.lib - device models of the discrete FS/LS driver (ngspice), board sheet 3
+*
+* NX3008CBKS  Nexperia complementary trench MOSFET pair (SOT-363), datasheet
+*             Rev. 1 (2011), fitted as ngspice VDMOS models:
+*               TR1 N: VGSth 0.6 / 0.9 / 1.1 V (250 uA), RDSon 1.0 @ 4.5 V,
+*                      1.4 @ 2.5 V, 2.0 @ 1.8 V; Ciss 34 pF, Crss 2.2 pF,
+*                      Coss 6.5 pF (15 V); QG(tot) 0.52 nC @ 4.5 V
+*               TR2 P: VGSth -0.6 / -0.9 / -1.1 V, RDSon 2.8 @ -4.5 V,
+*                      5.3 @ -2.5 V; Ciss 31 pF, Crss 2.3 pF, Coss 6.5 pF
+*             VTO so that ID = 250 uA at VGS = VDS = VGSth typ (with the
+*             subthreshold slope); linear region RDSon = RD + 1 / (KP (VGS - VTO)),
+*             KP / RD from two RDSon points (N: 4.5 / 1.8 V -> 1.011 A/V^2,
+*             0.715 Ohm; P: -4.5 / -2.5 V -> 0.1415 A/V^2, 0.826 Ohm).
+*             Capacitances: the gate charge of the datasheet's test (VDS 15 V)
+*             fixes the charge at low VDS, which is what this circuit sees:
+*             QG(tot) 0.52 / 0.55 nC (model 0.50 / 0.50) and QGS + QGD up to the
+*             end of the plateau 0.25 / 0.32 nC (model 0.18 / 0.31) need an
+*             effective CGS of about 100 pF (the trench gate's CGS grows with the
+*             channel; VDMOS has a constant CGS).  CGD: 12-14 pF at VDG = 0
+*             falling to CGDMIN (Crss 2.2 pF at 15 V).  Ciss at VDS = 15 V,
+*             VGS = 0 is then about 110 pF instead of 34 pF: the model is meant
+*             for 0-3.6 V, not for the datasheet's 15 V capacitance point.
+*             CJO / VJ / M: body diode and Coss.
+*             The threshold corners (VTO +-0.25 V) are set by the testbench.
+* RB751S40    Nexperia Schottky (SOD-523): VF <= 370 mV at 1 mA, Cd 2 pF at 1 V,
+*             IR <= 0.5 uA at 30 V.  HS collector blocking diodes.
+* BAT54WS     Diodes Inc. Schottky (SOD-323): VF 240 / 320 / 400 / 500 mV at
+*             0.1 / 1 / 10 / 30 mA.  Fast gate turn-off of the FS/LS driver.
+
+.model NX3008N VDMOS (vto=1.03 kp=1.011 rd=0.715 rs=0.05 lambda=0.01
++ cgs=110p cgdmax=12p cgdmin=1.6p a=1.0 cjo=14p vj=0.7 m=0.4 is=1e-12 n=1.1 rb=0.3
++ tcvth=0.0022 mu=-1.5 ksubthres=0.1)
+.model NX3008P VDMOS (pchan vto=-0.92 kp=0.1415 rd=0.826 rs=0.05 lambda=0.01
++ cgs=105p cgdmax=14p cgdmin=1.7p a=1.0 cjo=14p vj=0.7 m=0.4 is=1e-12 n=1.1 rb=0.3
++ tcvth=0.0022 mu=-1.5 ksubthres=0.1)
+
+.model RB751S40 D (is=8n n=1.03 rs=3.5 cjo=2.6p vj=0.35 m=0.45 bv=40 ibv=10u eg=0.69 xti=2)
+.model BAT54WS D (is=20n n=1.03 rs=1.6 cjo=10p vj=0.33 m=0.45 bv=30 ibv=10u eg=0.69 xti=2)

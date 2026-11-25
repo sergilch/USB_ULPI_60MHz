@@ -14,28 +14,30 @@ Node                                   Voltage
 ----                                   -------
 vdd                                      3.465
 vctl                                       0.6
-xu1b.n1                                1.09563
+xu1b.n1                                1.09557
 eg                                    0.599989
-xu1b.n2                                1.09563
-og                                     1.09561
-bg                                      1.0952
-vrefn                                  3.18167
-xu1a.n1                                2.45722
-et                                     3.18165
-xu1a.n2                                2.45722
-ot                                     2.46096
-bt                                     2.53574
+xu1b.n2                                1.09557
+og                                     1.09555
+bg                                     1.09513
+vrefn                                  3.18168
+xu1a.n1                                2.45723
+et                                     3.18166
+xu1a.n2                                2.45723
+ot                                     2.46097
+bt                                     2.53575
 nem                                    1.52121
-cp                                 4.03635e-08
+cp                                 4.10518e-07
 bpq                                     1.7921
-cn                                 5.19772e-08
+cn                                 4.32483e-07
 bnq                                       2.31
 cd                                           0
-bdi                                   0.742676
-cpl                                4.03635e-08
-cnl                                5.19772e-08
-dpi                                4.03635e-08
-dmi                                5.19772e-08
+bdi                                   0.742674
+cpl                                4.10518e-07
+cnl                                4.32483e-07
+cpk                                 2.1636e-10
+cnk                                2.27936e-10
+dpi                                 2.1636e-10
+dmi                                2.27936e-10
 pep                                      1.855
 bpx                                     1.7921
 bpi                                     1.7921
@@ -43,44 +45,62 @@ pen                                      2.445
 bnx                                       2.31
 bni                                       2.31
 en                                           0
-en3                                  0.0708661
-xcp                                4.03635e-08
-s2p                                   3.63e-08
-np                                 4.03635e-08
-fp                                 4.03635e-08
-xcm                                5.19772e-08
-s2m                                4.67446e-08
-nm                                 5.19772e-08
-fm                                 5.19772e-08
-lcn#branch                         2.31785e-09
-lcp#branch                         1.79995e-09
-e.xu1a.e2#branch                   7.47754e-05
-e.xu1b.e2#branch                  -4.18536e-07
-ven#branch                          0.00283464
+en3                                  0.0708658
+xcp                                 2.1636e-10
+rxp                                 2.1636e-10
+s2p                                1.94578e-10
+np                                  2.1636e-10
+fp                                  2.1636e-10
+xcm                                2.27936e-10
+rxm                                2.27936e-10
+s2m                                 2.0499e-10
+nm                                 2.27936e-10
+fm                                 2.27936e-10
+lcn#branch                         1.01645e-11
+lcp#branch                         9.64825e-12
+e.xu1a.e2#branch                    7.4776e-05
+e.xu1b.e2#branch                  -4.20128e-07
+ven#branch                          0.00283463
 vpen#branch                         -0.0192861
 vpep#branch                        -0.00898633
-vid#branch                           0.0180269
-vin#branch                         2.31785e-09
-vip#branch                         1.79995e-09
+vid#branch                           0.0180264
+vin#branch                         1.01645e-11
+vip#branch                         9.64825e-12
 vctl#branch                                  0
-vdd#branch                          -0.0457695
+vdd#branch                           -0.045769
 
- Reference value :  1.17663e-07
- Reference value :  1.86804e-07
- Reference value :  2.45810e-07
- Reference value :  3.13760e-07
- Reference value :  3.94910e-07
- Reference value :  4.38937e-07
- Reference value :  4.77229e-07
- Reference value :  5.14487e-07
- Reference value :  5.82782e-07
- Reference value :  6.27458e-07
- Reference value :  7.01278e-07
- Reference value :  7.61143e-07
- Reference value :  8.22433e-07
- Reference value :  8.75548e-07
- Reference value :  9.43553e-07
- Reference value :  9.88161e-07
-No. of Data Rows : 210679
+ Reference value :  1.07376e-07
+ Reference value :  1.48449e-07
+ Reference value :  1.73413e-07
+ Reference value :  1.96819e-07
+ Reference value :  2.22820e-07
+ Reference value :  2.42621e-07
+ Reference value :  2.62961e-07
+ Reference value :  2.87208e-07
+ Reference value :  3.10262e-07
+ Reference value :  3.51786e-07
+ Reference value :  3.83713e-07
+ Reference value :  4.09778e-07
+ Reference value :  4.34162e-07
+ Reference value :  4.53900e-07
+ Reference value :  4.78066e-07
+ Reference value :  5.02437e-07
+ Reference value :  5.23178e-07
+ Reference value :  5.68815e-07
+ Reference value :  5.99705e-07
+ Reference value :  6.29635e-07
+ Reference value :  6.69764e-07
+ Reference value :  7.19625e-07
+ Reference value :  7.59666e-07
+ Reference value :  8.04504e-07
+ Reference value :  8.36402e-07
+ Reference value :  8.64760e-07
+ Reference value :  8.91452e-07
+ Reference value :  9.22719e-07
+ Reference value :  9.49777e-07
+ Reference value :  9.68982e-07
+ Reference value :  9.89726e-07
+ Reference value :  1.01215e-06
+No. of Data Rows : 334312
 ngspice-42 done
 Using SPARSE 1.3 as Direct Linear Solver

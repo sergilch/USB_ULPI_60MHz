@@ -3,7 +3,7 @@
 
     python3 AFE/Discrete/Transmitter/doc/gen_figures.py [--no-png]
 
-Reads sim/results (run sim/run_sims.py first) and writes doc/fig/*.svg, plus
+Reads sim/results (run sim/run_sims.py and sim/run_fsls.py first) and writes doc/fig/*.svg, plus
 *.png at 2x (rsvg-convert) for the Word document.  Plot helper: the repo's
 AFE/doc/pll_datasheet/svgplot.py.
 """
@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, "AFE", "doc", "pll_datasheet"))
 sys.path.insert(0, SIM)
 from svgplot import Plot  # noqa: E402
 import run_sims as rs     # noqa: E402
+import run_fsls as rf     # noqa: E402
 
 B, R, G, O, P, K = "#1f4e9c", "#c0392b", "#2e8b57", "#d4860b", "#6c3483", "#555555"
 UI = rs.UI
@@ -149,6 +150,80 @@ def fig_rb():
     p.save(os.path.join(FIG, "rb_sweep.svg"))
 
 
+# ---------------------------------------------------------------- FS/LS driver
+def fwave(name, t_from=None, t_to=None, n=4000):
+    f = os.path.join(SIM, "results", "fsls_" + name, "wave.txt")
+    if not os.path.exists(f):
+        return None
+    a = np.loadtxt(f, skiprows=1)
+    w = {k: a[:, i] for i, k in enumerate(rf.COLS)}
+    t = w["t"]
+    lo = t[0] if t_from is None else t_from
+    hi = t[-1] if t_to is None else t_to
+    tg = np.linspace(lo, hi, n)
+    return {k: (tg if k == "t" else np.interp(tg, t, v)) for k, v in w.items()}
+
+
+def first_edge(c, tb, k=1):
+    """time of the k-th data transition after the SYNC start"""
+    pins = c["pins"]
+    first = next(i for i, p in enumerate(pins) if p[0])
+    idx = [i for i in range(first + 3, len(pins)) if pins[i][1] != pins[i - 1][1] and not pins[i][2]]
+    return 100e-9 + idx[k - 1] * tb
+
+
+def fig_fsls_packet():
+    c = rf.case()
+    w = fwave("fs_nom", 0, 100e-9 + 24 * rf.TB_FS)
+    if w is None:
+        return
+    t = w["t"] * 1e9
+    p = Plot(900, 560)
+    a1 = p.panel(80, 30, 780, 230, (300, t[-1]), (-0.5, 4.0), ylabel="line  [V]",
+                 title="FS packet start (3.3 V, 27 C, CL 50 pF): idle (pull-up) | SYNC | PID", legend="tr")
+    a1.line(t, w["lp"], B, 1.5, label="D+")
+    a1.line(t, w["lm"], R, 1.5, label="D-")
+    a1.band(1.3, 2.0, G, 0.08)
+    a1.hline(1.65, G, "3,3", text="VCRS 1.3-2.0 V", anchor="start")
+    a2 = p.panel(80, 310, 780, 200, (300, t[-1]), (-0.3, 3.6), xlabel="time  [ns]",
+                 ylabel="gate  [V]", title="NX3008CBKS gates", legend="tr")
+    a2.line(t, w["gpp"], B, 1.2, label="P gate D+")
+    a2.line(t, w["gnp"], B, 1.2, dash="4,3", label="N gate D+")
+    a2.line(t, w["gpm"], R, 1.2, label="P gate D-")
+    a2.line(t, w["gnm"], R, 1.2, dash="4,3", label="N gate D-")
+    x = 100 + 6 * rf.TB_FS * 1e9                  # FS_OE rises: first SYNC bit (K)
+    a1.vline(x, K, "2,4")
+    a2.vline(x, K, "2,4")
+    p.save(os.path.join(FIG, "fsls_fs_packet.svg"))
+
+
+def fig_fsls_edges():
+    p = Plot(900, 470)
+    for k, (name, ls, title, span, cl) in enumerate((
+            ("fs_nom", False, "FS J -> K, CL 50 pF", 40e-9, None),
+            ("ls_50p", True, "LS, CL 50 pF / 600 pF", 500e-9, None))):
+        c = rf.case(ls)
+        tb = rf.TB_LS if ls else rf.TB_FS
+        tl = first_edge(c, tb, 2)                  # FS_DAT edge at the board pins
+        w0 = fwave(name, tl, tl + tb, 4000)
+        te = rs.cross(w0["t"], w0["lp"] - w0["lm"], 0.0, tl)[0]
+        ax = p.panel(70 + k * 430, 40, 380, 360, (-0.5 * span * 1e9, 0.5 * span * 1e9), (-0.6, 4.2),
+                     xlabel="time from the crossover  [ns]  (logic edge %.0f ns earlier)" % (1e9 * (te - tl)),
+                     ylabel="line  [V]" if k == 0 else "", title=title, legend="tr")
+        ax.band(1.3, 2.0, G, 0.08)
+        names = (name,) if not ls else ("ls_50p", "ls_600p")
+        for j, nm in enumerate(names):
+            w = fwave(nm, te - 0.5 * span, te + 0.5 * span, 3000)
+            if w is None:
+                continue
+            tt = (w["t"] - te) * 1e9
+            d = "" if j == 0 else "5,3"
+            lab = "" if not ls else (" 50 pF" if j == 0 else " 600 pF")
+            ax.line(tt, w["lp"], B, 1.6, dash=d or None, label="D+" + lab)
+            ax.line(tt, w["lm"], R, 1.6, dash=d or None, label="D-" + lab)
+    p.save(os.path.join(FIG, "fsls_edges.svg"))
+
+
 def main():
     os.makedirs(FIG, exist_ok=True)
     for m in ("BFT92", "MMBTH81"):
@@ -157,6 +232,8 @@ def main():
         fig_chirp(m)
     fig_trim()
     fig_rb()
+    fig_fsls_packet()
+    fig_fsls_edges()
     if "--no-png" not in sys.argv:
         for f in sorted(os.listdir(FIG)):
             if f.endswith(".svg"):
