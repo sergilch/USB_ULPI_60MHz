@@ -1,0 +1,93 @@
+* cdr_models.lib - device models for the discrete USB 2.0 CDR board (ngspice)
+* (BFR93A, SV305: the same as AFE/Discrete/PLL/sim/models/pll_models.lib)
+*
+* BFR93A   Siemens / Infineon BFR93A (SOT-23) Gummel-Poon chip data, extracted by
+*          IMST for Siemens Small Signal Semiconductors (datasheet Dec-12-1996,
+*          "SPICE Parameters (Gummel-Poon Model, Berkeley-SPICE 2G.6 Syntax)"),
+*          with the package equivalent circuit of the same datasheet (LBI/LBO,
+*          LEI/LEO, LCO, CBE, CCB, CCE; valid up to 6 GHz).
+*          subckt pins: C B E
+* SV305    Toshiba 1SV305 varactor (SOD-523), fitted to the datasheet:
+*          C(1 V) = 18.3 pF, C(4 V) = 6.1 pF (C1V/C4V = 3.0), rs = 0.27 Ohm at
+*          470 MHz, IR <= 3 nA at 10 V, VR max 10 V.  Hyperabrupt: M > 1.
+*          Package: 0.4 nH, 0.05 pF.  subckt pins: A K
+* LQW18_6N2  Murata LQW18AN6N2C00 (0603 wire-wound, 6.2 nH +-0.2 nH): Q about
+*          40 at 500 MHz (datasheet Q min 35 at 250 MHz, 82 mOhm DC), SRF > 5 GHz.
+*          pins: 1 2.  _m / _p: 6.0 / 6.4 nH (tolerance corners).  LQW18_6N8:
+*          6.8 nH (design iterations only)
+* LQW18_47N  Murata LQW18AN47NG00 (47 nH +-2 %, 290 mOhm, SRF 2.4 GHz): RF
+*          choke of the fine-tuning varactor feed (Q ~ 30 at 500 MHz)
+* The 100EP phase detector, the NB6L14 fan-out and the op-amps are behavioural
+* in the testbenches (run_sims.py), with the datasheet values listed there.
+
+.model BFR93A_chip NPN (IS=8.6752e-15 BF=137.63 NF=0.93633 VAF=20.011 IKF=0.33395
++ ISE=2.6193e-12 NE=1.5466 BR=59 NR=0.88761 VAR=26.834 IKR=0.015129 ISC=0.70823e-15
++ NC=1.95 RB=7.2326 IRB=0.043806e-3 RBM=3.4649 RE=1.0075 RC=0.13193
++ CJE=3.1538e-15 VJE=0.70393 MJE=0.5071 TF=33.388e-12 XTF=0.28319 VTF=0.17765
++ ITF=2.5184e-3 PTF=0 CJC=1.0395e-12 VJC=0.72744 MJC=0.34565 XCJC=0.21422
++ TR=1.1061e-9 CJS=0 VJS=0.75 MJS=0 XTB=0 EG=1.11 XTI=3 FC=0.75935 TNOM=26.85)
+
+.subckt BFR93A c b e
+LBO b b1 0.51n
+LBI b1 bi 0.85n
+LEO e e1 0.61n
+LEI e1 ei 0.69n
+LCO c ci 0.49n
+CBE b1 e1 73f
+CCB b1 ci 84f
+CCE ci e1 165f
+Q1 ci bi ei BFR93A_chip
+.ends
+
+.model SV305_d D (IS=1e-14 N=1.05 RS=0.27 CJO=47.9p VJ=0.7 M=1.084 FC=0.5 BV=10 IBV=1u EG=1.11 XTI=3)
+.subckt SV305 a k
+LP a a1 0.4n
+CP a k 0.05p
+D1 a1 k SV305_d
+.ends
+
+.subckt LQW18_6N2 1 2
+L1 1 m 6.2n
+R1 m 2 0.47
+C1 1 2 0.07p
+.ends
+.subckt LQW18_6N2_m 1 2
+L1 1 m 6.0n
+R1 m 2 0.46
+C1 1 2 0.07p
+.ends
+.subckt LQW18_6N2_p 1 2
+L1 1 m 6.4n
+R1 m 2 0.48
+C1 1 2 0.07p
+.ends
+.subckt LQW18_22N 1 2
+L1 1 m 22n
+R1 m 2 1.6
+C1 1 2 0.1p
+.ends
+.subckt LQW18_10N 1 2
+L1 1 m 10n
+R1 m 2 0.63
+C1 1 2 0.08p
+.ends
+.subckt LQW18_47N 1 2
+L1 1 m 47n
+R1 m 2 2.9
+C1 1 2 0.12p
+.ends
+.subckt LQW18_6N8 1 2
+L1 1 m 6.8n
+R1 m 2 0.51
+C1 1 2 0.07p
+.ends
+.subckt LQW18_6N8_m 1 2
+L1 1 m 6.6n
+R1 m 2 0.50
+C1 1 2 0.07p
+.ends
+.subckt LQW18_6N8_p 1 2
+L1 1 m 7.0n
+R1 m 2 0.52
+C1 1 2 0.07p
+.ends

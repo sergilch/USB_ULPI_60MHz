@@ -1,0 +1,21 @@
+{
+ "case": "lock_t-40",
+ "rc": 0,
+ "f0": 491597352.2193898,
+ "reltol": 0.001,
+ "ppm": 0,
+ "phase": 0.5,
+ "n_bits": 100,
+ "lock_bits": 7,
+ "errors_sync": 2,
+ "errors_after_sync": 0,
+ "samples": 100,
+ "complete": true,
+ "phase_mean_ui": 0.4250476931658116,
+ "phase_pp_ui": 0.13808860203149464,
+ "phase_rms_ui": 0.03438239297929472,
+ "min_margin_ps": 743.8938945324179,
+ "vf_mean": 4.0914022011563596,
+ "up_frac": 0.13574660633484162,
+ "dn_frac": 0.13770180436847104
+}

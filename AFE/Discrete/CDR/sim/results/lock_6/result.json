@@ -1,0 +1,21 @@
+{
+ "case": "lock_6",
+ "rc": 0,
+ "f0": 480812579.8057937,
+ "reltol": 0.0001,
+ "ppm": 0,
+ "phase": 0.75,
+ "n_bits": 100,
+ "lock_bits": 6,
+ "errors_sync": 2,
+ "errors_after_sync": 0,
+ "samples": 100,
+ "complete": true,
+ "phase_mean_ui": 0.4340909061301621,
+ "phase_pp_ui": 0.19981077033245498,
+ "phase_rms_ui": 0.05006851067425596,
+ "min_margin_ps": 714.9877650333796,
+ "vf_mean": 4.047230468203574,
+ "up_frac": 0.19155329727367099,
+ "dn_frac": 0.17286783587390045
+}

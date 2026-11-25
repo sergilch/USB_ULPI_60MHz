@@ -1,0 +1,21 @@
+{
+ "case": "lock_t85",
+ "rc": 0,
+ "f0": 476897765.38181394,
+ "reltol": 0.0001,
+ "ppm": 0,
+ "phase": 0.5,
+ "n_bits": 100,
+ "lock_bits": 3,
+ "errors_sync": 0,
+ "errors_after_sync": 0,
+ "samples": 100,
+ "complete": true,
+ "phase_mean_ui": 0.43753709100083843,
+ "phase_pp_ui": 0.18695069598200575,
+ "phase_rms_ui": 0.03974896928005394,
+ "min_margin_ps": 752.8465111630262,
+ "vf_mean": 4.039391667848705,
+ "up_frac": 0.15996531917199522,
+ "dn_frac": 0.1253928687547415
+}

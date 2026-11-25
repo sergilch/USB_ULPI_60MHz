@@ -1,0 +1,11 @@
+# regenerable simulation / build outputs
+sim/results/*/wave.txt
+sim/results/*/*.txt.tmp
+sim/results/exp_*/
+sim/__pycache__/
+easyeda/__pycache__/
+host/__pycache__/
+fpga/build/
+fpga/build_synth.log
+fpga/sim/sim_cdrfpga
+fpga/sim/sim_cdrfpga.log
