@@ -63,7 +63,7 @@ module cdr_fpga_top #(
 );
     // reset / default IDELAY tap of HS_RXD: Vivado times the IDELAY at IDELAY_VALUE,
     // so it must equal the tap cdr_ctrl loads at reset (eye centre, see the XDC)
-    localparam [4:0] IDLY0 = 5'd22;
+    localparam [4:0] IDLY0 = 5'd19;
 
     // ---------------- system clocks ----------------
     wire clkin_i, clkfb, c60_u, c240_u, c200_u, clk, clk240, clk200, locked;

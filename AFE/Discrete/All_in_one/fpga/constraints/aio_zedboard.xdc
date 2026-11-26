@@ -130,12 +130,14 @@ set_false_path -to [get_pins -hierarchical -filter {NAME =~ *u_pll/u_meas*bs_reg
 # CDR: HS_RXD is launched by the board on the CLK_RX rising edge (EP29 tpd
 # 0.42 ns + NB6L14 output skew); the capture is tuned with IDLY (eye scan), so
 # the input delay is a sanity bound, not a sign-off.
-# The BUFIO clock reaches the ISERDESE2 ~2.8 ns after the pin, the data at IDELAY
-# tap 0 only ~1.45 ns after it: tap 0 fails hold by ~1.3 ns.  Vivado times
-# the IDELAY at IDELAY_VALUE = IDLY0 = 22 (1.72 ns, the reset value of IDLY),
-# which centres this window; the eye scan then trims it on the board.
-set_input_delay -clock clk_rx -max 0.9 [get_ports {hs_rxd_p}]
-set_input_delay -clock clk_rx -min 0.2 [get_ports {hs_rxd_p}]
+# Window 0.25 .. 0.65 ns = EP29 tpd 0.42 ns typ +- 0.15 ns, NB6L14 Q1/Q2 skew
+# <= 20 ps, matched traces (cdr_board.md); the 0.2 .. 0.9 ns guess left no
+# tap meeting both checks.  The BUFIO clock reaches the ISERDESE2 ~2.8 ns after
+# the pin, the data at IDELAY tap 0 ~1.45 ns: tap 0 fails hold by ~1.3 ns,
+# tap 22 failed setup by 0.35 ns (old window).  Vivado times the IDELAY at
+# IDELAY_VALUE = IDLY0 = 19 (reset value of IDLY); the eye scan trims it.
+set_input_delay -clock clk_rx -max 0.65 [get_ports {hs_rxd_p}]
+set_input_delay -clock clk_rx -min 0.25 [get_ports {hs_rxd_p}]
 # RX_OUT, SQUELCH_A, DISC_A are oversampled by ISERDESE2s; the OSERDESE2
 # outputs (TX_IN, TX_EN, FS_*, DPAT) have a fixed CLK-to-OQ; the rest is static,
 # slow (SPI, ADF4002 bus) or asynchronous.

@@ -54,7 +54,7 @@ module aio_cdr_blk #(
 );
     // reset / default IDELAY tap of HS_RXD: Vivado times the IDELAY at IDELAY_VALUE,
     // so it must equal the tap cdr_ctrl loads at reset (eye centre, see the XDC)
-    localparam [4:0] IDLY0 = 5'd22;
+    localparam [4:0] IDLY0 = 5'd19;
     // ---------------- registers, DACs, ADC ----------------
     wire [7:0]  ctrl, txlen, txgap;
     wire [1:0]  txmode;

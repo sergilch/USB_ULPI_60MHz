@@ -17,7 +17,7 @@
 //   03h TXLEN     packet payload bytes after the PID (1..255)  reset 32
 //   04h TXGAP     idle between packets: 4 x (TXGAP + 1) ticks of 16.7 ns   reset 63
 //   05h IDLY      [4:0] IDELAYE2 tap of HS_RXD (78 ps / tap)   reset IDLY_RST
-//                 (22: near the eye centre for the XDC input delay, so the
+//                 (19: near the eye centre for the XDC input delay, so the
 //                 static timing of the tops checks the tap actually loaded)
 //   06h/07h DACA  [11:0] V_A fine bias / frequency trim, 1 mV / LSB (MCP4822
 //                 A, gain 2), written with the high byte   reset 2600
@@ -50,7 +50,7 @@
 module cdr_ctrl #(
     parameter CLK_HZ = 60000000,
     parameter BAUD   = 921600,
-    parameter [4:0] IDLY_RST = 5'd22
+    parameter [4:0] IDLY_RST = 5'd19
 ) (
     input  wire         clk,
     input  wire         rst_n,

@@ -46,7 +46,7 @@ module tb_cdr_fpga_top;
     // The FPGA's BUFIO clock reaches the ISERDESE2 ~1.36 ns later than HS_RXD
     // at IDELAY tap 0 (Vivado: clock 2.81 ns, data 1.45 ns after the pins);
     // prims_sim has no insertion delays, so CLK_RX is delayed here (transport)
-    // and the eye centre lands near the reset tap IDLY = 22, as on hardware.
+    // and the eye centre lands near the reset tap IDLY = 19, as on hardware.
     reg clk_rx_fp = 1'b0;
     always @(clk_rx) clk_rx_fp <= #(1.36) clk_rx;
     wire [31:0] n_up, n_dn, n_bits;
