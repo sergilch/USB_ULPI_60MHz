@@ -1,0 +1,12 @@
+# synth_check.ys - Yosys smoke synthesis of aio_fpga_top for xc7 (no Vivado needed)
+#   yosys -q -s synth_check.ys    (from AFE/Discrete/All_in_one/fpga)
+read_verilog ../../Transmitter/fpga/rtl/tx_ctrl.v ../../Transmitter/fpga/rtl/tx_seq.v ../../Transmitter/fpga/rtl/tx_piso_7s.v
+read_verilog ../../Receiver/fpga/rtl/rx_ctrl.v ../../Receiver/fpga/rtl/rx_sampler_7s.v ../../Receiver/fpga/rtl/rx_capture.v
+read_verilog ../../PLL/fpga/rtl/pll_ctrl.v ../../PLL/fpga/rtl/pll_meas.v
+read_verilog ../../CDR/fpga/rtl/cdr_ctrl.v ../../CDR/fpga/rtl/cdr_txgen.v ../../CDR/fpga/rtl/cdr_rxchk.v
+read_verilog ../../../../usb_bit_stuffer.v ../../../../usb_nrzi_encoder.v ../../../../usb_tx_serializer8.v ../../../../usb_tx_path.v ../../../../usb_afe_tx_if8.v
+read_verilog ../../../../usb_rx_decoder8.v ../../../../usb_clk_gen.v ../../../../usb_pll_lock_det.v
+read_verilog rtl/aio_glue.v rtl/aio_tx_blk.v rtl/aio_rx_blk.v rtl/aio_pll_blk.v rtl/aio_cdr_blk.v rtl/aio_fpga_top.v
+synth_xilinx -family xc7 -top aio_fpga_top -flatten
+check -assert
+stat

@@ -90,6 +90,7 @@ module pll_ctrl #(
     output reg         adf_data,
     output reg         adf_le,
 
+    input  wire        spi_gnt,       // SPI bus grant (1 = free-standing board; aio_spi_arb on the all-in-one board)
     output reg         spi_sck,
     output reg         spi_sdi,
     output reg         dac_cs_n,
@@ -343,7 +344,8 @@ module pll_ctrl #(
                 2'd0: begin
                     spi_sck <= 1'b0;
                     if (s_gap != 0) s_gap <= s_gap - 11'd1;
-                    if (dac_req && !s_take) begin
+                    if (!spi_gnt) begin                 // bus held by another block: wait
+                    end else if (dac_req && !s_take) begin
                         s_st <= 2'd1; s_sh <= {4'b0001, dac}; s_n <= 5'd16; s_div <= 0;
                         dac_cs_n <= 1'b0; s_take <= 1'b1;
                     end else if (s_gap == 0) begin

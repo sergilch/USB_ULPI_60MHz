@@ -147,7 +147,7 @@ module tx_fpga_top #(
         .tx_lead(tx_lead), .tx_lag(tx_lag), .term(term),
         .status_in({1'b0, rx_s2[3], rdm_i, rdp_i, rcv_i, locked, tx_active, seq_busy}),
         .pkt_cnt(pkt_cnt),
-        .dac_cs_n(dac_cs_n), .dac_sck(dac_sck), .dac_sdi(dac_sdi));
+        .spi_gnt(1'b1), .dac_cs_n(dac_cs_n), .dac_sck(dac_sck), .dac_sdi(dac_sdi));
 
     // ---------------- TX chain ----------------
     wire [1:0] speed;

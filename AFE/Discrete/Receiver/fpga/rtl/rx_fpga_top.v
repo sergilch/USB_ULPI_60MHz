@@ -144,7 +144,7 @@ module rx_fpga_top #(
         .status_in({dc_s[1], sq_s[1], vb_s[1], done_s[1], armed_s[1], rdy_s[1], locked}),
         .trig_addr(trig_addr), .sq_cnt(sqc_s2), .dc_cnt(dcc_s2),
         .raddr(raddr), .rdata(rdata),
-        .dac_cs_n(dac_cs_n), .dac_sck(dac_sck), .dac_sdi(dac_sdi));
+        .spi_gnt(1'b1), .dac_cs_n(dac_cs_n), .dac_sck(dac_sck), .dac_sdi(dac_sdi));
 
     // registered outputs to the board
     reg rx_en_q, term_q, led_q;

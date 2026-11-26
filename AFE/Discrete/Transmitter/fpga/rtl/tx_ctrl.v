@@ -59,6 +59,7 @@ module tx_ctrl #(
     input  wire [7:0]  pkt_cnt,
 
     // MCP4821
+    input  wire         spi_gnt,        // SPI bus grant (1 = free-standing board; aio_spi_arb on the all-in-one board)
     output reg         dac_cs_n,
     output reg         dac_sck,
     output reg         dac_sdi
@@ -166,7 +167,7 @@ module tx_ctrl #(
             rd_pend <= 1'b0;
             if (rd_pend) begin tx_byte <= rdata; tx_go <= 1'b1; end
             if (buf_we) buf_waddr <= buf_waddr + 6'd1;
-            if (dac_req && !dac_busy) dac_req <= 1'b0;
+            if (dac_req && !dac_busy && spi_gnt) dac_req <= 1'b0;
             if (rx_vld) begin
                 case (cst)
                     2'd0: if (rx_byte == 8'h57 || rx_byte == 8'h52) begin
@@ -218,7 +219,7 @@ module tx_ctrl #(
             dac_cs_n <= 1'b1; dac_sck <= 1'b0; dac_sdi <= 1'b0;
         end else if (!sact) begin
             dac_sck <= 1'b0;
-            if (dac_req) begin
+            if (dac_req && spi_gnt) begin               // a frame starts only with the bus grant
                 sword <= {1'b0, 1'b0, 1'b1, 1'b1, code};
                 sact <= 1'b1; sbit <= 5'd16; sdiv <= 3'd0; dac_cs_n <= 1'b0;
                 dac_sdi <= 1'b0;

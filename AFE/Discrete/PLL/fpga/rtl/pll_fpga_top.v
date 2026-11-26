@@ -140,7 +140,7 @@ module pll_fpga_top #(
         .fcnt(fcnt), .t_lock(t_lock), .t_dld(t_dld), .phase(phase), .ph_err(ph_err),
         .fb_div(fb_div),
         .adf_clk(adf_clk_i), .adf_data(adf_data_i), .adf_le(adf_le_i),
-        .spi_sck(sck_i), .spi_sdi(sdi_i), .dac_cs_n(dcs_i), .adc_cs_n(acs_i),
+        .spi_gnt(1'b1), .spi_sck(sck_i), .spi_sdi(sdi_i), .dac_cs_n(dcs_i), .adc_cs_n(acs_i),
         .adc_sdo(adc_sdo));
 
     // ---------------- the PHY's clock generation and lock detector ----------------

@@ -112,7 +112,7 @@ module cdr_fpga_top #(
         .status({2'b00, snap_ok, tx_busy, s_psync[1], idly_rdy, rx_alive, locked}),
         .fcnt(fcnt), .txpkt(txpkt), .rxpkt(q_rxpkt), .rxok(q_rxok), .losts(q_losts),
         .lostmax(q_lostmax), .lostmin(q_lostmin), .pbits(q_pbits), .perr(q_perr),
-        .spi_sck(sck_i), .spi_sdi(sdi_i), .dac_cs_n(dcs_i), .adc_cs_n(acs_i), .adc_sdo(adc_sdo));
+        .spi_gnt(1'b1), .spi_sck(sck_i), .spi_sdi(sdi_i), .dac_cs_n(dcs_i), .adc_cs_n(acs_i), .adc_sdo(adc_sdo));
     wire clr = ctrl[7];
 
     // ---------------- pattern -> OSERDESE2 -> DPAT ----------------

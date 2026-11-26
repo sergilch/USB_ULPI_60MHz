@@ -2,7 +2,7 @@
 """cdr_host.py - PC side of the CDR-board FPGA (fpga/rtl/cdr_ctrl.v), pyserial
 
     python3 cdr_host.py PORT status
-    python3 cdr_host.py PORT set [--en 0|1] [--ffset 0|1] [--dsrc sma|fpga] [--csrc open|sma|dac]
+    python3 cdr_host.py PORT set [--en 0|1] [--ffset 0|1] [--dsrc sma|fpga|rx] [--csrc open|sma|dac]
                                  [--vco-off 0|1] [--va MV] [--coarse MV] [--idly TAP]
     python3 cdr_host.py PORT cal [--target 480e6] [--tol-ppm 200]   free-running f -> 480 MHz (V_A)
     python3 cdr_host.py PORT sweep {va|coarse} [--from 0] [--to 4095] [--step 100] [-o f.csv]
@@ -88,7 +88,9 @@ def cmd_set(c, a):
     if a.ffset is not None:
         ctrl = (ctrl & ~2) | (a.ffset << 1)
     if a.dsrc is not None:
-        ctrl = (ctrl & ~4) | ((a.dsrc == "fpga") << 2)
+        # rx: EP57 D2 = the RX block's line copy, all-in-one board only (CTRL[6];
+        # on the CDR board CTRL[6] is the LED bit)
+        ctrl = (ctrl & ~0x44) | ((a.dsrc == "fpga") << 2) | ((a.dsrc == "rx") << 6)
     if a.csrc is not None:
         ctrl = (ctrl & ~0x18) | (CSRC[a.csrc] << 3)
     if a.vco_off is not None:
@@ -204,7 +206,7 @@ def main():
     s = sp.add_parser("set")
     s.add_argument("--en", type=int, choices=(0, 1))
     s.add_argument("--ffset", type=int, choices=(0, 1))
-    s.add_argument("--dsrc", choices=("sma", "fpga"))
+    s.add_argument("--dsrc", choices=("sma", "fpga", "rx"))
     s.add_argument("--csrc", choices=tuple(CSRC))
     s.add_argument("--vco-off", type=int, choices=(0, 1))
     s.add_argument("--va", type=int)

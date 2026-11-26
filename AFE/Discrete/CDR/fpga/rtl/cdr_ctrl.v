@@ -72,6 +72,7 @@ module cdr_ctrl #(
     input  wire [31:0]  pbits,
     input  wire [31:0]  perr,
 
+    input  wire         spi_gnt,       // SPI bus grant (1 = free-standing board; aio_spi_arb on the all-in-one board)
     output reg          spi_sck,
     output reg          spi_sdi,
     output reg          dac_cs_n,
@@ -256,7 +257,8 @@ module cdr_ctrl #(
                 2'd0: begin
                     spi_sck <= 1'b0;
                     if (s_gap != 0) s_gap <= s_gap - 11'd1;
-                    if (daca_req && !s_ta) begin
+                    if (!spi_gnt) begin                 // bus held by another block: wait
+                    end else if (daca_req && !s_ta) begin
                         s_st <= 2'd1; s_sh <= {4'b0001, daca}; s_n <= 5'd16; s_div <= 0;
                         dac_cs_n <= 1'b0; s_ta <= 1'b1;
                     end else if (dacb_req && !s_tb) begin

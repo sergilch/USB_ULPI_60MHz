@@ -58,6 +58,7 @@ module rx_ctrl #(
     output reg  [AW-1:0] raddr,
     input  wire [31:0]   rdata,
 
+    input  wire          spi_gnt,       // SPI bus grant (1 = free-standing board; aio_spi_arb on the all-in-one board)
     output reg           dac_cs_n,
     output reg           dac_sck,
     output reg           dac_sdi
@@ -276,7 +277,7 @@ module rx_ctrl #(
         end else if (!sact) begin
             dac_sck <= 1'b0;
             dac_go  <= 1'b0;
-            if (|dac_req && !dac_go) begin
+            if (|dac_req && !dac_go && spi_gnt) begin
                 dac_ch <= dac_req[0] ? 1'b0 : 1'b1;
                 sword  <= dac_req[0] ? {4'b0001, dac_sq} : {4'b1001, dac_dc};
                 dac_go <= 1'b1;                          // request taken: cleared above
