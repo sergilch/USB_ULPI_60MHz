@@ -71,6 +71,12 @@ module tb_aio_fpga_top;
 
     wire cdr_data = ({dsel1, dsel0} == 2'b01) ? dpat_p : ({dsel1, dsel0} == 2'b10) ? line : 1'b1;
     wire clk_rx, hs_rxd;
+    // The FPGA's BUFIO clock reaches the ISERDESE2 ~1.36 ns later than HS_RXD
+    // at IDELAY tap 0 (Vivado: clock 2.81 ns, data 1.45 ns after the pins);
+    // prims_sim has no insertion delays, so CLK_RX is delayed here (transport)
+    // and the eye centre lands near the reset tap IDLY = 22, as on hardware.
+    reg clk_rx_fp = 1'b0;
+    always @(clk_rx) clk_rx_fp <= #(1.36) clk_rx;
     wire [31:0] n_up, n_dn, n_bits;
     afe_cdr_bm #(.PPM(500.0), .P_STEP(0.13), .T_AMB(0.25), .SEED(7)) u_cdr (
         .CDR_DATA(cdr_data), .CDR_EN(cdr_en & ~cdr_set), .clk_rx(clk_rx), .hs_rxd(hs_rxd),
@@ -91,7 +97,7 @@ module tb_aio_fpga_top;
         .pll_vco_off(pll_vco_off), .lf_dis(lf_dis), .ol_en(ol_en), .cdcm_off(cdcm_off),
         .pll_dac_cs_n(pll_dac_cs_n), .pll_adc_cs_n(pll_adc_cs_n), .pll_adc_sdo(pll_adc_sdo),
         .refsrc0(refsrc0), .refsrc1(refsrc1), .oe24(oe24), .oe19(oe19),
-        .clk_rx_p(clk_rx), .clk_rx_n(~clk_rx), .hs_rxd_p(hs_rxd), .hs_rxd_n(~hs_rxd),
+        .clk_rx_p(clk_rx_fp), .clk_rx_n(~clk_rx_fp), .hs_rxd_p(hs_rxd), .hs_rxd_n(~hs_rxd),
         .dpat_p(dpat_p), .dpat_n(dpat_n),
         .cdr_en(cdr_en), .cdr_set(cdr_set), .dsel0(dsel0), .dsel1(dsel1),
         .cdr_vco_off(cdr_vco_off), .csw_ext(csw_ext), .csw_dac(csw_dac),

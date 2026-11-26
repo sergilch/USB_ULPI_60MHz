@@ -309,7 +309,7 @@ UART 8N1, 921600 Bd (carrier USB-UART). Write: `57h addr data`. Read: `52h addr`
 | 02h | TXMODE | RW | 0 idle J, 1 HS packets, 2 PRBS7, 3 clock pattern |
 | 03h | TXLEN | RW | payload bytes after the PID (1–255); reset 32 |
 | 04h | TXGAP | RW | idle between packets: 4 × (TXGAP + 1) ticks of 16.7 ns; reset 63 |
-| 05h | IDLY | RW | [4:0] IDELAYE2 tap for HS_RXD (78 ps) |
+| 05h | IDLY | RW | [4:0] IDELAYE2 tap for HS_RXD (78 ps); reset 22 (= IDELAY_VALUE, eye centre of the XDC input delay) |
 | 06h/07h | DACA | RW | [11:0] V_A in mV, sent with the high byte; reset 2600 |
 | 08h/09h | DACB | RW | [11:0] internal coarse voltage in mV; reset 3120 |
 | 0Ah | STATUS | RO | [0] MMCM locked, [1] CLK_RX alive, [2] IDELAYCTRL ready, [3] PRBS in sync, [4] TX busy, [5] snapshot valid |

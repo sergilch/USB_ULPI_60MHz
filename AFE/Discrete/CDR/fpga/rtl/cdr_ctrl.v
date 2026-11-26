@@ -16,7 +16,9 @@
 //                 3 clock pattern (1010...)   reset 00h
 //   03h TXLEN     packet payload bytes after the PID (1..255)  reset 32
 //   04h TXGAP     idle between packets: 4 x (TXGAP + 1) ticks of 16.7 ns   reset 63
-//   05h IDLY      [4:0] IDELAYE2 tap of HS_RXD (78 ps / tap)   reset 0
+//   05h IDLY      [4:0] IDELAYE2 tap of HS_RXD (78 ps / tap)   reset IDLY_RST
+//                 (22: near the eye centre for the XDC input delay, so the
+//                 static timing of the tops checks the tap actually loaded)
 //   06h/07h DACA  [11:0] V_A fine bias / frequency trim, 1 mV / LSB (MCP4822
 //                 A, gain 2), written with the high byte   reset 2600
 //   08h/09h DACB  [11:0] internal coarse voltage (MCP4822 B)   reset 3120
@@ -47,7 +49,8 @@
 
 module cdr_ctrl #(
     parameter CLK_HZ = 60000000,
-    parameter BAUD   = 921600
+    parameter BAUD   = 921600,
+    parameter [4:0] IDLY_RST = 5'd22
 ) (
     input  wire         clk,
     input  wire         rst_n,
@@ -181,7 +184,7 @@ module cdr_ctrl #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             cst <= 0; cmd_w <= 0; addr <= 0; rd_pend <= 0; tx_go <= 0; tx_byte <= 0;
-            ctrl <= 8'h04; txmode <= 2'd0; txlen <= 8'd32; txgap <= 8'd63; idly <= 5'd0;
+            ctrl <= 8'h04; txmode <= 2'd0; txlen <= 8'd32; txgap <= 8'd63; idly <= IDLY_RST;
             idly_ld <= 1'b1; daca <= 12'd2600; dacb <= 12'd3120;
             daca_req <= 1'b1; dacb_req <= 1'b1; hold <= 0;
         end else begin

@@ -61,6 +61,8 @@ create_clock -period 2.083 -name clk_rx [get_ports clk_rx_p]         ;# 480 MHz 
 # HS_RXD is launched by the board on the CLK_RX rising edge (EP29 tpd 0.42 ns
 # + NB6L14 output skew); the capture is tuned with IDLY (eye scan, doc 8.3),
 # so the input delay is only a sanity bound, not a sign-off.
+# Tap 0 fails hold by ~1.3 ns (BUFIO clock ~2.8 ns after the pin, data ~1.45 ns);
+# Vivado times the IDELAY at IDELAY_VALUE = IDLY0 = 22 (1.72 ns, reset value of IDLY).
 set_input_delay -clock clk_rx -max 0.9 [get_ports {hs_rxd_p}]
 set_input_delay -clock clk_rx -min 0.2 [get_ports {hs_rxd_p}]
 # System clock domain <-> CLK_RX domain: toggle handshakes, 2-FF synchronisers,

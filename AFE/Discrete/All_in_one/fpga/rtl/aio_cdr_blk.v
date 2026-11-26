@@ -52,6 +52,9 @@ module aio_cdr_blk #(
     output wire led_alive,
     output wire led_ok
 );
+    // reset / default IDELAY tap of HS_RXD: Vivado times the IDELAY at IDELAY_VALUE,
+    // so it must equal the tap cdr_ctrl loads at reset (eye centre, see the XDC)
+    localparam [4:0] IDLY0 = 5'd22;
     // ---------------- registers, DACs, ADC ----------------
     wire [7:0]  ctrl, txlen, txgap;
     wire [1:0]  txmode;
@@ -65,7 +68,7 @@ module aio_cdr_blk #(
     reg         rx_alive, snap_ok;
     reg  [1:0]  s_psync;
     wire        sck_i, sdi_i, dcs_i, acs_i;
-    cdr_ctrl #(.CLK_HZ(60000000), .BAUD(BAUD)) u_ctrl (
+    cdr_ctrl #(.CLK_HZ(60000000), .BAUD(BAUD), .IDLY_RST(IDLY0)) u_ctrl (
         .clk(clk), .rst_n(rst_n), .uart_rxd(uart_rxd), .uart_txd(uart_txd),
         .ctrl(ctrl), .txmode(txmode), .txlen(txlen), .txgap(txgap), .idly(idly), .idly_ld(idly_ld),
         .status({2'b00, snap_ok, tx_busy, s_psync[1], idly_rdy, rx_alive, locked}),
@@ -103,7 +106,7 @@ module aio_cdr_blk #(
     IBUFDS #(.DIFF_TERM("TRUE")) u_ibrxd (.I(hs_rxd_p), .IB(hs_rxd_n), .O(rxd_i));
     IDELAYE2 #(
         .IDELAY_TYPE("VAR_LOAD"), .DELAY_SRC("IDATAIN"), .HIGH_PERFORMANCE_MODE("TRUE"),
-        .REFCLK_FREQUENCY(200.0), .IDELAY_VALUE(0), .SIGNAL_PATTERN("DATA"), .PIPE_SEL("FALSE"),
+        .REFCLK_FREQUENCY(200.0), .IDELAY_VALUE(IDLY0), .SIGNAL_PATTERN("DATA"), .PIPE_SEL("FALSE"),
         .CINVCTRL_SEL("FALSE")
     ) u_idly (
         .C(clk), .LD(idly_ld), .CNTVALUEIN(idly), .CE(1'b0), .INC(1'b0), .LDPIPEEN(1'b0),
