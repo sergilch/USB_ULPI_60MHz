@@ -111,6 +111,7 @@ The design is PL-only (no PS7 instance). Load the bitstream over JTAG; setting t
 | `easyeda/usb_aio_board_sch.json` | EasyEDA Std project source, 17 sheets |
 | `easyeda/netlist.csv` | ref, pin, pin name, net, sheet, block |
 | `easyeda/fmc_pinmap.csv` | merged FMC pin map, old pins, ZedBoard package pins / banks / I/O standards, free pins, dropped FMC signals |
+| `easyeda/PCB/` | PCB (EasyEDA Std): `gen_pcb.py` → `usb_aio_board_pcb.json` (119 × 130 mm, 6 layers, J1 on the bottom at the ZedBoard FMC position, all parts placed, unrouted), `check_pcb.py`, `placement.csv`, preview; see `easyeda/PCB/README.md` |
 | `bom/aio_board_bom.csv`, `bom/aio_board_bom_jlcpcb.csv` | BOM (with a Blocks column) and JLCPCB assembly BOM |
 | `fpga/rtl/` | `aio_fpga_top.v` (ZedBoard top), `aio_tx_blk.v` / `aio_rx_blk.v` / `aio_pll_blk.v` / `aio_cdr_blk.v` (block bodies), `aio_glue.v` (UART select, SPI arbiter) |
 | `fpga/gen_xdc.py`, `fpga/constraints/aio_zedboard.xdc` | XDC generator and the generated ZedBoard constraints |
@@ -119,6 +120,7 @@ The design is PL-only (no PS7 instance). Load the bitstream over JTAG; setting t
 
 ```sh
 cd easyeda && python3 gen_schematic.py     # -> sheets 17, parts 614, ..., errors 0
+cd easyeda/PCB && python3 gen_pcb.py && python3 check_pcb.py   # -> PCB JSON, CHECK PASSED
 cd fpga && python3 gen_xdc.py                # -> constraints/aio_zedboard.xdc (after a pin map change)
 cd fpga/sim && ./run_sim.sh                  # -> TEST PASSED (about 20 s)
 cd fpga && yosys -q -s synth_check.ys        # xc7 smoke synthesis (about 1 min)
