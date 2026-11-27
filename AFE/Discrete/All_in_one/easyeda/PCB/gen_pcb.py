@@ -71,14 +71,16 @@ HOLE_KEEP = {2.7: 3.3, 3.2: 3.6}   # hole diameter -> keep-out radius (standoff 
 REGIONS = {
     "CDR": (160.5, 221.0, 2.31, 68.0),
     "PLL": (160.5, 221.0, 73.0, 132.31),
-    "TX": (221.0, 262.0, 2.31, 90.0),
-    "RX": (221.0, 262.0, 90.0, 132.31),
+    "TX": (221.0, 262.0, 2.31, 88.4),
+    "RX": (221.0, 262.0, 91.6, 132.31),
     "common": (160.5, 180.0, 63.0, 78.0),
 }
 # corner the rows start from: (y side, x side); rows grow away from it
 START = {"CDR": ("bottom", "left"), "PLL": ("top", "left"), "TX": ("top", "right"),
          "RX": ("bottom", "right"), "common": ("bottom", "left")}
 GAP_PART, GAP_GROUP = 0.5, 1.4
+RING = 0.7             # mm: free fanout ring around fine-pitch parts (top: no parts,
+                       # bottom: no decaps), so every pin can escape
 RAIL = re.compile(r"^(\+|P3V3|P12V|12P0V|VADJ|P5V)")
 
 
@@ -254,6 +256,19 @@ def local_bbox(ds):
     return bb["x"] - ox, bb["y"] - oy, bb["x"] + bb["width"] - ox, bb["y"] + bb["height"] - oy
 
 
+def fine_pitch(ds):
+    """part with >= 4 SMD pads at <= 0.7 mm pitch (TSSOP, QFN, MSOP, SC-70...)."""
+    pts = []
+    for sh in ds["shape"]:
+        f = sh.split("~")
+        if f[0] == "PAD" and f[6] in ("1", "2"):
+            pts.append((float(f[2]), float(f[3])))
+    if len(pts) < 4:
+        return False
+    return min(math.hypot(a[0] - b[0], a[1] - b[1]) for i, a in enumerate(pts)
+               for b in pts[i + 1:]) / MM <= 0.7
+
+
 def size_mm(ds, rot):
     x0, y0, x1, y1 = local_bbox(ds)
     w, h = (x1 - x0) / MM, (y1 - y0) / MM
@@ -308,6 +323,73 @@ def first_fit(w, h, box, start, taken, step=0.25):
     return None
 
 
+def near_fit(w, h, box, target, taken, step=0.5):
+    """free w x h rect in box whose centre is nearest to target."""
+    x0, x1, y0, y1 = box
+    c = []
+    for i in range(int((x1 - x0 - w) / step) + 1):
+        for j in range(int((y1 - y0 - h) / step) + 1):
+            x, y = x0 + i * step, y0 + j * step
+            c.append(((x + w / 2 - target[0]) ** 2 + (y + h / 2 - target[1]) ** 2, x, y))
+    for _, x, y in sorted(c):
+        r = (x, x + w, y, y + h)
+        if not any(overlap(r, t) for t in taken):
+            return r
+    return None
+
+
+def pad_xy(ds, num):
+    """pad centre relative to the footprint origin (EasyEDA units)."""
+    ox, oy = float(ds["head"]["x"]), float(ds["head"]["y"])
+    for sh in ds["shape"]:
+        f = sh.split("~")
+        if f[0] == "PAD" and f[8] == num:
+            return float(f[2]) - ox, float(f[3]) - oy
+    raise KeyError(num)
+
+
+def pad_mm(ds, num, rot, mirror=False):
+    """pad centre relative to the origin after rotation, ZedBoard mm (Y up)."""
+    x, y = Xf(0, 0, rot, mirror).p(*pad_xy(ds, num))
+    return x / MM, -y / MM
+
+
+def fix_at_pad(ds, num, rot, x, y):
+    """placement entry putting pad num at ZedBoard (x, y)."""
+    dx, dy = pad_mm(ds, num, rot)
+    ex, ey = E(x - dx, y - dy)
+    r = board_rect(ds, Xf(ex, ey, rot))
+    return ("fix", rot, False, r[0], r[2])
+
+
+PAIR_RE = re.compile(r"^(.*)_([PN])(_F)?$")
+
+
+def pair_key(nets, allnets):
+    """(base, polarity) of the first differential-pair net among nets, else None."""
+    for n in sorted(nets):
+        m = PAIR_RE.match(n)
+        if m:
+            other = m.group(1) + "_" + ("N" if m.group(2) == "P" else "P") + (m.group(3) or "")
+            if other in allnets:
+                return m.group(1), m.group(2)
+    return None
+
+
+# USB D+ / D- corridor (top layer, ZedBoard mm): J102 at the right edge, the two
+# 45 ohm lines (loosely coupled, 90 ohm differential) at y = 90.95 (DP) / 89.05 (DM)
+# from the connector through U112 (flow-through ESD) to U111 (HS termination switch,
+# common pins 3 / 4, DM above DP: one via) at the west end; every other part on DP / DM sits with its
+# line pad right at its line (stub < 1 mm), DP parts above, DM parts below.
+USB_Y = 90.0
+USB_DP_Y, USB_DM_Y = 90.95, 89.05
+USB_ESD_X = 250.6
+USB_TAPS = [(247.5, "R134", "R135"), (245.6, "D106", "D107"), (243.7, "C118", "C119"),
+            (241.8, "R209", "R210"), (239.9, "R155", "R156"), (238.0, "R129", "R130"),
+            (236.1, "R131", None)]
+USB_END = (233.6, 89.75)          # U111 pin 3 (DP); pin 4 (DM) 0.5 mm above
+
+
 # --------------------------------------------------------------------------- main
 def main():
     fp = design()
@@ -349,6 +431,60 @@ def main():
     r = (BODY[1] - w, BODY[1], 90.0 - h / 2, 90.0 + h / 2)     # shell flush with the edge
     place["J102"] = ("fix", 270, False, r[0], r[2])
     rects["top"].append(r)
+    corridor = {"J102"}
+
+    def best_rot(ref, ok):
+        for rot in (0, 90, 180, 270):
+            if ok({n: pad_mm(ds[ref], n, rot) for n in G.NETS[ref]}):
+                return rot
+        raise SystemExit("no orientation for " + ref)
+    # U112 flow-through: DP pins 1 / 6 in the upper row, DM 3 / 4 in the lower row
+    rot = best_rot("U112", lambda q: abs(q["1"][1] - q["6"][1]) < 0.01 and
+                   q["1"][1] > q["3"][1])
+    dx = (pad_mm(ds["U112"], "1", rot)[0] - pad_mm(ds["U112"], "6", rot)[0]) / 2
+    place["U112"] = fix_at_pad(ds["U112"], "1", rot, USB_ESD_X + dx, USB_DP_Y)
+    corridor.add("U112")
+    for x, rp, rm in USB_TAPS:
+        for ref, net, side in ((rp, "DP", 1), (rm, "DM", -1)):
+            if not ref:
+                continue
+            pin = [n for n, v in G.NETS[ref].items() if v == net][0]
+            other = [n for n in G.NETS[ref] if n != pin][0]
+            rot = best_rot(ref, lambda q: abs(q[pin][0] - q[other][0]) < 0.01 and
+                           (q[other][1] - q[pin][1]) * side > 0)
+            ly = USB_DP_Y if side > 0 else USB_DM_Y
+            place[ref] = fix_at_pad(ds[ref], pin, rot, x, ly + side * 0.6)
+            corridor.add(ref)
+    # U111: common pins 3 (DP) / 4 (DM) facing east; its pinout puts DM above DP,
+    # so the router swaps them with a via in the last millimetre
+    rot = best_rot("U111", lambda q: q["3"][0] >= max(v[0] for v in q.values()) - 0.01 and
+                   abs(q["3"][0] - q["4"][0]) < 0.01)
+    place["U111"] = fix_at_pad(ds["U111"], "3", rot, *USB_END)
+    corridor.add("U111")
+    for ref in corridor - {"J102"}:
+        _, rot, _, x0, y0 = place[ref]
+        w, h = size_mm(ds[ref], rot)
+        rects["top"].append((x0 - 0.15, x0 + w + 0.15, y0 - 0.15, y0 + h + 0.15))
+    rects["top"].append((USB_END[0], BODY[1], USB_DM_Y - 0.6, USB_DP_Y + 0.6))   # the lines
+    rects["bottom"].append((251.0, 255.2, 87.8, 92.2))     # J102 A6 / A7 jumpers
+    corr_target = {}                   # group -> points it packs toward (USB corridor, J1)
+    for ref in corridor:
+        gi = group_of[ref]
+        _, rot, _, x0, y0 = place[ref]
+        w, h = size_mm(ds[ref], rot)
+        corr_target.setdefault(gi, []).append((x0 + w / 2, y0 + h / 2))
+    # groups on an FMC LVDS pair pack as close to that pair's J1 pins as they can
+    nets_all = {n for p in G.NETS.values() for n in p.values()}
+    j1y = {}
+    for pin, n in G.NETS["J1"].items():
+        if pair_key([n], nets_all):
+            j1y[n] = J1_C1[1] + (int(pin[1:]) - 1) * 1.27
+    for gi, g in enumerate(groups):
+        if gi in corr_target or "J1" in g["refs"]:
+            continue
+        ys = [j1y[n] for r in g["refs"] for n in G.NETS.get(r, {}).values() if n in j1y]
+        if ys:
+            corr_target[gi] = [(BODY[0] + 4.0, sum(ys) / len(ys))]
 
     # decoupling 100 nF caps with only a rail + GND go to the bottom under their group
     def is_decap(ref):                 # 100 nF between a supply rail and GND only
@@ -358,6 +494,7 @@ def main():
             and all(x == "GND" or RAIL.match(x) for x in n)
     bottom_caps = {r for r in G.PARTS if is_decap(r)}
 
+    allnets = {n for p in G.NETS.values() for n in p.values()}
     report = []
     for blk in ("common", "CDR", "PLL", "TX", "RX"):
         box = REGIONS[blk]
@@ -366,6 +503,8 @@ def main():
         # groups with SMA / edge connectors first (they land on the outer rows)
         def gkey(i):
             g = groups[i]
+            if i in corr_target:
+                return (-1, i)
             sma = any(ds[r]["head"]["c_para"]["package"].startswith("SMA") for r in g["refs"])
             usbg = "J102" in g["refs"] or g["cap"].startswith(("Line taps", "FS/LS driver",
                                                                  "HS termination"))
@@ -375,16 +514,60 @@ def main():
             refs = [r for r in g["refs"] if r not in place and r not in bottom_caps]
             if not refs:
                 continue
-            refs.sort(key=lambda r: (0 if r[0] in "UJQY" else 1, -size_mm(ds[r], 0)[1],
-                                     G.refkey(r)))
-            items = [(r,) + tuple(v + GAP_PART for v in size_mm(ds[r], 0)) for r in refs]
+            def skey(r):
+                pk = pair_key(G.NETS.get(r, {}).values(), allnets)
+                return (0 if r[0] in "UJQY" else 1, 0 if pk else 1, pk or ("", ""),
+                        -size_mm(ds[r], 0)[1], G.refkey(r))
+            refs.sort(key=skey)
+            ring = {r: RING if fine_pitch(ds[r]) else 0.0 for r in refs}
+            items = [(r,) + tuple(v + GAP_PART + 2 * ring[r] for v in size_mm(ds[r], 0))
+                     for r in refs]
+            # a P / N pair of equal two-pin parts (AC caps, series resistors) is one
+            # block, P directly above N, so the pair's lines end side by side.  The
+            # partner carries the mirrored pair net (..._P.. <-> ..._N..).
+            def mirror(n):
+                m = PAIR_RE.match(n)
+                if not m:
+                    return None
+                return m.group(1) + "_" + ("N" if m.group(2) == "P" else "P") + (m.group(3) or "")
+            two = {r: set(G.NETS.get(r, {}).values()) for r, _, _ in items
+                   if len(G.NETS.get(r, {})) == 2}
+            size = {r: (w, h) for r, w, h in items}
+            partner = {}
+            for r in two:
+                if r in partner:
+                    continue
+                mir = {mirror(n) for n in two[r]} & allnets
+                for r2 in two:
+                    if r2 != r and r2 not in partner and mir & two[r2] and \
+                            all(abs(u - v) < 0.01 for u, v in zip(size[r], size[r2])):
+                        partner[r], partner[r2] = r2, r
+                        break
+            merged, done = [], set()
+            for r, w, h in items:
+                if r in done:
+                    continue
+                if r in partner:
+                    r2 = partner[r]
+                    pr = PAIR_RE.match(sorted(n for n in two[r] if mirror(n) in two[r2])[0])
+                    rp, rn = (r, r2) if pr.group(2) == "P" else (r2, r)
+                    merged.append((("pair", rp, rn), w, 2 * h))
+                    done |= {r, r2}
+                else:
+                    merged.append((r, w, h))
+            items = merged
             area = sum(w * h for _, w, h in items)
             width = max(max(w for _, w, _ in items), math.sqrt(area * 1.5))
             pos, W, H = shelf(items, width, 0.0)
             ok = None
+            tgt = corr_target.get(gi)
             for wf in (1.0, 0.75, 1.35, 0.6, 1.8):     # retry narrower / wider if no room
                 pos, W, H = shelf(items, max(max(w for _, w, _ in items), width * wf), 0.0)
-                ok = first_fit(W + GAP_GROUP, H + GAP_GROUP, box, st, rects["top"], 0.5)
+                if tgt:                                 # next to its USB-corridor parts
+                    t = (sum(p[0] for p in tgt) / len(tgt), sum(p[1] for p in tgt) / len(tgt))
+                    ok = near_fit(W + GAP_GROUP, H + GAP_GROUP, box, t, rects["top"])
+                else:
+                    ok = first_fit(W + GAP_GROUP, H + GAP_GROUP, box, st, rects["top"], 0.5)
                 if ok:
                     break
             if not ok:
@@ -400,7 +583,19 @@ def main():
             for r, w, h in items:
                 px, py = pos[r]
                 y = gy + (H - py - h if flipy else py)
-                place[r] = ("fix", 0, False, gx + px + GAP_PART / 2, y + GAP_PART / 2)
+                if isinstance(r, tuple):        # pair block: N below, P above
+                    hn = h / 2
+                    place[r[2]] = ("fix", 0, False, gx + px + GAP_PART / 2, y + GAP_PART / 2)
+                    place[r[1]] = ("fix", 0, False, gx + px + GAP_PART / 2,
+                                   y + hn + GAP_PART / 2)
+                else:
+                    place[r] = ("fix", 0, False, gx + px + GAP_PART / 2 + ring[r],
+                                y + GAP_PART / 2 + ring[r])
+                    if ring[r]:                 # no bottom decaps in the fanout ring
+                        w0, h0 = size_mm(ds[r], 0)
+                        x0_, y0_ = place[r][3], place[r][4]
+                        rects["bottom"].append((x0_ - RING, x0_ + w0 + RING,
+                                                y0_ - RING, y0_ + h0 + RING))
             rects["top"].append(ok)
             g["rect"] = ok
             for r in refs:                     # through-hole pads block the bottom side too
@@ -535,8 +730,12 @@ def main():
         "preference": {"hideFootprints": "", "hideNets": ""},
         "DRCRULE": {"Default": {"trackWidth": 0.6, "clearance": 0.6, "viaHoleDiameter": 2.0,
                                 "viaHoleD": 1.0},
-                    "Power": {"trackWidth": 1.6, "clearance": 0.6, "viaHoleDiameter": 2.4,
-                              "viaHoleD": 1.2,
+                    # Power: the rail nets as a class.  route_rest.py runs them
+                    # 0.41 mm with 0.61 / 0.305 mm vias; the minimums equal Default
+                    # for the 0.16 mm dog-bone necks / 0.508 mm vias of fine-pitch
+                    # supply pins
+                    "Power": {"trackWidth": 0.6, "clearance": 0.6, "viaHoleDiameter": 2.0,
+                              "viaHoleD": 1.0,
                               "nets": sorted({n for p in G.NETS.values() for n in p.values()
                                               if RAIL.match(n)})},
                     "isRealtime": True, "checkObjectToCopperarea": True,

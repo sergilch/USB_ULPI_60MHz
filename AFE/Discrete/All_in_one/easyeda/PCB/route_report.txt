@@ -1,0 +1,20 @@
+USB DP / DM corridor: routed
+CLK_RX (CLK_RX_P_F / CLK_RX_N_F): routed, coupled on Inner2
+HS_RXD (HS_RXD_P_F / HS_RXD_N_F): routed, coupled on Inner2
+DPAT (DPAT_P_F / DPAT_N_F): routed, coupled on Inner2
+CLK60_A (CLK60_A_P_F / CLK60_A_N_F): routed, coupled on Inner2
+CLK_BIT_A (CLK_BIT_A_P_F / CLK_BIT_A_N_F): routed, coupled on Inner2
+TX_IN_P (TX_IN_P_P / TX_IN_P_N): routed, coupled on Inner2
+TX_IN_N (TX_IN_N_P / TX_IN_N_N): routed, coupled on Inner2
+RX_OUT (RX_OUT_P_F / RX_OUT_N_F): routed, coupled on Inner2
+RX_CDR (RX_CDR_P / RX_CDR_N): routed, coupled on Inner2
+CLK_RX skew J1->C440.2 / C441.2: P 15.99 mm, N 15.99 mm, skew +0.00 mm (untuned -1.97)
+HS_RXD skew J1->C442.2 / C443.2: P 16.72 mm, N 16.72 mm, skew -0.00 mm (untuned -2.38)
+DPAT skew J1->C421.1 / C422.1: P 11.81 mm, N 11.81 mm, skew -0.00 mm (untuned -0.76)
+CLK60_A skew J1->C365.2 / C366.2: P 46.22 mm, N 46.22 mm, skew -0.00 mm (untuned -1.36)
+CLK_BIT_A skew J1->C363.2 / C364.2: P 21.32 mm, N 21.32 mm, skew +0.00 mm (untuned +0.92)
+TX_IN_P skew J1->U105.2 / U105.3: P 76.08 mm, N 76.08 mm, skew -0.00 mm (untuned -3.29)
+TX_IN_N skew J1->U106.2 / U106.3: P 71.91 mm, N 71.91 mm, skew +0.00 mm (untuned -2.20)
+RX_OUT skew J1->C237.2 / C238.2: P 91.81 mm, N 91.79 mm, skew +0.01 mm (untuned +0.74)
+RX_CDR skew U216->C474.1 / C475.1: P 105.48 mm, N 105.48 mm, skew +0.00 mm (untuned -0.82)
+tracks 137, vias 43

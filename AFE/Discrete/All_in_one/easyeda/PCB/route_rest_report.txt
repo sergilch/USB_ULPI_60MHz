@@ -1,0 +1,115 @@
+fine-pitch fanout (dog-bones + stubs): 413
+RF / ECL signals: 104 nets, 20 incomplete
+GND stitching vias: 483, pads without a via: 11
+other signals: 214 nets, 44 incomplete
+signal passes: 1, best pass 1 (75 failed nets / GND pads)
+rails: 17 nets, 9 incomplete
+retry: 73 nets, 58 still incomplete
+new tracks 2232, vias 1541, copper areas 2; 3223 s
+unrouted pads: 106
+  GND C415.2 (no via)
+  GND C425.2 (no via)
+  GND C426.2 (no via)
+  GND C434.2 (no via)
+  GND D402.2 (no via)
+  GND L301.2 (no via)
+  GND R402.2 (no via)
+  GND R429.2 (no via)
+  GND R431.2 (no via)
+  GND R441.2 (no via)
+  GND U408.19 (no via)
+  NB_INN U411.9
+  FO0_P U216.15
+  NB_VREF U411.11
+  NB_VREF U411.10
+  CP_EU Q405.2
+  FO0_N U216.16
+  PLL_Y2_N U316.10
+  PLL_Y0_N R343.1
+  PLL_Y0_N U316.22
+  Y0_P U316.21
+  DAT_P U406.16
+  RXO_P U216.12
+  CK1_N U411.16
+  DAT_N R424.2
+  PLL_Y1_N U316.16
+  CDR_SET U404.20
+  CDR_SET U407.18
+  CDR_SET U407.13
+  CDR_SET U408.18
+  CDR_SET U408.13
+  CK2_N R446.2
+  CK2_N U411.2
+  CK2_N U408.5
+  CK2_N U408.7
+  B_P U409.1
+  TX_Y2_N U110.3
+  TX_Y2_N U114.6
+  VM_N U118.6
+  CVIN2 U414.1
+  VP C329.1
+  VP U311.18
+  VP U317.5
+  DCB_N U212.4
+  SQB_N U210.4
+  TX_Y1_N U110.1
+  TX_Y1_N U114.3
+  TX_Y0_N U116.3
+  TX_Y0_N U115.1
+  RX_P U119.1
+  CC1 R132.1
+  Y3_N U116.6
+  Y3_N U115.3
+  CC2 R133.1
+  REFIN U311.8
+  CDR_FREF U309.4
+  REFSRC1 U309.6
+  ADF_LE U311.14
+  VBUS J102.B4A9
+  VBUS J102.A4B9
+  ADF_DATA U311.13
+  ADF_CLK U311.12
+  GPP_X U117.2
+  PLL_ADC_CS_N_F U304.8
+  PLL_DAC_CS_N_F U304.7
+  LF_DIS_F U304.4
+  CDR_SPI_SCK U416.7
+  CDR_SPI_SCK U412.3
+  CSW_EXT U403.17
+  CSW_DAC U414.3
+  DP_PULLUP_EN_F U108.7
+  FS_OE_F U108.3
+  FS_SE0_F U108.5
+  ADF_DATA_F R311.1
+  ADF_CLK_F R310.1
+  CDR_CH_OUT_PLL R482.1
+  SPI_SDI_F U304.10
+  +3V3_RX U216.14
+  +3V3A_RX U212.6
+  +3V3A_RX U210.6
+  +5V_A_PLL R304.1
+  +5V_A_PLL U317.1
+  +5V_A_PLL R305.1
+  +5V_A_PLL C370.1
+  +5V_A_PLL R307.1
+  +3V3_CDR U404.23
+  +3V3_CDR C428.1
+  +3V3_CDR U411.14
+  +3V3_CDR U409.8
+  +3V3_CDR U408.20
+  +3V3_PLL U316.8
+  +3V3_PLL U316.11
+  +3V3_PLL U309.5
+  +5V_A_CDR U403.23
+  +5V_A_CDR R407.1
+  +5V_A_CDR U415.5
+  +3V3_TX U109.16
+  +3V3_TX FB101.2
+  P3V3_FMC FB102.1
+  P3V3_FMC FB401.1
+  VADJ U310.5
+  VADJ U405.1
+  VADJ U304.1
+  VADJ U102.1
+  VADJ C124.1
+  VADJ C405.1

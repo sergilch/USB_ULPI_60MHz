@@ -9,6 +9,8 @@ Re-reads the generated EasyEDA document (not the generator's data) and checks:
   - every part (pad + graphics bbox) is on the board, clear of the outline by
     0.3 mm, of the mounting-hole keep-outs, and of parts on the same side
   - no bottom-side part over the carrier (x < 160.5)
+  - routed copper (route_critical.py): every track / via is on a net and 0.152 mm
+    (DRC rule) clear of copper of other nets on its layer, exact geometry
 Prints CHECK PASSED / CHECK FAILED: n.
 """
 import csv
@@ -39,9 +41,10 @@ def main():
     err = []
     ids = {}
     parts, free_pads = {}, []
-    known = {"LIB", "TRACK", "PAD", "TEXT", "CIRCLE", "ARC", "SOLIDREGION", "HOLE", "VIA"}
+    known = {"LIB", "TRACK", "PAD", "TEXT", "CIRCLE", "ARC", "SOLIDREGION", "HOLE", "VIA",
+             "COPPERAREA"}
     idpos = {"PAD": 12, "TRACK": 5, "CIRCLE": 6, "ARC": 6, "SOLIDREGION": 5, "HOLE": 4,
-             "TEXT": 13, "LIB": 6, "VIA": 6}
+             "TEXT": 13, "LIB": 6, "VIA": 6, "COPPERAREA": 7}
 
     def take_id(f, where):
         k = f[0]
@@ -150,6 +153,7 @@ def main():
                     rb[2] < ra[3] - 0.05:
                 err.append("%s overlaps %s (%s side)" % (a, b, parts[a]["side"]))
 
+    err += copper_clearance(doc)
     preview(doc, parts, rects, holes)
     for e in err[:60]:
         print("ERROR", e)
@@ -158,6 +162,130 @@ def main():
         len(parts), nb, sum(len(p["pads"]) for p in parts.values()), len(ids)))
     print("CHECK PASSED" if not err else "CHECK FAILED: %d" % len(err))
     return 1 if err else 0
+
+
+CLEAR = 0.152 - 1e-3
+
+
+def copper_clearance(doc):
+    """tracks / vias vs tracks / vias / pads of other nets and unplated holes,
+    per copper layer."""
+    K = 0.254
+    segs, pads, err = [], [], []
+    for s in doc["shape"]:
+        f = s.split("~")
+        if f[0] == "TRACK" and f[2] in ("1", "2", "21", "22", "23", "24"):
+            if not f[3]:
+                err.append("track %s without a net" % f[5])
+            v = nums(f[4])
+            pts = [zb(v[i], v[i + 1]) for i in range(0, len(v), 2)]
+            for a, b in zip(pts, pts[1:]):
+                segs.append((f[2], f[3], a, b, float(f[1]) * K / 2))
+        if f[0] == "VIA":
+            p = zb(float(f[1]), float(f[2]))
+            for L in ("1", "2", "21", "22", "23", "24"):              # through via
+                segs.append((L, f[4], p, p, float(f[3]) * K / 2))
+        sub = s.split("#@$")
+        ref = ""
+        for t in sub:
+            if t.startswith("TEXT~P"):
+                ref = t.split("~")[10]
+        for t in sub:
+            g = t.split("~")
+            if g[0] == "HOLE":           # unplated hole: an obstacle on every layer
+                x, y = zb(float(g[1]), float(g[2]))
+                for L in ("1", "2", "21", "22", "23", "24"):
+                    pads.append((L, "<hole>", ("cap", (x, y), (x, y), float(g[3]) * K),
+                                 "%s hole" % (ref or g[4])))
+                continue
+            if g[0] != "PAD":
+                continue
+            lay = ("1", "2", "21", "22", "23", "24") if g[6] == "11" else (g[6],)
+            if g[10].strip() and g[1] in ("RECT", "POLYGON"):
+                v = nums(g[10])
+                shp = ("poly", [zb(v[i], v[i + 1]) for i in range(0, len(v) - 1, 2)])
+            else:                        # OVAL / ELLIPSE: capsule along the long side
+                x, y = zb(float(g[2]), float(g[3]))
+                w, h = float(g[4]) * K, float(g[5]) * K
+                a = math.radians(-float(g[11] or 0))
+                r, l = min(w, h) / 2, (max(w, h) - min(w, h)) / 2
+                ux, uy = (math.cos(a), math.sin(a)) if w >= h else (-math.sin(a), math.cos(a))
+                shp = ("cap", (x - l * ux, y - l * uy), (x + l * ux, y + l * uy), r)
+            for L in lay:
+                pads.append((L, g[7], shp, "%s.%s" % (ref, g[8])))
+    if not segs:
+        return err
+
+    def sd(p, a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        l2 = dx * dx + dy * dy
+        t = 0 if l2 == 0 else max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2))
+        return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
+
+    def cross(a, b, c, e):
+        def o(p, q, r):
+            return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return o(a, b, c) * o(a, b, e) < 0 and o(c, e, a) * o(c, e, b) < 0
+
+    def ss(a, b, c, e):
+        return 0 if cross(a, b, c, e) else min(sd(a, c, e), sd(b, c, e), sd(c, a, b), sd(e, a, b))
+
+    def inside(p, poly):
+        c = False
+        for i in range(len(poly)):
+            (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % len(poly)]
+            if (y1 > p[1]) != (y2 > p[1]) and p[0] < (x2 - x1) * (p[1] - y1) / (y2 - y1) + x1:
+                c = not c
+        return c
+    # spatial index: 2 mm buckets per layer
+    B = 2.0
+    def keys(L, a, b, h):
+        x0, x1 = min(a[0], b[0]) - h - 0.2, max(a[0], b[0]) + h + 0.2
+        y0, y1 = min(a[1], b[1]) - h - 0.2, max(a[1], b[1]) + h + 0.2
+        return [(L, i, j) for i in range(int(x0 // B), int(x1 // B) + 1)
+                for j in range(int(y0 // B), int(y1 // B) + 1)]
+    sbk, pbk = {}, {}
+    for k, (L, n, a, b, h) in enumerate(segs):
+        for key in keys(L, a, b, h):
+            sbk.setdefault(key, []).append(k)
+    for k, (L, n, shp, name) in enumerate(pads):
+        if shp[0] == "cap":
+            pa, pb, r = shp[1], shp[2], shp[3]
+        else:
+            xs = [q[0] for q in shp[1]]
+            ys = [q[1] for q in shp[1]]
+            pa, pb, r = (min(xs), min(ys)), (max(xs), max(ys)), 0
+        for key in keys(L, pa, pb, r):
+            pbk.setdefault(key, []).append(k)
+    seen = set()
+    for i, (L, n, a, b, h) in enumerate(segs):
+        cs, cp = set(), set()
+        for key in keys(L, a, b, h):
+            cs.update(sbk.get(key, ()))
+            cp.update(pbk.get(key, ()))
+        for j in cs:
+            if j <= i:
+                continue
+            L2, n2, c, e, h2 = segs[j]
+            if n2 != n and ss(a, b, c, e) - h - h2 < CLEAR:
+                err.append("%s / %s copper too close at (%.2f, %.2f) L%s" % (n, n2, a[0], a[1], L))
+        for j in cp:
+            L2, n2, shp, name = pads[j]
+            if n2 == n:
+                continue
+            if shp[0] == "cap":
+                g = ss(a, b, shp[1], shp[2]) - shp[3] - h
+            elif inside(a, shp[1]) or inside(b, shp[1]):
+                g = -1
+            else:
+                pl = shp[1]
+                g = min(ss(a, b, pl[k], pl[(k + 1) % len(pl)]) for k in range(len(pl))) - h
+            if g < CLEAR and (i, j) not in seen:
+                seen.add((i, j))
+                err.append("%s too close to pad %s (%s) at (%.2f, %.2f) L%s" % (
+                    n, name, n2 or "no net", a[0], a[1], L))
+    print("routed copper: %d track segments / via layers checked" % len(segs))
+    return err
 
 
 COL = {"TX": "#d9534f", "RX": "#f0ad4e", "PLL": "#5cb85c", "CDR": "#5bc0de", "common": "#999999"}
@@ -199,6 +327,21 @@ def preview(doc, parts, rects, holes):
             if side == "top" and (r[1] - r[0]) * (r[3] - r[2]) > 6 or ref == "J1":
                 o.append('<text x="%g" y="%g" font-size="%g" text-anchor="middle">%s</text>' % (
                     X((r[0] + r[1]) / 2), Y((r[2] + r[3]) / 2) + 3, 9 if ref != "J1" else 14, ref))
+    lc = {"1": "#c00000", "2": "#0030d0", "22": "#00a040", "23": "#d08000"}
+    for sh in sorted(doc["shape"], key=lambda t: t.split("~")[2] not in ("22", "23")):
+        f = sh.split("~")                # routed copper: Top red, Bottom blue, Inner2 green,
+                                         # Inner3 orange
+        if f[0] == "TRACK" and f[2] in lc and f[3]:
+            v = nums(f[4])
+            p = " ".join("%g,%g" % (X(zb(v[i], v[i + 1])[0]), Y(zb(v[i], v[i + 1])[1]))
+                         for i in range(0, len(v), 2))
+            o.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="%g" '
+                     'stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>' % (
+                         p, lc[f[2]], float(f[1]) * 0.254 * S))
+        if f[0] == "VIA":
+            x, y = zb(float(f[1]), float(f[2]))
+            o.append('<circle cx="%g" cy="%g" r="%g" fill="#202020"/>' % (
+                X(x), Y(y), float(f[3]) * 0.254 / 2 * S))
     for (hx, hy), hr in holes:
         o.append('<circle cx="%g" cy="%g" r="%g" fill="none" stroke="black" stroke-width="1.5"/>'
                  % (X(hx), Y(hy), hr * S))
@@ -206,7 +349,7 @@ def preview(doc, parts, rects, holes):
         o.append('<rect x="%g" y="%g" width="14" height="14" fill="%s"/><text x="%g" y="%g" '
                  'font-size="14">%s</text>' % (10 + i * 90, 8, c, 28 + i * 90, 20, k))
     o.append('<text x="10" y="%g" font-size="13">dashed = bottom side; grey dashed box = '
-             'ZedBoard (right part); black = board outline / holes</text>' % ((y1 - y0) * S - 8))
+             'ZedBoard (right part); black = board outline / holes; tracks: Top red, Bottom blue, Inner2 green, Inner3 orange, vias black</text>' % ((y1 - y0) * S - 8))
     o.append("</svg>")
     svg = os.path.join(HERE, "preview.svg")
     open(svg, "w").write("\n".join(o))
